@@ -4,6 +4,10 @@ let aspirantesGlobales = []; // Reemplaza a mockAspirantes
 let usuarioActual = null;
 let isExpandedView = false;
 
+// --- VARIABLES GLOBALES PARA NOTAS ---
+let modoEdicionNotas = false;
+let instanciaActual = 'seguimiento'; 
+let asignaturaActual = 'mat'; // NUEVO: Por defecto arranca en matemática
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfjyVx6m2_-HCg8ACOQZBE_4cykOrsXf2PJalFYr8jBdAYXwU_Bkj2PE967-iWc_dqeg/exec';
 
@@ -259,11 +263,11 @@ async function iniciarSesion(e) {
 
         const data = await response.json();
 
-        if (data.exito) {
+       if (data.exito) {
             // 1. Guardar datos en memoria
             usuarioActual = data.perfil;
-            aspirantesGlobales = data.datos; // <--- ACÁ LLEGAN LOS ALUMNOS
-
+            aspirantesGlobales = data.datos; // <--- ACÁ RECIÉN SE LLENAN LOS ALUMNOS
+            
             // 2. Guardar token en localStorage
             localStorage.setItem('token_sesion', data.token);
 
@@ -272,11 +276,14 @@ async function iniciarSesion(e) {
             document.getElementById('app-container').classList.remove('d-none');
             document.getElementById('userNameDisplay').textContent = `${usuarioActual.nombre} (${usuarioActual.rol})`;
 
-            // 4. Disparar el dibujado de la tabla
+            // 4. Disparar el dibujado de la tabla principal
             applyFilters();
-
+            
+            // 💥 5. INICIALIZAR NOTAS ACÁ (Para que ya pueda leer los alumnos) 💥
+            inicializarModuloNotas();
+            
         } else {
-            alert(data.mensaje); // "Contraseña incorrecta", etc.
+            alert(data.mensaje);
         }
     } catch (error) {
         console.error(error);
@@ -292,4 +299,141 @@ function cerrarSesionLocal() {
     // Aquí luego sumaremos la llamada al backend para borrar el token en Google
     localStorage.removeItem('token_sesion');
     location.reload(); // Recarga la página volviendo al login
+}
+
+
+
+
+
+
+
+
+// --- INICIALIZADOR DE NOTAS ---
+function inicializarModuloNotas() {
+    const select = document.getElementById('selectComisionNotas');
+    select.innerHTML = '<option value="">Seleccione...</option>';
+    
+    const comisionesDisponibles = [...new Set(aspirantesGlobales.map(a => a.comision))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+    comisionesDisponibles.forEach(com => {
+        select.innerHTML += `<option value="${com}">${com}</option>`;
+    });
+
+    select.addEventListener('change', renderizarPlanillaNotas);
+    
+    const btnHabilitar = document.getElementById('btnHabilitarEdicion');
+    const nuevoBtnHabilitar = btnHabilitar.cloneNode(true);
+    btnHabilitar.parentNode.replaceChild(nuevoBtnHabilitar, btnHabilitar);
+    
+    nuevoBtnHabilitar.addEventListener('click', function() {
+        if(!select.value) return alert("Seleccioná una comisión primero.");
+        modoEdicionNotas = !modoEdicionNotas;
+        this.innerHTML = modoEdicionNotas ? '🔒 Bloquear Planilla' : '✏️ Habilitar Planilla';
+        this.classList.toggle('btn-outline-secondary');
+        this.classList.toggle('btn-warning');
+        document.getElementById('btnGuardarNotasServidor').disabled = !modoEdicionNotas;
+        renderizarPlanillaNotas();
+    });
+
+    // Listeners Instancias de Evaluación (Quitamos el data-bs-toggle del HTML para controlarlo manual)
+    document.getElementById('seguimiento-tab').addEventListener('click', (e) => cambiarPestaña('seguimiento', e.target, '#notasSubTabs'));
+    document.getElementById('ensayo-tab').addEventListener('click', (e) => cambiarPestaña('ensayo', e.target, '#notasSubTabs'));
+
+    // Listeners Asignaturas
+    document.getElementById('mat-tab').addEventListener('click', (e) => cambiarAsignatura('mat', e.target));
+    document.getElementById('len-tab').addEventListener('click', (e) => cambiarAsignatura('len', e.target));
+    document.getElementById('log-tab').addEventListener('click', (e) => cambiarAsignatura('log', e.target));
+}
+
+// Funciones auxiliares para cambiar el aspecto visual de las pestañas
+function cambiarPestaña(instancia, boton, contenedor) {
+    instanciaActual = instancia;
+    document.querySelectorAll(`${contenedor} .nav-link`).forEach(btn => btn.classList.remove('active'));
+    boton.classList.add('active');
+    renderizarPlanillaNotas();
+}
+
+function cambiarAsignatura(asignatura, boton) {
+    asignaturaActual = asignatura;
+    document.querySelectorAll('#asignaturasTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+    boton.classList.add('active');
+    renderizarPlanillaNotas();
+}
+
+// --- RENDERIZADO Y AUTO-GUARDADO ---
+function renderizarPlanillaNotas() {
+    const comision = document.getElementById('selectComisionNotas').value;
+    const tbody = document.getElementById('tabla-notas-body');
+    const headerAsignatura = document.getElementById('header-asignatura');
+    
+    if (!comision) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Seleccioná una comisión para empezar.</td></tr>';
+        return;
+    }
+
+    // Actualizamos el título de la columna
+    const nombresAsignaturas = { mat: 'Matemática', len: 'Lengua', log: 'Lógica' };
+    headerAsignatura.textContent = nombresAsignaturas[asignaturaActual];
+
+    const alumnos = aspirantesGlobales.filter(a => a.comision === comision).sort((a, b) => a.apellido.localeCompare(b.apellido));
+    const borradorLocal = JSON.parse(localStorage.getItem(`notas_${instanciaActual}_${comision}`)) || {};
+
+    tbody.innerHTML = '';
+    
+    alumnos.forEach((asp, index) => {
+        const tr = document.createElement('tr');
+        
+        // Solo traemos la nota de la asignatura seleccionada
+        const nota = borradorLocal[asp.id_inscripcion]?.[asignaturaActual] || '';
+
+        if (modoEdicionNotas) {
+            tr.innerHTML = `
+                <td>${asp.dni}</td>
+                <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
+                <td><input type="number" class="form-control text-center input-nota fs-5" data-id="${asp.id_inscripcion}" data-materia="${asignaturaActual}" value="${nota}" min="1" max="10"></td>
+            `;
+        } else {
+            tr.innerHTML = `
+                <td>${asp.dni}</td>
+                <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
+                <td class="text-center fs-5 fw-bold">${nota || '-'}</td>
+            `;
+        }
+        tbody.appendChild(tr);
+    });
+
+    if (modoEdicionNotas) activarNavegacionPorEnterYGuardado(comision);
+}
+
+// --- LA MAGIA DEL ENTER Y EL LOCALSTORAGE ---
+function activarNavegacionPorEnterYGuardado(comision) {
+    const inputs = document.querySelectorAll('.input-nota');
+    
+    inputs.forEach((input, index) => {
+        input.addEventListener('input', () => {
+            let borrador = JSON.parse(localStorage.getItem(`notas_${instanciaActual}_${comision}`)) || {};
+            
+            const id = input.dataset.id;
+            const materia = input.dataset.materia;
+            
+            if (!borrador[id]) borrador[id] = {};
+            borrador[id][materia] = input.value;
+            
+            localStorage.setItem(`notas_${instanciaActual}_${comision}`, JSON.stringify(borrador));
+            document.getElementById('alertaBorradorNotas').classList.remove('d-none');
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                const nextInput = inputs[index + 1];
+                if (nextInput) {
+                    nextInput.focus();
+                    nextInput.select();
+                }
+            }
+        });
+    });
 }

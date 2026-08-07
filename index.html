@@ -121,9 +121,16 @@
                             <div class="col-md-2">
                                 <select id="filterComision" class="form-select">
                                     <option value="">Todas las Comisiones</option>
-                                    <option value="Comisión 1">Comisión 1</option>
-                                    <option value="Comisión 2">Comisión 2</option>
-                                    <option value="Comisión 3">Comisión 3</option>
+                                    <option value="COMISION 1">Comisión 1</option>
+                                    <option value="COMISION 2">Comisión 2</option>
+                                    <option value="COMISION 3">Comisión 3</option>
+                                    <option value="COMISION 4">Comisión 4</option>
+                                    <option value="COMISION 5">Comisión 5</option>
+                                    <option value="COMISION 6">Comisión 6</option>
+                                    <option value="COMISION 7">Comisión 7</option>
+                                    <option value="COMISION 8">Comisión 8</option>
+                                    <option value="COMISION 9">Comisión 9</option>
+                                    <option value="COMISION 10">Comisión 10</option>
                                 </select>
                             </div>
 
@@ -171,13 +178,79 @@
                     <div id="calendar"></div>
                 </article>
 
-                <!-- PESTAÑA 3: Carga de Notas (En construcción) -->
+                <!-- PESTAÑA 3: Carga de Notas -->
                 <article class="tab-pane fade" id="notas" role="tabpanel">
-                    <div class="alert alert-info" role="alert">
-                        <h4 class="alert-heading">Módulo en Construcción</h4>
-                        <p>Aquí irá la interfaz dinámica para la carga masiva de notas con guardado en LocalStorage.</p>
-                        <hr>
-                        <p class="mb-0">Fase programada para la siguiente iteración.</p>
+                    <div class="table-wrapper">
+
+                        <!-- Controles Superiores de Notas -->
+                        <div class="row g-3 align-items-end mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-primary">1. Seleccionar Comisión</label>
+                                <select id="selectComisionNotas" class="form-select">
+                                    <!-- Se llena con JS según el profe -->
+                                </select>
+                            </div>
+                            <div class="col-md-8 d-flex justify-content-end gap-2">
+                                <button class="btn btn-outline-secondary" id="btnHabilitarEdicion">
+                                    ✏️ Habilitar Planilla
+                                </button>
+                                <button class="btn btn-success" id="btnGuardarNotasServidor" disabled>
+                                    ☁️ Enviar al Servidor
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sub-Pestañas de Instancias de Evaluación -->
+                        <ul class="nav nav-tabs mb-3" id="notasSubTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="seguimiento-tab" type="button">1º
+                                    Seguimiento</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="ensayo-tab" type="button">Ensayo Examen</button>
+                            </li>
+                        </ul>
+
+                        <!-- NUEVO: Selector de Asignaturas (Botones tipo "Pill") -->
+                        <ul class="nav nav-pills mb-3 bg-light p-2 rounded" id="asignaturasTabs">
+                            <li class="nav-item">
+                                <button class="nav-link active fw-bold" id="mat-tab" type="button">📐
+                                    Matemática</button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link fw-bold" id="len-tab" type="button">📖 Lengua</button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link fw-bold" id="log-tab" type="button">🧠 Lógica</button>
+                            </li>
+                        </ul>
+
+                        <!-- Contenedor de la Planilla -->
+                        <div class="alert alert-warning d-none" id="alertaBorradorNotas">
+                            ⚠️ Tenés notas sin guardar en el servidor. Están seguras en tu navegador, pero recordá
+                            presionar "Enviar al Servidor".
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 15%;">DNI</th>
+                                        <th style="width: 55%;">Apellido y Nombre</th>
+                                        <!-- Esta columna cambiará su título con JS -->
+                                        <th class="text-center text-primary fs-6" style="width: 30%;"
+                                            id="header-asignatura">Matemática</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-notas-body">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">Seleccioná una comisión para
+                                            empezar.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                     </div>
                 </article>
 
@@ -201,7 +274,8 @@
                     <h6 class="text-primary border-bottom pb-2 mb-3">Datos Personales</h6>
                     <div class="row g-2 mb-4">
                         <div class="col-md-12 fs-3"><strong>Aspirante:</strong> <span id="ficha-nombre"></span></div>
-                        <div class="col-md-12"><strong>Nº Inscripción:</strong> <span id="ficha-inscripcion"></span></div>
+                        <div class="col-md-12"><strong>Nº Inscripción:</strong> <span id="ficha-inscripcion"></span>
+                        </div>
                         <div class="col-md-4"><strong>DNI:</strong> <span id="ficha-dni"></span></div>
                         <div class="col-md-2"><strong>Sexo:</strong> <span id="ficha-sexo"></span></div>
                         <div class="col-md-6"><strong>Nacimiento:</strong> <span id="ficha-nac"></span></div>
