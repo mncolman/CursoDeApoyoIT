@@ -1,62 +1,150 @@
 // --- 1. ESTADO GLOBAL Y CACHÉ ---
 
-let aspirantesGlobales = []; // Reemplaza a mockAspirantes
+let aspirantesGlobales = [];
+let eventosGlobales = [];
 let usuarioActual = null;
 let isExpandedView = false;
 
 // --- VARIABLES GLOBALES PARA NOTAS ---
 let modoEdicionNotas = false;
-let instanciaActual = 'seguimiento'; 
+let instanciaActual = 'seguimiento';
 let asignaturaActual = 'mat'; // NUEVO: Por defecto arranca en matemática
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfjyVx6m2_-HCg8ACOQZBE_4cykOrsXf2PJalFYr8jBdAYXwU_Bkj2PE967-iWc_dqeg/exec';
+const GAS_URL = 'https://script.google.com/a/macros/herrera.unt.edu.ar/s/AKfycbxpKLUC7BLO7mVY2x_f79Y4375F5XRHeSWehegYztt9RTtASPZgNMfnh6ZTxMKv3vklKQ/exec';
 
+
+
+
+
+// =================================================================
+// 2. INICIALIZACIÓN (Cuando carga la página)
+// =================================================================
 document.addEventListener('DOMContentLoaded', function () {
-
-    // --- 2. LISTENERS ---
+    // --- LISTENERS ---
     document.getElementById('loginForm').addEventListener('submit', iniciarSesion);
     document.getElementById('searchInput').addEventListener('input', applyFilters);
     document.getElementById('filterComision').addEventListener('change', applyFilters);
     document.getElementById('sortSelect').addEventListener('change', applyFilters);
 
-    // Listener del interruptor de vista
     document.getElementById('viewToggle').addEventListener('change', function (e) {
         isExpandedView = e.target.checked;
-        applyFilters(); // Re-renderiza la tabla con las columnas nuevas
+        applyFilters();
     });
 
-    // Render inicial al cargar la página
+
+// Cierra el menú hamburguesa al hacer clic en una pestaña (solo en móviles)
+    const navLinks = document.querySelectorAll('#collapsibleTabs .nav-link');
+    const menuCollapse = document.getElementById('collapsibleTabs');
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) { // 992px es el breakpoint 'lg' de Bootstrap
+                const bsCollapse = bootstrap.Collapse.getInstance(menuCollapse);
+                if (bsCollapse) {
+                    bsCollapse.hide();
+                }
+            }
+        });
+    });
+
+
+
+
+
     applyFilters();
+});
 
 
 
 
-    // --- 2. CONFIGURACIÓN DE FULLCALENDAR ---
-    var calendarEl = document.getElementById('calendar');
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek',
-        locale: 'es',
+
+
+
+// --- MÓDULO DE CALENDARIO ---
+function inicializarCalendario() {
+    const calendarEl = document.getElementById('calendar'); // Asegurate que tu div tenga id="calendar"
+    if (!calendarEl) return;
+
+    // Le damos colores automáticos según la materia
+    const eventosColoreados = eventosGlobales.map(ev => {
+        let colorFondo = '#3788d8'; // Azul por defecto
+
+        const materia = ev.extendedProps.materia.toLowerCase();
+        const titulo = ev.title.toLowerCase();
+
+        if (materia.includes('matem')) colorFondo = '#dd1226'; // Rojo
+        if (materia.includes('lengua')) colorFondo = '#198754'; // Verde
+        if (materia.includes('dibujo')) colorFondo = '#fd7e14'; // Naranja
+
+        return {
+            ...ev,
+            backgroundColor: colorFondo,
+            borderColor: colorFondo
+        };
+    });
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es', // Para que esté en español
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            right: 'dayGridMonth,timeGridWeek,listWeek'
         },
-        slotMinTime: '08:00:00', // Horario escolar
-        slotMaxTime: '22:00:00',
-        events: [
-            { title: 'Matemáticas - Com. 3', start: '2026-08-07T14:00:00', end: '2026-08-07T16:00:00', color: '#0d6efd' },
-            { title: 'Simulacro Examen', start: '2026-08-08T09:00:00', end: '2026-08-08T12:00:00', color: '#dc3545' }
-        ]
+        events: eventosColoreados,
+
+
+        // Al hacer clic en un evento, mostramos el detalle (podés cambiarlo por un modal luego)
+        eventClick: function (info) {
+            // Capturamos el color del evento para pintar el botón del modal del mismo color
+            const colorFondo = info.event.backgroundColor;
+
+            // Formateamos la fecha a formato argentino (DD/MM/YYYY)
+            const fechaFormateada = info.event.start.toLocaleDateString('es-AR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long'
+            });
+
+            Swal.fire({
+                title: info.event.title,
+                html: `
+                    <div style="text-align: left; margin-top: 15px; font-size: 1.1em;">
+                        <p><strong>📚 Materia:</strong> ${info.event.extendedProps.materia}</p>
+                        <p><strong>📅 Fecha:</strong> <span style="text-transform: capitalize;">${fechaFormateada}</span></p>
+                        <hr>
+                        <p><strong>📝 Detalle de la clase:</strong><br> ${info.event.extendedProps.descripcion}</p>
+                    </div>
+                `,
+                icon: 'info',
+                iconColor: colorFondo,
+                confirmButtonText: 'Cerrar',
+                confirmButtonColor: colorFondo,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown animate__faster'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp animate__faster'
+                }
+            });
+        }
+
+        
     });
 
-    // --- 3. RE-RENDERIZAR CALENDARIO AL CAMBIAR DE PESTAÑA ---
-    // FullCalendar calcula su tamaño al cargar. Si está oculto, se rompe. 
-    // Esto lo soluciona obligándolo a recalcular al mostrar la pestaña.
-    var calendarioTab = document.getElementById('calendario-tab');
-    calendarioTab.addEventListener('shown.bs.tab', function () {
+    // Truco para que FullCalendar se dibuje bien dentro de un Tab de Bootstrap
+    const tabCalendario = document.querySelector('button[data-bs-target="#calendario"]'); // Ajustá el selector si tu botón tiene otro ID o data-bs-target
+    if (tabCalendario) {
+        tabCalendario.addEventListener('shown.bs.tab', () => {
+            calendar.render();
+        });
+    } else {
+        // Si no estás usando tabs, lo renderizamos directo
         calendar.render();
-    });
-});
+    }
+}
+
+
 
 
 // --- 3. MOTOR DE FILTRADO Y ORDENAMIENTO ---
@@ -205,20 +293,20 @@ function abrirFicha(idInscripcion) {
     document.getElementById('ficha-sexo').textContent = asp.sexo;
     document.getElementById('ficha-inscripcion').textContent = asp.id_inscripcion;
     document.getElementById('ficha-domicilio').textContent = `${asp.domicilio} (${asp.departamento})`;
-    
+
     // Si la enfermedad está vacía, mostramos "Ninguna" para que no quede en blanco
     document.getElementById('ficha-enfermedad').textContent = asp.enfermedad ? asp.enfermedad : "Ninguna";
-    
+
     document.getElementById('ficha-colegio').textContent = asp.colegio;
     document.getElementById('ficha-turno-esc').textContent = asp.turno_escuela;
     document.getElementById('ficha-turno-cur').textContent = asp.turno_cursillo;
-    
+
     document.getElementById('ficha-tutor').textContent = asp.tutor;
     document.getElementById('ficha-relacion').textContent = asp.tutor_relacion;
     document.getElementById('ficha-ocupacion').textContent = asp.tutor_ocupacion || "-";
     document.getElementById('ficha-tel1').textContent = asp.tel1;
     document.getElementById('ficha-tel2').textContent = asp.tel2;
-    
+
     document.getElementById('ficha-observaciones').textContent = asp.observaciones || "Sin observaciones.";
 
     // 3. Mostrar el modal usando Bootstrap
@@ -263,11 +351,12 @@ async function iniciarSesion(e) {
 
         const data = await response.json();
 
-       if (data.exito) {
+        if (data.exito) {
             // 1. Guardar datos en memoria
             usuarioActual = data.perfil;
             aspirantesGlobales = data.datos; // <--- ACÁ RECIÉN SE LLENAN LOS ALUMNOS
-            
+            eventosGlobales = data.calendario;
+
             // 2. Guardar token en localStorage
             localStorage.setItem('token_sesion', data.token);
 
@@ -278,10 +367,14 @@ async function iniciarSesion(e) {
 
             // 4. Disparar el dibujado de la tabla principal
             applyFilters();
-            
-            // 💥 5. INICIALIZAR NOTAS ACÁ (Para que ya pueda leer los alumnos) 💥
+
+            // 5. INICIALIZAR NOTAS ACÁ (Para que ya pueda leer los alumnos) 
             inicializarModuloNotas();
-            
+
+            // 5. INICIALIZAR calendario ACÁ 
+
+            inicializarCalendario();
+
         } else {
             alert(data.mensaje);
         }
@@ -312,7 +405,7 @@ function cerrarSesionLocal() {
 function inicializarModuloNotas() {
     const select = document.getElementById('selectComisionNotas');
     select.innerHTML = '<option value="">Seleccione...</option>';
-    
+
     const comisionesDisponibles = [...new Set(aspirantesGlobales.map(a => a.comision))]
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
@@ -322,13 +415,13 @@ function inicializarModuloNotas() {
     });
 
     select.addEventListener('change', renderizarPlanillaNotas);
-    
+
     const btnHabilitar = document.getElementById('btnHabilitarEdicion');
     const nuevoBtnHabilitar = btnHabilitar.cloneNode(true);
     btnHabilitar.parentNode.replaceChild(nuevoBtnHabilitar, btnHabilitar);
-    
-    nuevoBtnHabilitar.addEventListener('click', function() {
-        if(!select.value) return alert("Seleccioná una comisión primero.");
+
+    nuevoBtnHabilitar.addEventListener('click', function () {
+        if (!select.value) return alert("Seleccioná una comisión primero.");
         modoEdicionNotas = !modoEdicionNotas;
         this.innerHTML = modoEdicionNotas ? '🔒 Bloquear Planilla' : '✏️ Habilitar Planilla';
         this.classList.toggle('btn-outline-secondary');
@@ -367,24 +460,24 @@ function renderizarPlanillaNotas() {
     const comision = document.getElementById('selectComisionNotas').value;
     const tbody = document.getElementById('tabla-notas-body');
     const headerAsignatura = document.getElementById('header-asignatura');
-    
+
     if (!comision) {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Seleccioná una comisión para empezar.</td></tr>';
         return;
     }
 
     // Actualizamos el título de la columna
-    const nombresAsignaturas = { mat: 'Matemática', len: 'Lengua', log: 'Lógica' };
+    const nombresAsignaturas = { mat: 'Matemática', len: 'Lengua', log: 'Dibujo' };
     headerAsignatura.textContent = nombresAsignaturas[asignaturaActual];
 
     const alumnos = aspirantesGlobales.filter(a => a.comision === comision).sort((a, b) => a.apellido.localeCompare(b.apellido));
     const borradorLocal = JSON.parse(localStorage.getItem(`notas_${instanciaActual}_${comision}`)) || {};
 
     tbody.innerHTML = '';
-    
+
     alumnos.forEach((asp, index) => {
         const tr = document.createElement('tr');
-        
+
         // Solo traemos la nota de la asignatura seleccionada
         const nota = borradorLocal[asp.id_inscripcion]?.[asignaturaActual] || '';
 
@@ -410,24 +503,24 @@ function renderizarPlanillaNotas() {
 // --- LA MAGIA DEL ENTER Y EL LOCALSTORAGE ---
 function activarNavegacionPorEnterYGuardado(comision) {
     const inputs = document.querySelectorAll('.input-nota');
-    
+
     inputs.forEach((input, index) => {
         input.addEventListener('input', () => {
             let borrador = JSON.parse(localStorage.getItem(`notas_${instanciaActual}_${comision}`)) || {};
-            
+
             const id = input.dataset.id;
             const materia = input.dataset.materia;
-            
+
             if (!borrador[id]) borrador[id] = {};
             borrador[id][materia] = input.value;
-            
+
             localStorage.setItem(`notas_${instanciaActual}_${comision}`, JSON.stringify(borrador));
             document.getElementById('alertaBorradorNotas').classList.remove('d-none');
         });
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault(); 
+                e.preventDefault();
                 const nextInput = inputs[index + 1];
                 if (nextInput) {
                     nextInput.focus();

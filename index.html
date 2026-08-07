@@ -48,18 +48,22 @@
             <div class="col-md-5">
                 <div class="card shadow-sm border-0">
                     <div class="card-body p-4">
-                        <h4 class="card-title text-center mb-4 text-primary fw-bold">📚 Sistema de Ingreso</h4>
+                        <div class="container-fluid d-flex justify-content-center my-5">
+                            <img src="images (1).png" alt="Logo" style="height: 6em; width: auto;">
+                        </div>
+                        <h4 class="card-title text-center mb-4 fw-bold " style="color: #073a86;"> Sistema Curso de apoyo
+                        </h4>
                         <form id="loginForm">
                             <div class="mb-3">
                                 <label class="form-label">Correo Electrónico</label>
-                                <input type="email" id="loginEmail" class="form-control" required
-                                    value="mncolman@herrera.unt.edu.ar">
+                                <input type="email" id="loginEmail" class="form-control" required value="">
                             </div>
                             <div class="mb-4">
                                 <label class="form-label">Contraseña</label>
-                                <input type="password" id="loginClave" class="form-control" required value="42547066">
+                                <input type="password" id="loginClave" class="form-control" required value="">
                             </div>
-                            <button type="submit" class="btn btn-primary w-100 py-2" id="btnLogin">
+                            <button type="submit" class="btn w-100 py-2 text-white" id="btnLogin"
+                                style="background-color: #073a86;">
                                 <span>Ingresar</span>
                             </button>
                         </form>
@@ -75,32 +79,67 @@
         <!-- Navegación Superior -->
         <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom mb-4">
             <div class="container-fluid">
-                <a class="navbar-brand" href="#">📚 Sistema de Ingreso</a>
+
+                <!-- Logo y Título -->
+                <a class="navbar-brand d-flex align-items-center ms-2" href="#">
+                    <img src="images (1).png" alt="Logo" style="height: 40px; width: auto;" class="me-2">
+                    <span class="fw-bold" style="color: #073a86;">Sistema Curso de Apoyo</span>
+                </a>
+
+                <!-- Usuario y Salir -->
                 <span class="navbar-text">
                     Usuario: <strong id="userNameDisplay">...</strong>
                     <button class="btn btn-sm btn-outline-danger ms-3" onclick="cerrarSesionLocal()">Salir</button>
                 </span>
+
             </div>
         </nav>
 
 
         <main class="container-fluid px-0 px-md-4">
 
-            <!-- Pestañas de Navegación -->
-            <ul class="nav nav-pills mb-4 px-4 px-md-0" id="mainTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="listado-tab" data-bs-toggle="pill" data-bs-target="#listado"
-                        type="button" role="tab">Listado de Aspirantes</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="calendario-tab" data-bs-toggle="pill" data-bs-target="#calendario"
-                        type="button" role="tab">Planificación (Calendario)</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="notas-tab" data-bs-toggle="pill" data-bs-target="#notas" type="button"
-                        role="tab">Carga de Notas</button>
-                </li>
-            </ul>
+            <!-- Contenedor del Menú de Pestañas (Responsive) -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-light rounded mb-4 px-3 border">
+                <div class="container-fluid px-0">
+
+                    <!-- Título visible solo en celulares para dar contexto al menú -->
+                    <span class="navbar-brand d-lg-none fs-6 fw-bold text-secondary">Menú de Opciones</span>
+
+                    <!-- Botón Hamburguesa -->
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapsibleTabs" aria-controls="collapsibleTabs" aria-expanded="false"
+                        aria-label="Abrir navegación">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+
+                    <!-- Pestañas Colapsables -->
+                    <div class="collapse navbar-collapse" id="collapsibleTabs">
+                        <ul class="nav nav-pills flex-column flex-lg-row w-100 mt-3 mt-lg-0" id="mainTabs"
+                            role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active text-start text-lg-center" id="listado-tab"
+                                    data-bs-toggle="pill" data-bs-target="#listado" type="button" role="tab">Listado de
+                                    Aspirantes</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link text-start text-lg-center" id="calendario-tab"
+                                    data-bs-toggle="pill" data-bs-target="#calendario" type="button"
+                                    role="tab">Planificación (Calendario)</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link text-start text-lg-center" id="notas-tab" data-bs-toggle="pill"
+                                    data-bs-target="#notas" type="button" role="tab">Carga de Notas</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link text-start text-lg-center" id="trayectoria-tab"
+                                    data-bs-toggle="pill" data-bs-target="#trayectoria" type="button"
+                                    role="tab">Trayectoria Aspirantes</button>
+                            </li>
+                        </ul>
+                    </div>
+
+                </div>
+            </nav>
 
             <!-- Contenido de las Pestañas -->
             <section class="tab-content" id="mainTabsContent">
@@ -214,14 +253,14 @@
                         <!-- NUEVO: Selector de Asignaturas (Botones tipo "Pill") -->
                         <ul class="nav nav-pills mb-3 bg-light p-2 rounded" id="asignaturasTabs">
                             <li class="nav-item">
-                                <button class="nav-link active fw-bold" id="mat-tab" type="button">📐
+                                <button class="nav-link active fw-bold" id="mat-tab" type="button">🧠
                                     Matemática</button>
                             </li>
                             <li class="nav-item">
                                 <button class="nav-link fw-bold" id="len-tab" type="button">📖 Lengua</button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link fw-bold" id="log-tab" type="button">🧠 Lógica</button>
+                                <button class="nav-link fw-bold" id="log-tab" type="button">📐 Dibujo</button>
                             </li>
                         </ul>
 
@@ -251,6 +290,74 @@
                             </table>
                         </div>
 
+                    </div>
+                </article>
+                <!-- Pestaña: Trayectoria Aspirantes -->
+                <article class="tab-pane fade" id="trayectoria" role="tabpanel">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+                        <h4 class="text-primary mb-0">📊 Trayectoria Histórica</h4>
+                        <div class="badge bg-warning text-dark fs-6 d-none" id="badgeAdminTrayectoria">
+                            Modo Auditoría (Admin)
+                        </div>
+                    </div>
+
+                    <div class="table-responsive shadow-sm rounded border">
+                        <table class="table table-hover table-bordered align-middle text-center bg-white mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th rowspan="2" class="align-middle">DNI</th>
+                                    <th rowspan="2" class="align-middle text-start" style="min-width: 200px;">Apellido y
+                                        Nombre</th>
+                                    <th rowspan="2" class="align-middle">Comision</th>
+                                    <th rowspan="2" class="align-middle">Turno</th>
+
+                                    <!-- Súper Encabezados de Instancias -->
+                                    <th colspan="3" class="bg-primary border-bottom-0">1° Evaluación</th>
+                                    <th colspan="3" class="bg-success border-bottom-0">Ensayo Examen</th>
+
+                                    <!-- Columna exclusiva para Administradores -->
+                                    <th rowspan="2" class="align-middle bg-danger admin-col d-none">Auditar</th>  
+                                </tr>
+                                <tr>
+                                    <!-- Sub-columnas de Materias (1° Eval) -->
+                                    <th class="bg-light text-dark" style="width: 5%;">Mat</th>
+                                    <th class="bg-light text-dark" style="width: 5%;">Len</th>
+                                    <th class="bg-light text-dark" style="width: 5%;">Dib</th>
+
+                                    <!-- Sub-columnas de Materias (Ensayo) -->
+                                    <th class="bg-light text-dark" style="width: 5%;">Mat</th>
+                                    <th class="bg-light text-dark" style="width: 5%;">Len</th>
+                                    <th class="bg-light text-dark" style="width: 5%;">Dib</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-trayectoria-body">
+                                <!-- Ejemplo de cómo se vería una fila (Esto luego lo inyectará JS) -->
+                                <tr>
+                                    <td>45.123.456</td>
+                                    <td class="text-start fw-bold">Pérez, Juan Ignacio</td>
+                                    <td>1</td>
+                                    <td>Mañana</td>
+
+                                    <!-- Notas 1° Eval -->
+                                    <td>8</td>
+                                    <td>7</td>
+                                    <td>9</td>
+
+                                    <!-- Notas Ensayo -->
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>-</td>
+
+                                    <!-- Botón de Edición -->
+                                    <td class="admin-col d-none">
+                                        <button class="btn btn-sm btn-outline-danger" title="Modificar Calificación">
+                                            ✏️
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </article>
 
@@ -321,6 +428,8 @@
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="app.js"></script>
 </body>
 
