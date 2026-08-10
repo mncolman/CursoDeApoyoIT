@@ -56,7 +56,8 @@
                         <form id="loginForm">
                             <div class="mb-3">
                                 <label class="form-label">Correo Electrónico</label>
-                                <input type="email" id="loginEmail" class="form-control" required value="mncolman@herrera.unt.edu.ar">
+                                <input type="email" id="loginEmail" class="form-control" required
+                                    value="mncolman@herrera.unt.edu.ar">
                             </div>
                             <div class="mb-4">
                                 <label class="form-label">Contraseña</label>
@@ -135,6 +136,15 @@
                                     data-bs-toggle="pill" data-bs-target="#trayectoria" type="button"
                                     role="tab">Trayectoria Aspirantes</button>
                             </li>
+
+                            <!-- Pestaña exclusiva para directivos -->
+                            <li class="nav-item d-none" role="presentation" id="nav-item-dashboard">
+                                <button class="nav-link text-start text-lg-center fw-bold"
+                                    id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#dashboard" type="button"
+                                    role="tab">
+                                    📊 Reporte general
+                                </button>
+                            </li>
                         </ul>
                     </div>
 
@@ -143,6 +153,7 @@
 
             <!-- Contenido de las Pestañas -->
             <section class="tab-content" id="mainTabsContent">
+
 
                 <!-- PESTAÑA 1: Listado -->
                 <article class="tab-pane fade show active" id="listado" role="tabpanel">
@@ -340,6 +351,9 @@
 
                     </div>
                 </article>
+
+
+
                 <!-- Pestaña: Trayectoria Aspirantes -->
                 <article class="tab-pane fade" id="trayectoria" role="tabpanel">
 
@@ -408,12 +422,126 @@
                         </table>
                     </div>
                 </article>
-                <article>
+
+
+
+                <!-- PESTAÑA: Dashboard General -->
+                <article class="tab-pane fade" id="dashboard" role="tabpanel">
+                    <h4 class="text-dark mb-4 mt-2">📊 Reporte General del Curso de Apoyo</h4>
+
+                    <div class="row g-3">
+                        <!-- Métrica Total -->
+                        <div class="col-12 col-md-4">
+                            <div class="card text-white shadow-sm h-100 border-0" style="background-color: #073a86;">
+                                <div class="card-body text-center d-flex flex-column justify-content-center">
+                                    <h5 class="text-uppercase fw-bold opacity-75">Total Aspirantes</h5>
+                                    <h1 class="display-4 fw-bold mb-0" id="dashGlobalTotal">0</h1>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Métricas de Turnos -->
+                        <div class="col-12 col-md-4">
+                            <div class="card bg-light shadow-sm h-100 border-0">
+                                <div class="card-body">
+                                    <h6 class="text-uppercase fw-bold text-muted mb-3">Distribución por Turno</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fs-5">1º Turno 17:00 - 18:30</span>
+                                        <h3 class="fw-bold text-dark mb-0" id="dashGlobalManana">0</h3>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fs-5">2º Turno 18:30 - 20:15</span>
+                                        <h3 class="fw-bold text-dark mb-0" id="dashGlobalTarde">0</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Métricas de Sexo -->
+                        <div class="col-12 col-md-4">
+                            <div class="card bg-light shadow-sm h-100 border-0">
+                                <div class="card-body">
+                                    <h6 class="text-uppercase fw-bold text-muted mb-3">Distribución por Sexo</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span>Femenino</span>
+                                        <span class="badge rounded-pill fs-6" id="dashGlobalF"
+                                            style="background-color: #c00505;">0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span>Masculino</span>
+                                        <span class="badge rounded-pill fs-6" id="dashGlobalM"
+                                            style="background-color: #073a86;">0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Otros (X)</span>
+                                        <span class="badge bg-dark rounded-pill fs-6" id="dashGlobalX">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <!-- ========================================== -->
+                    <!-- FILA 2: DEPARTAMENTOS, COLEGIOS Y SALUD    -->
+                    <!-- ========================================== -->
+                    <section class="row g-3 mt-1">
+
+                        <!-- Procedencia (Todos los Departamentos) -->
+                        <div class="col-12 col-md-4">
+                            <div class="card bg-light shadow-sm h-100 border-0">
+                                <div class="card-body">
+                                    <h6 class="text-uppercase fw-bold text-muted mb-3">📍 Dist. por Departamento</h6>
+
+                                    <!-- Contenedor con scroll -->
+                                    <div style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                                        <ul class="list-group list-group-flush bg-transparent" id="listaProcedencia">
+                                            <!-- Se llena dinámicamente con JS -->
+                                        </ul>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Procedencia (Todos los Colegios) -->
+                        <div class="col-12 col-md-4">
+                            <div class="card bg-light shadow-sm h-100 border-0">
+                                <div class="card-body">
+                                    <h6 class="text-uppercase fw-bold text-muted mb-3">🏫 Dist. por Colegios</h6>
+
+                                    <!-- Contenedor con scroll -->
+                                    <div style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                                        <ul class="list-group list-group-flush bg-transparent" id="listaColegios">
+                                            <!-- Se llena dinámicamente con JS -->
+                                        </ul>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alerta Médica -->
+                        <div class="col-12 col-md-4">
+                            <div class="card bg-danger text-white shadow-sm h-100 border-0">
+                                <div class="card-body text-center d-flex flex-column justify-content-center">
+                                    <h6 class="text-uppercase fw-bold opacity-75">⚠️ Alertas de Salud</h6>
+                                    <h1 class="display-5 fw-bold mb-0" id="dashSaludTotal">0</h1>
+                                    <small class="mt-2">Aspirantes con condiciones a considerar</small>
+                                </div>
+                            </div>
+                        </div>
+
+                    </section>
+
+
 
                 </article>
 
-            </section>
 
+
+            </section>
         </main>
     </div>
 

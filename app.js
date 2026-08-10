@@ -20,11 +20,18 @@ const GAS_URL = 'https://script.google.com/a/macros/herrera.unt.edu.ar/s/AKfycbx
 // 2. INICIALIZACIÓN (Cuando carga la página)
 // =================================================================
 document.addEventListener('DOMContentLoaded', function () {
+
+
+    // --- VERIFICAR SI YA ESTABA LOGUEADO ---
+    verificarSesionPrevia();
+
+
     // --- LISTENERS ---
     document.getElementById('loginForm').addEventListener('submit', iniciarSesion);
     document.getElementById('searchInput').addEventListener('input', applyFilters);
     document.getElementById('filterComision').addEventListener('change', applyFilters);
     document.getElementById('sortSelect').addEventListener('change', applyFilters);
+
 
     document.getElementById('viewToggle').addEventListener('change', function (e) {
         isExpandedView = e.target.checked;
@@ -53,9 +60,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     applyFilters();
 });
-
-
-
 
 
 
@@ -369,8 +373,15 @@ async function iniciarSesion(e) {
             aspirantesGlobales = data.datos; // <--- ACÁ RECIÉN SE LLENAN LOS ALUMNOS
             eventosGlobales = data.calendario;
 
-            // 2. Guardar token en localStorage
-            localStorage.setItem('token_sesion', data.token);
+            // --- NUEVO: Guardamos todo en la sesión del navegador ---
+            sessionStorage.setItem('sesionActiva', 'true');
+            sessionStorage.setItem('token_sesion', data.token); // <-- GUARDAMOS EL TOKEN ACÁ
+            sessionStorage.setItem('usuarioActual', JSON.stringify(usuarioActual));
+            sessionStorage.setItem('aspirantesGlobales', JSON.stringify(aspirantesGlobales));
+            sessionStorage.setItem('eventosGlobales', JSON.stringify(eventosGlobales));
+            // ---------------------------------------------------------
+
+
 
             // 3. Cambiar la interfaz
             document.getElementById('login-container').classList.add('d-none');
@@ -403,9 +414,46 @@ async function iniciarSesion(e) {
 function cerrarSesionLocal() {
     // Aquí luego sumaremos la llamada al backend para borrar el token en Google
     localStorage.removeItem('token_sesion');
+    sessionStorage.clear();
     location.reload(); // Recarga la página volviendo al login
 }
 
+
+
+
+function verificarSesionPrevia() {
+
+
+
+    // Si existe la llave 'sesionActiva', es porque recargaron la página
+    if (sessionStorage.getItem('sesionActiva') === 'true') {
+
+        // 1. Restaurar las variables globales desde el texto guardado
+        usuarioActual = JSON.parse(sessionStorage.getItem('usuarioActual'));
+        aspirantesGlobales = JSON.parse(sessionStorage.getItem('aspirantesGlobales'));
+        eventosGlobales = JSON.parse(sessionStorage.getItem('eventosGlobales'));
+
+        // 2. Cambiar la interfaz como si recién se hubieran logueado
+        document.getElementById('login-container').classList.add('d-none');
+        document.getElementById('app-container').classList.remove('d-none');
+        document.getElementById('userNameDisplay').textContent = `${usuarioActual.nombre} (${usuarioActual.rol})`;
+
+        // Lógica de Permisos de Interfaz
+        const tabDashboard = document.getElementById('nav-item-dashboard');
+        if (usuarioActual.rol === 'ADMI' || usuarioActual.rol === 'COOR') {
+            tabDashboard.classList.remove('d-none'); // Lo mostramos
+            renderizarDashboardGeneral(); 
+        } else {
+            tabDashboard.classList.add('d-none'); 
+        }
+
+
+        // 3. Disparar los renderizados
+        applyFilters();
+        inicializarModuloNotas();
+        inicializarCalendario();
+    }
+}
 
 
 
@@ -482,7 +530,7 @@ function renderizarPlanillaNotas() {
         return;
     }
 
-  
+
     const nombresAsignaturas = { mat: 'Matemática', len: 'Lengua', dib: 'Dibujo' };
     const nombresInstancias = { seguimiento: '1º Seguimiento', ensayo: 'Ensayo Examen' };
 
@@ -552,5 +600,72 @@ function activarNavegacionPorEnterYGuardado(comision) {
                 }
             }
         });
+    });
+}
+
+
+
+
+// --- MÓDULO DE DASHBOARD GENERAL ---
+function renderizarDashboardGeneral() {
+    if (!aspirantesGlobales || aspirantesGlobales.length === 0) return;
+
+    // 1. Métricas Base
+    document.getElementById('dashGlobalTotal').textContent = aspirantesGlobales.length;
+    document.getElementById('dashGlobalF').textContent = aspirantesGlobales.filter(a => a.sexo?.trim().toUpperCase() === 'F').length;
+    document.getElementById('dashGlobalM').textContent = aspirantesGlobales.filter(a => a.sexo?.trim().toUpperCase() === 'M').length;
+    document.getElementById('dashGlobalX').textContent = aspirantesGlobales.filter(a => a.sexo?.trim().toUpperCase() === 'X').length;
+    document.getElementById('dashGlobalManana').textContent = aspirantesGlobales.filter(a => a.turno_cursillo?.trim().toLowerCase() === '1º').length;
+    document.getElementById('dashGlobalTarde').textContent = aspirantesGlobales.filter(a => a.turno_cursillo?.trim().toLowerCase() === '2º').length;
+
+    // 2. Alertas de Salud (Excluimos los vacíos o los que dicen 'no' / 'ninguna')
+    const alumnosConSalud = aspirantesGlobales.filter(a => a.enfermedad && a.enfermedad.trim().toLowerCase() !== 'ninguna' && a.enfermedad.trim().toLowerCase() !== 'no' && a.enfermedad.trim() !== '');
+    document.getElementById('dashSaludTotal').textContent = alumnosConSalud.length;
+
+    // 3. Procedencia - Departamentos
+    const conteoDeptos = aspirantesGlobales.reduce((acc, a) => {
+        const depto = a.departamento ? a.departamento.trim().toUpperCase() : 'NO ESPECIFICADO';
+        acc[depto] = (acc[depto] || 0) + 1;
+        return acc;
+    }, {});
+
+    // Ordenamos y tomamos el Top 5
+    const topDeptos = Object.entries(conteoDeptos)
+        .sort((a, b) => b[1] - a[1])
+        ;
+
+    const listaDeptosUL = document.getElementById('listaProcedencia');
+    listaDeptosUL.innerHTML = ''; 
+    topDeptos.forEach(([depto, cantidad]) => {
+        listaDeptosUL.innerHTML += `
+            <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 border-secondary border-opacity-25">
+                <span class="text-truncate text-secondary fw-bold" style="max-width: 80%;">${depto}</span>
+                <span class="badge bg-primary rounded-pill">${cantidad}</span>
+            </li>
+        `;
+    });
+
+    // 4. Procedencia - Colegios
+    const conteoColegios = aspirantesGlobales.reduce((acc, a) => {
+        // Asegurate de que 'a.colegio' coincida con el nombre de la propiedad en tu JSON
+        const colegio = a.colegio ? a.colegio.trim().toUpperCase() : 'NO ESPECIFICADO';
+        acc[colegio] = (acc[colegio] || 0) + 1;
+        return acc;
+    }, {});
+
+    // Ordenamos y tomamos el Top 5
+    const topColegios = Object.entries(conteoColegios)
+        .sort((a, b) => b[1] - a[1])
+        ;
+
+    const listaColegiosUL = document.getElementById('listaColegios');
+    listaColegiosUL.innerHTML = ''; 
+    topColegios.forEach(([colegio, cantidad]) => {
+        listaColegiosUL.innerHTML += `
+            <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 border-secondary border-opacity-25">
+                <span class="text-truncate text-secondary fw-bold" style="max-width: 80%;" title="${colegio}">${colegio}</span>
+                <span class="badge bg-success rounded-pill">${cantidad}</span>
+            </li>
+        `;
     });
 }
