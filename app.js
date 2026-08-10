@@ -32,10 +32,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 
-// Cierra el menú hamburguesa al hacer clic en una pestaña (solo en móviles)
+    // Cierra el menú hamburguesa al hacer clic en una pestaña (solo en móviles)
     const navLinks = document.querySelectorAll('#collapsibleTabs .nav-link');
     const menuCollapse = document.getElementById('collapsibleTabs');
-    
+
     navLinks.forEach(link => {
         link.addEventListener('click', () => {
             if (window.innerWidth < 992) { // 992px es el breakpoint 'lg' de Bootstrap
@@ -129,7 +129,7 @@ function inicializarCalendario() {
             });
         }
 
-        
+
     });
 
     // Truco para que FullCalendar se dibuje bien dentro de un Tab de Bootstrap
@@ -154,6 +154,9 @@ function applyFilters() {
     const search = quitarAcentos(searchRaw);
     const comision = document.getElementById('filterComision').value;
     const sortMethod = document.getElementById('sortSelect').value; // Nuevo
+
+
+
 
     // 2. Filtrado
     let filteredData = aspirantesGlobales.filter(asp => {
@@ -196,7 +199,16 @@ function applyFilters() {
         }
     });
 
-    // 4. Enviamos los datos procesados a dibujar
+    // 4. Llenamos los campos del mini reporte sobre la tabla
+
+    document.getElementById('dashTotal').textContent = filteredData.length;
+
+    // Contamos los sexos limpiando espacios y asegurando mayúsculas por si el Excel viene sucio
+    document.getElementById('dashF').textContent = filteredData.filter(a => a.sexo?.trim().toUpperCase() === 'F').length;
+    document.getElementById('dashM').textContent = filteredData.filter(a => a.sexo?.trim().toUpperCase() === 'M').length;
+    document.getElementById('dashX').textContent = filteredData.filter(a => a.sexo?.trim().toUpperCase() === 'X').length;
+
+    // 5. Enviamos los datos procesados a dibujar
     renderTable(filteredData);
 }
 
@@ -437,7 +449,7 @@ function inicializarModuloNotas() {
     // Listeners Asignaturas
     document.getElementById('mat-tab').addEventListener('click', (e) => cambiarAsignatura('mat', e.target));
     document.getElementById('len-tab').addEventListener('click', (e) => cambiarAsignatura('len', e.target));
-    document.getElementById('log-tab').addEventListener('click', (e) => cambiarAsignatura('log', e.target));
+    document.getElementById('dib-tab').addEventListener('click', (e) => cambiarAsignatura('dib', e.target));
 }
 
 // Funciones auxiliares para cambiar el aspecto visual de las pestañas
@@ -461,14 +473,26 @@ function renderizarPlanillaNotas() {
     const tbody = document.getElementById('tabla-notas-body');
     const headerAsignatura = document.getElementById('header-asignatura');
 
+
+    const tituloContexto = document.getElementById('tituloContextoNotas'); // Capturamos el nuevo título
+
     if (!comision) {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Seleccioná una comisión para empezar.</td></tr>';
+        tituloContexto.classList.add('d-none'); // Lo ocultamos si no hay comisión
         return;
     }
 
-    // Actualizamos el título de la columna
-    const nombresAsignaturas = { mat: 'Matemática', len: 'Lengua', log: 'Dibujo' };
+  
+    const nombresAsignaturas = { mat: 'Matemática', len: 'Lengua', dib: 'Dibujo' };
+    const nombresInstancias = { seguimiento: '1º Seguimiento', ensayo: 'Ensayo Examen' };
+
+    // Actualizamos el título dinámico
+    tituloContexto.textContent = `${comision} - ${nombresInstancias[instanciaActual]} - ${nombresAsignaturas[asignaturaActual]}`;
+    tituloContexto.classList.remove('d-none'); // Lo mostramos
+
+    // Actualizamos el título de la columna de la tabla
     headerAsignatura.textContent = nombresAsignaturas[asignaturaActual];
+
 
     const alumnos = aspirantesGlobales.filter(a => a.comision === comision).sort((a, b) => a.apellido.localeCompare(b.apellido));
     const borradorLocal = JSON.parse(localStorage.getItem(`notas_${instanciaActual}_${comision}`)) || {};

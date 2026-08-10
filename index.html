@@ -56,11 +56,11 @@
                         <form id="loginForm">
                             <div class="mb-3">
                                 <label class="form-label">Correo Electrónico</label>
-                                <input type="email" id="loginEmail" class="form-control" required value="">
+                                <input type="email" id="loginEmail" class="form-control" required value="mncolman@herrera.unt.edu.ar">
                             </div>
                             <div class="mb-4">
                                 <label class="form-label">Contraseña</label>
-                                <input type="password" id="loginClave" class="form-control" required value="">
+                                <input type="password" id="loginClave" class="form-control" required value="42547066">
                             </div>
                             <button type="submit" class="btn w-100 py-2 text-white" id="btnLogin"
                                 style="background-color: #073a86;">
@@ -149,7 +149,8 @@
                     <div class="table-wrapper">
 
                         <!-- BARRA DE HERRAMIENTAS Y FILTROS -->
-                        <div class="row g-2 mb-4 align-items-center bg-light p-3 rounded">
+                        <div class="row g-2 mb-4 align-items-center bg-light p-3 rounded sticky-top shadow-sm"
+                            style="top: 15px; z-index: 1000;">
 
                             <!-- Buscador -->
                             <div class="col-md-4">
@@ -189,7 +190,47 @@
                                 <div class="form-check form-switch fs-6 pt-1">
                                     <input class="form-check-input" type="checkbox" id="viewToggle"
                                         style="cursor: pointer;">
-                                    <label class="form-check-label ms-1 mt-1" for="viewToggle">Ampliada</label>
+                                    <label class="form-check-label ms-1 mt-1" for="viewToggle">Info. Ampliada</label>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- REPORTE DINÁMICO (Mini Dashboard) -->
+                        <div class="row mb-3 text-center" id="miniReporte">
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="card text-white shadow-sm border-0 h-100"
+                                    style="background-color: #073a86;">
+                                    <div class="card-body p-2">
+                                        <small class="text-uppercase fw-bold">Total aspirantes</small>
+                                        <h3 class="mb-0 fw-bold" id="dashTotal">0</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="card text-black shadow-sm border-black border-1 h-100"
+                                    style="background-color: #ffffff;">
+                                    <div class="card-body p-2">
+                                        <small class="text-uppercase fw-bold">Masculino</small>
+                                        <h3 class="mb-0 fw-bold" id="dashM">0</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="card text-white shadow-sm border-0 h-100"
+                                    style="background-color: #c00505;">
+                                    <div class="card-body p-2">
+                                        <small class="text-uppercase fw-bold">Femenino</small>
+                                        <h3 class="mb-0 fw-bold" id="dashF">0</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="card bg-dark text-white shadow-sm border-0 h-100">
+                                    <div class="card-body p-2">
+                                        <small class="text-uppercase fw-bold">Sexo X</small>
+                                        <h3 class="mb-0 fw-bold" id="dashX">0</h3>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -216,6 +257,8 @@
                 <article class="tab-pane fade" id="calendario" role="tabpanel">
                     <div id="calendar"></div>
                 </article>
+
+
 
                 <!-- PESTAÑA 3: Carga de Notas -->
                 <article class="tab-pane fade" id="notas" role="tabpanel">
@@ -260,9 +303,14 @@
                                 <button class="nav-link fw-bold" id="len-tab" type="button">📖 Lengua</button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link fw-bold" id="log-tab" type="button">📐 Dibujo</button>
+                                <button class="nav-link fw-bold" id="dib-tab" type="button">📐 Dibujo</button>
                             </li>
                         </ul>
+
+                        <!-- TÍTULO DINÁMICO DE CONTEXTO -->
+                        <h5 id="tituloContextoNotas" class="text-center text-dark mb-3 fw-bold d-none">
+                            <!-- Se llena con JS -->
+                        </h5>
 
                         <!-- Contenedor de la Planilla -->
                         <div class="alert alert-warning d-none" id="alertaBorradorNotas">
@@ -317,7 +365,7 @@
                                     <th colspan="3" class="bg-success border-bottom-0">Ensayo Examen</th>
 
                                     <!-- Columna exclusiva para Administradores -->
-                                    <th rowspan="2" class="align-middle bg-danger admin-col d-none">Auditar</th>  
+                                    <th rowspan="2" class="align-middle bg-danger admin-col d-none">Auditar</th>
                                 </tr>
                                 <tr>
                                     <!-- Sub-columnas de Materias (1° Eval) -->
@@ -360,11 +408,16 @@
                         </table>
                     </div>
                 </article>
+                <article>
+
+                </article>
 
             </section>
 
         </main>
     </div>
+
+
 
     <!-- Modal Específico: Ficha de Aspirante -->
     <article class="modal fade" id="modalFichaAlumno" tabindex="-1" aria-labelledby="modalFichaLabel"
@@ -415,7 +468,7 @@
                     <h6 class="text-primary border-bottom pb-2 mb-3">Observaciones</h6>
                     <div class="row g-2">
                         <div class="col-12">
-                            <p id="ficha-observaciones" class="mb-0 text-muted fst-italic"></p>
+                            <p id="ficha-observaciones" class="mb-0 text-black fst-italic"></p>
                         </div>
                     </div>
                 </div>
@@ -425,6 +478,7 @@
             </div>
         </div>
     </article>
+
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
