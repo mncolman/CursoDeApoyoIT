@@ -2,6 +2,7 @@ import * as Api from './api.js';
 import * as Auth from './auth.js';
 import * as UI from './ui.js';
 import * as Filtros from './filters.js';
+import * as Utils from './utils.js';
 
 
 
@@ -10,15 +11,9 @@ import * as Filtros from './filters.js';
 
 let aspirantesGlobales = [];
 let eventosGlobales = [];
+let permisosDocentes = [];
 let usuarioActual = null;
 let isExpandedView = false;
-
-// --- VARIABLES GLOBALES PARA NOTAS ---
-let modoEdicionNotas = false;
-let instanciaActual = 'seguimiento';
-let asignaturaActual = 'mat'; // NUEVO: Por defecto arranca en matemática
-
-
 
 
 // =================================================================
@@ -33,7 +28,7 @@ function orquestarFiltros() {
     const sortMethod = document.getElementById('sortSelect').value;
 
     // 2. Mandamos a calcular (Lógica pura)
-    const listaFiltrada = Filtros.filtrarYOrdenar(aspirantesGlobales, search, comision, sortMethod);
+    const listaFiltrada = Filtros.filtrarYOrdenar(aspirantesGlobales, search, String(comision), sortMethod);
 
     // 3. Mandamos a dibujar (Vista pura)
     UI.actualizarMiniReporte(listaFiltrada);
@@ -56,6 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
         usuarioActual = sesion.usuario;
         aspirantesGlobales = sesion.aspirantes;
         eventosGlobales = sesion.eventos;
+        permisosDocentes = sesion.permisos_docente;
 
         // Configurar la vista según los permisos (UI.js)
         UI.configurarInterfazPorRol(usuarioActual);
@@ -66,10 +62,21 @@ document.addEventListener('DOMContentLoaded', function () {
             UI.renderizarDashboardGeneral(aspirantesGlobales);
         }
 
+        UI.inicializarFiltroComisiones(aspirantesGlobales);
+
         orquestarFiltros();
-        UI.inicializarModuloNotas(aspirantesGlobales);
+        UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
         UI.inicializarCalendario(eventosGlobales);
+    } else {
+
+        // 1. Limpiamos cualquier basura que haya quedado en memoria
+        sessionStorage.clear();
+
+        // 2. Nos aseguramos de que el usuario vea SOLO el login
+        document.getElementById('login-container').classList.remove('d-none');
+        document.getElementById('app-container').classList.add('d-none');
     }
+
 
 
     // --- 2. EVENT LISTENERS GENERALES ---
@@ -119,6 +126,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+// Listener del boton descargar listado como pdf
+    document.getElementById('btnDescargarPlanilla').addEventListener('click', () => {
+        // Si la importaste de ui.js, sería UI.descargarPlanillaPDF()
+        Utils.descargarPlanillaPDF(aspirantesGlobales);
+    });
+
 
     // 1. Clic en el Ojito del Dashboard
     document.getElementById('btnVerListaSalud').addEventListener('click', () => {
@@ -135,15 +148,15 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.show();
     });
 
-    
-   // ===============================================================
+
+    // ===============================================================
     // 👉 REVISIÓN DE LA LÓGICA DE DELEGACIÓN PARA ABRIR FICHA
     // ===============================================================
-    
+
     // Función genérica e INTELIGENTE para manejar el clic
     const manejarClicFicha = (e) => {
         const botonClickeado = e.target.closest('.btn-abrir-ficha');
-        
+
         if (!botonClickeado) return; // Si no es el botón, no hacemos nada
 
         const id = botonClickeado.dataset.id;
@@ -153,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (modalSaludForm) {
             // ESCENARIO A: Clic DESDE la lista de salud
-            
+
             // 1. Obtenemos la instancia de Bootstrap del modal de salud
             const bsModalSalud = bootstrap.Modal.getInstance(modalSaludForm);
 
@@ -162,8 +175,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Usamos una función anónima para que se ejecute UNA sola vez
                 modalSaludForm.addEventListener('hidden.bs.modal', function handler() {
                     // 3. Ahora que el primer modal cerró completamente, abrimos la ficha
-                    UI.abrirFicha(aspirantesGlobales,id);
-                    
+                    UI.abrirFicha(aspirantesGlobales, id);
+
                     // Importante: removemos el listener para que no se acumule
                     modalSaludForm.removeEventListener('hidden.bs.modal', handler);
                 });
@@ -184,6 +197,92 @@ document.addEventListener('DOMContentLoaded', function () {
     // 2. NUEVO: Delegador para el Modal de Salud
     const tbodySalud = document.getElementById('tbodySalud');
     if (tbodySalud) tbodySalud.addEventListener('click', manejarClicFicha);
+
+
+
+
+
+
+    document.getElementById('btnGuardarNotas').addEventListener('click', async () => {
+
+        const tokenActual = sessionStorage.getItem('sesion_activa');
+        const comisionActual = document.getElementById('inputComisionActual').value;
+        const materiaActual = document.getElementById('inputMateriaActual').value;
+        const instanciaActual = document.getElementById('selectInstanciaEvaluacion').value;
+
+        const inputsDeNotas = document.querySelectorAll('.input-nota');
+        const arrayNotas = [];
+
+        // Bandera para saber si el formulario pasó la prueba
+        let formularioValido = true;
+
+        // 1. Bucle de Validación Estricta
+        for (let input of inputsDeNotas) {
+            const valorCrudo = input.value.trim();
+            const idAlumno = input.dataset.id; // Asumimos que guardaste el DNI o ID acá
+            const nombreAlumno = input.dataset.nombre; // Opcional, para que el alert sea más amigable
+
+            // Regla A: No puede estar vacío (100% de completitud)
+            if (valorCrudo === "") {
+                alert(`❌ Error: Falta cargar la nota del alumno ${nombreAlumno || idAlumno}. Todos los campos son obligatorios.`);
+                input.focus(); // Llevamos el cursor directo al input que falló
+                input.classList.add('borde-error'); // Podrías agregarle una clase CSS roja
+                formularioValido = false;
+                break; // Cortamos el bucle, no seguimos revisando
+            }
+
+            const notaNumerica = parseFloat(valorCrudo);
+
+            // Regla B: Tiene que ser un número y estar entre 0 y 10
+            if (isNaN(notaNumerica) || notaNumerica < 0 || notaNumerica > 10) {
+                alert(`❌ Error: La nota del alumno ${nombreAlumno || idAlumno} es inválida. Debe ser un número entre 0 y 10.`);
+                input.focus();
+                input.classList.add('borde-error');
+                formularioValido = false;
+                break;
+            }
+
+            // Si pasó las pruebas, lo metemos al carrito limpiando cualquier clase de error anterior
+            input.classList.remove('borde-error');
+            arrayNotas.push({
+                id_inscripcion: idAlumno,
+                nota: notaNumerica
+            });
+        }
+
+        // Si la validación falló, abortamos misión y no enviamos nada al servidor
+        if (!formularioValido) {
+            return;
+        }
+
+        // 2. Si llegamos acá, el 100% de los datos están perfectos. Armamos el paquete.
+        const payload = {
+            accion: 'guardar_notas',
+            token: tokenActual,
+            id_comision: parseInt(comisionActual),
+            materia: materiaActual,
+            instancia: instanciaActual,
+            notas: arrayNotas
+        };
+
+        // 3. Disparamos el fetch al backend
+        const btn = document.getElementById('btnGuardarNotas');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Guardando...';
+
+        const resultado = await API.enviarNotasAlServidor(payload);
+
+        // 4. Procesamos la respuesta
+        if (resultado.exito) {
+            alert("✅ ¡Notas guardadas y bloqueadas exitosamente!");
+            // Acá podrías recargar la vista o redirigir al dashboard
+        } else {
+            alert("⚠️ Error del servidor: " + resultado.mensaje);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = 'Guardar Planilla';
+    });
 
 });
 
@@ -210,17 +309,20 @@ async function iniciarSesion(e) {
             usuarioActual = data.perfil;
             aspirantesGlobales = data.datos;
             eventosGlobales = data.calendario;
+            permisosDocentes = data.permisos_materias;    //permisos_materias viene del backend. en el frontend se traduce a permisosDocentes
 
             // 5. Configurar Interfaz (Delega a UI)
             UI.configurarInterfazPorRol(usuarioActual);
+            UI.inicializarFiltroComisiones(aspirantesGlobales);
 
             if (usuarioActual.rol === 'ADMI' || usuarioActual.rol === 'COOR') {
                 UI.renderizarDashboardGeneral(aspirantesGlobales);
             }
-            console.log("LLEGO AQUI JEJOX")
+
+
             // 6. Disparar dibujados
             orquestarFiltros();
-            UI.inicializarModuloNotas(aspirantesGlobales);
+            UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
             UI.inicializarCalendario(eventosGlobales);
 
         } else {
@@ -235,3 +337,5 @@ async function iniciarSesion(e) {
         UI.setEstadoCargaLogin(false);
     }
 }
+
+

@@ -11,7 +11,7 @@ export function filtrarYOrdenar(listaOriginal, search, comision, sortMethod) {
             nombreLimpio.includes(search) ||
             apellidoLimpio.includes(search);
 
-        const matchComision = (comision === "") || (asp.comision === comision);
+        const matchComision = (comision === "") || (String(asp.comision) === comision);
 
         return matchSearch && matchComision;
     });
@@ -36,36 +36,6 @@ export function filtrarYOrdenar(listaOriginal, search, comision, sortMethod) {
 
 
 
-// --- LA MAGIA DEL ENTER Y EL LOCALSTORAGE ---
-export function activarNavegacionPorEnterYGuardado(comision) {
-    const inputs = document.querySelectorAll('.input-nota');
-
-    inputs.forEach((input, index) => {
-        input.addEventListener('input', () => {
-            let borrador = JSON.parse(localStorage.getItem(`notas_${instanciaActual}_${comision}`)) || {};
-
-            const id = input.dataset.id;
-            const materia = input.dataset.materia;
-
-            if (!borrador[id]) borrador[id] = {};
-            borrador[id][materia] = input.value;
-
-            localStorage.setItem(`notas_${instanciaActual}_${comision}`, JSON.stringify(borrador));
-            document.getElementById('alertaBorradorNotas').classList.remove('d-none');
-        });
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const nextInput = inputs[index + 1];
-                if (nextInput) {
-                    nextInput.focus();
-                    nextInput.select();
-                }
-            }
-        });
-    });
-}
 
 // Función para eliminar acentos y diacríticos
 function quitarAcentos(texto) {

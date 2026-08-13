@@ -7,6 +7,7 @@ export function guardarSesion(data) {
     sessionStorage.setItem('usuarioActual', JSON.stringify(data.perfil));
     sessionStorage.setItem('aspirantesGlobales', JSON.stringify(data.datos));
     sessionStorage.setItem('eventosGlobales', JSON.stringify(data.calendario));
+    sessionStorage.setItem('permisos_docente', JSON.stringify(data.permisos_materias || []));
 }
 
 
@@ -26,7 +27,8 @@ export function verificarSesionPrevia() {
             activa: true,
             usuario: JSON.parse(sessionStorage.getItem('usuarioActual')),
             aspirantes: JSON.parse(sessionStorage.getItem('aspirantesGlobales')),
-            eventos: JSON.parse(sessionStorage.getItem('eventosGlobales'))
+            eventos: JSON.parse(sessionStorage.getItem('eventosGlobales')),
+            permisosGuardados: JSON.parse(sessionStorage.getItem('permisos_materias'))
         };
     }
     return { activa: false };

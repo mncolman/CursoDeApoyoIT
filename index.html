@@ -149,16 +149,7 @@
                             <div class="col-md-2">
                                 <select id="filterComision" class="form-select">
                                     <option value="">Todas las Comisiones</option>
-                                    <option value="COMISION 1">Comisión 1</option>
-                                    <option value="COMISION 2">Comisión 2</option>
-                                    <option value="COMISION 3">Comisión 3</option>
-                                    <option value="COMISION 4">Comisión 4</option>
-                                    <option value="COMISION 5">Comisión 5</option>
-                                    <option value="COMISION 6">Comisión 6</option>
-                                    <option value="COMISION 7">Comisión 7</option>
-                                    <option value="COMISION 8">Comisión 8</option>
-                                    <option value="COMISION 9">Comisión 9</option>
-                                    <option value="COMISION 10">Comisión 10</option>
+                                    <!-- Las opciones se generarán dinámicamente con JS -->
                                 </select>
                             </div>
 
@@ -179,6 +170,12 @@
                                     <input class="form-check-input" type="checkbox" id="viewToggle"
                                         style="cursor: pointer;">
                                     <label class="form-check-label ms-1 mt-1" for="viewToggle">Info. Ampliada</label>
+                                </div>
+                                <div>
+                                    <!-- NUEVO BOTÓN PROTOTIPO -->
+                                    <button class="btn btn-outline-success" id="btnDescargarPlanilla">
+                                        📥 Descargar Planilla
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -250,25 +247,33 @@
 
                 <!-- PESTAÑA 3: Carga de Notas -->
                 <article class="tab-pane fade" id="notas" role="tabpanel">
-                    <div class="table-wrapper">
+                    <section class="table-wrapper">
 
                         <!-- Controles Superiores de Notas -->
-                        <div class="row g-3 align-items-end mb-4">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold text-primary">1. Seleccionar Comisión</label>
+                        <section class="row g-3 align-items-end mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-primary">1. Comisión</label>
                                 <select id="selectComisionNotas" class="form-select">
-                                    <!-- Se llena con JS según el profe -->
+                                    <!-- Se llena con JS -->
                                 </select>
                             </div>
-                            <div class="col-md-8 d-flex justify-content-end gap-2">
+
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-primary">2. Asignatura</label>
+                                <select id="selectAsignaturaNotas" class="form-select" disabled>
+                                    <option value="">Seleccione Asignatura...</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 d-flex justify-content-end gap-2">
                                 <button class="btn btn-outline-secondary" id="btnHabilitarEdicion">
                                     ✏️ Habilitar Planilla
                                 </button>
-                                <button class="btn btn-success" id="btnGuardarNotasServidor" disabled>
+                                <button class="btn btn-success" id="btnGuardarNotas" disabled>
                                     ☁️ Enviar al Servidor
                                 </button>
                             </div>
-                        </div>
+                        </section>
 
                         <!-- Sub-Pestañas de Instancias de Evaluación -->
                         <ul class="nav nav-tabs mb-3" id="notasSubTabs" role="tablist">
@@ -281,52 +286,39 @@
                             </li>
                         </ul>
 
-                        <!-- NUEVO: Selector de Asignaturas (Botones tipo "Pill") -->
-                        <ul class="nav nav-pills mb-3 bg-light p-2 rounded" id="asignaturasTabs">
-                            <li class="nav-item">
-                                <button class="nav-link active fw-bold" id="mat-tab" type="button">🧠
-                                    Matemática</button>
-                            </li>
-                            <li class="nav-item">
-                                <button class="nav-link fw-bold" id="len-tab" type="button">📖 Lengua</button>
-                            </li>
-                            <li class="nav-item">
-                                <button class="nav-link fw-bold" id="dib-tab" type="button">📐 Dibujo</button>
-                            </li>
-                        </ul>
-
                         <!-- TÍTULO DINÁMICO DE CONTEXTO -->
                         <h5 id="tituloContextoNotas" class="text-center text-dark mb-3 fw-bold d-none">
                             <!-- Se llena con JS -->
                         </h5>
 
                         <!-- Contenedor de la Planilla -->
-                        <div class="alert alert-warning d-none" id="alertaBorradorNotas">
+                        <section class="alert alert-warning d-none" id="alertaBorradorNotas">
                             ⚠️ Tenés notas sin guardar en el servidor. Están seguras en tu navegador, pero recordá
                             presionar "Enviar al Servidor".
-                        </div>
+                        </section>
 
-                        <div class="table-responsive">
+                        <section class="table-responsive">
                             <table class="table table-bordered table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width: 15%;">DNI</th>
                                         <th style="width: 55%;">Apellido y Nombre</th>
-                                        <!-- Esta columna cambiará su título con JS -->
                                         <th class="text-center text-primary fs-6" style="width: 30%;"
-                                            id="header-asignatura">Matemática</th>
+                                            id="header-asignatura">
+                                            <!-- Se llena con JS -->
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabla-notas-body">
                                     <tr>
-                                        <td colspan="3" class="text-center text-muted">Seleccioná una comisión para
-                                            empezar.</td>
+                                        <td colspan="3" class="text-center text-muted">Seleccioná una comisión y
+                                            asignatura para empezar.</td>
                                     </tr>
                                 </tbody>
                             </table>
-                        </div>
+                        </section>
 
-                    </div>
+                    </section>
                 </article>
 
 
@@ -390,7 +382,8 @@
 
                                     <!-- Botón de Edición -->
                                     <td class="admin-col d-none">
-                                        <button class="btn btn-sm btn-outline-danger" title="Modificar Calificación">
+                                        <button id="" class="btn btn-sm btn-outline-danger"
+                                            title="Modificar Calificación">
                                             ✏️
                                         </button>
                                     </td>
@@ -423,11 +416,11 @@
                                 <div class="card-body">
                                     <h6 class="text-uppercase fw-bold text-muted mb-3">Distribución por Turno</h6>
                                     <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="fs-5">1º Turno 17:00 - 18:30</span>
+                                        <span class="fs-5">1º Turno 17:00 - 18:20</span>
                                         <h3 class="fw-bold text-dark mb-0" id="dashGlobalManana">0</h3>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fs-5">2º Turno 18:30 - 20:15</span>
+                                        <span class="fs-5">2º Turno 18:50 - 20:10</span>
                                         <h3 class="fw-bold text-dark mb-0" id="dashGlobalTarde">0</h3>
                                     </div>
                                 </div>
@@ -539,7 +532,7 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header fondo_azul_institucional text-white">
-                    <h4 class="modal-title" id="modalFichaLabel">Ficha del Aspirante</h4>
+                    <h4 class="modal-title" id="modalFichaLabel">FICHA DEL ASPIRANTE</h4>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                         aria-label="Cerrar"></button>
                 </div>
@@ -571,7 +564,8 @@
                     <!-- Sección: Datos Académicos -->
                     <h6 class="texto_azul_institucional border-bottom pb-2 mb-3 fs-5">Datos Académicos</h6>
                     <div class="row g-2 mb-4">
-                        <div class="col-md-12"><strong>Colegio de Origen:</strong> <span id="ficha-colegio"></span></div>
+                        <div class="col-md-12"><strong>Colegio de Origen:</strong> <span id="ficha-colegio"></span>
+                        </div>
                         <div class="col-md-12"><strong>Turno Escuela:</strong> <span id="ficha-turno-esc"></span></div>
                     </div>
 
@@ -615,7 +609,7 @@
 
                     <div class="table-responsive m-0 m-md-2 rounded-1">
                         <table class="table table-striped table-hover align-middle mb-0">
-                            <thead class="table-danger">
+                            <thead class="table-primary">
                                 <tr>
                                     <th>Nº inscripcion</th>
                                     <th>Nombre Completo</th>
@@ -649,8 +643,11 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- App local -->
+    <!-- Librerías para exportar a PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
+    <!-- App local -->
     <script type="module" src="js/main.js"></script>
 
 </body>

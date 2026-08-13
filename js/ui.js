@@ -1,3 +1,20 @@
+// =================================================================
+// 1. ESTADO GLOBAL DEL MÓDULO
+// =================================================================
+let aspirantesGlobalesState = [];
+let permisosDocenteState = []; // Guardamos lo que manda el backend
+let modoEdicionNotas = false;
+let instanciaActual = 'seguimiento'; // Mantenemos las pestañas para Seguimiento/Ensayo
+let asignaturaActual = ''; // Ahora arranca vacío hasta que elija en el select
+
+// Diccionario para traducir lo que manda tu backend a las claves de tu frontend
+const mapaAsignaturas = {
+    'Matematica': 'mat',
+    'Lengua': 'len',
+    'Dibujo': 'dib'
+};
+
+
 // --- 4. RENDERIZADO DINÁMICO DE LA TABLA DE ASPIRANTES---
 export function renderTable(data, isExpandedView) {
     const thead = document.getElementById('tabla-aspirantes-head');
@@ -48,7 +65,7 @@ export function renderTable(data, isExpandedView) {
                 <td><strong>${asp.id_inscripcion}</strong></td>
                 <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
                 <td>${asp.dni}</td>
-                <td><span class="badge bg-secondary">${asp.comision}</span></td>
+                <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
                 <td>${asp.turno_cursillo}</td>
                 <td class="text-uppercase">${asp.departamento}</td>
                 <td>${asp.domicilio}</td>
@@ -63,7 +80,7 @@ export function renderTable(data, isExpandedView) {
             tr.innerHTML = `
                 <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
                 <td>${asp.dni}</td>
-                <td><span class="badge bg-secondary">${asp.comision}</span></td>
+                <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
                 <td>${asp.turno_cursillo}</td>
                 <td>${asp.tel1}</td>
                  <td class="d-flex justify-content-center">
@@ -74,6 +91,7 @@ export function renderTable(data, isExpandedView) {
         tbody.appendChild(tr);
     });
 }
+
 
 // --- 4. FUNCIÓN PARA LLENAR Y ABRIR EL MODAL ---
 export function abrirFicha(aspirantesGlobales, idInscripcion) {
@@ -117,7 +135,9 @@ export function abrirFicha(aspirantesGlobales, idInscripcion) {
 
     document.getElementById('ficha-colegio').textContent = asp.colegio;
     document.getElementById('ficha-turno-esc').textContent = asp.turno_escuela;
+
     document.getElementById('ficha-turno-cur').textContent = asp.turno_cursillo;
+    document.getElementById('ficha-comision').textContent = String(asp.comision);
 
     document.getElementById('ficha-tutor').textContent = asp.tutor;
     document.getElementById('ficha-relacion').textContent = asp.tutor_relacion;
@@ -132,6 +152,7 @@ export function abrirFicha(aspirantesGlobales, idInscripcion) {
     const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
     modalInstance.show();
 }
+
 
 // Mantenemos la función auxiliar 
 function desarmarFechaMutable(fechaRaw) {
@@ -149,29 +170,80 @@ function desarmarFechaMutable(fechaRaw) {
 }
 
 
+// =================================================================
+// 2. INICIALIZADOR DE NOTAS
+// =================================================================
+// Ahora la función recibe los permisos que capturaste al hacer el login
+export function inicializarModuloNotas(aspirantesGlobales, permisosDocente) {
+    aspirantesGlobalesState = aspirantesGlobales;
+    permisosDocenteState = permisosDocente || [];
 
-// --- INICIALIZADOR DE NOTAS ---
-export function inicializarModuloNotas(aspirantesGlobales) {
-    const select = document.getElementById('selectComisionNotas');
-    select.innerHTML = '<option value="">Seleccione...</option>';
+    const selectComision = document.getElementById('selectComisionNotas');
+    const selectAsignatura = document.getElementById('selectAsignaturaNotas');
 
-    const comisionesDisponibles = [...new Set(aspirantesGlobales.map(a => a.comision))]
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    selectComision.innerHTML = '<option value="">Seleccione Comisión...</option>';
+    selectAsignatura.innerHTML = '<option value="">Seleccione Asignatura...</option>';
+    selectAsignatura.disabled = true;
 
-    comisionesDisponibles.forEach(com => {
-        select.innerHTML += `<option value="${com}">${com}</option>`;
+    // 1. Llenamos las Comisiones basándonos ESTRICTAMENTE en los permisos
+    const comisionesPermitidas = [...new Set(permisosDocenteState.map(p => p.id_comision))]
+        .sort((a, b) => a - b);
+
+
+    comisionesPermitidas.forEach(com => {
+        selectComision.innerHTML += `<option value="${com}">Comisión ${com}</option>`;
     });
 
-    select.addEventListener('change', renderizarPlanillaNotas);
+    // 2. Lógica en Cascada: Al elegir Comisión, se habilitan sus materias
+    selectComision.addEventListener('change', (e) => {
+        const comSeleccionada = e.target.value;
+
+        // Reseteamos el select de asignaturas
+        selectAsignatura.innerHTML = '<option value="">Seleccione Asignatura...</option>';
+        asignaturaActual = '';
+
+        if (!comSeleccionada) {
+            selectAsignatura.disabled = true;
+            renderizarPlanillaNotas();
+            return;
+        }
+
+        selectAsignatura.disabled = false;
+
+        // Filtramos qué materias da este profe en la comisión seleccionada
+        const materiasPermitidas = permisosDocenteState
+            .filter(p => String(p.id_comision) === String(comSeleccionada))
+            .map(p => p.materia);
+
+        materiasPermitidas.forEach(mat => {
+            const claveFront = mapaAsignaturas[mat] || mat.toLowerCase().substring(0, 3);
+            selectAsignatura.innerHTML += `<option value="${claveFront}">${mat}</option>`;
+        });
+
+        // Auto-seleccionar si solo da una materia en esa comisión (UX Gold)
+        if (materiasPermitidas.length === 1) {
+            selectAsignatura.selectedIndex = 1;
+            asignaturaActual = selectAsignatura.value;
+        }
+
+        renderizarPlanillaNotas();
+    });
+
+    // 3. Evento al cambiar la Asignatura
+    selectAsignatura.addEventListener('change', (e) => {
+        asignaturaActual = e.target.value;
+        renderizarPlanillaNotas();
+    });
+
+    selectAsignatura.addEventListener('change', renderizarPlanillaNotas);
 
     const btnHabilitar = document.getElementById('btnHabilitarEdicion');
     const nuevoBtnHabilitar = btnHabilitar.cloneNode(true);
     btnHabilitar.parentNode.replaceChild(nuevoBtnHabilitar, btnHabilitar);
 
     nuevoBtnHabilitar.addEventListener('click', function () {
-        if (!select.value) return alert("Seleccioná una comisión primero.");
-        modoEdicionNotas = !modoEdicionNotas;
+        if (!selectAsignatura.value) return alert("Seleccioná una comisión primero.");
+        modoEdicionNotas = !modoEdicionNotas; // Modifica la global
         this.innerHTML = modoEdicionNotas ? '🔒 Bloquear Planilla' : '✏️ Habilitar Planilla';
         this.classList.toggle('btn-outline-secondary');
         this.classList.toggle('btn-warning');
@@ -179,67 +251,68 @@ export function inicializarModuloNotas(aspirantesGlobales) {
         renderizarPlanillaNotas();
     });
 
-    // Listeners Instancias de Evaluación (Quitamos el data-bs-toggle del HTML para controlarlo manual)
-    document.getElementById('seguimiento-tab').addEventListener('click', (e) => cambiarPestaña('seguimiento', e.target, '#notasSubTabs'));
-    document.getElementById('ensayo-tab').addEventListener('click', (e) => cambiarPestaña('ensayo', e.target, '#notasSubTabs'));
+    // Listeners Instancias de Evaluación
+    document.getElementById('seguimiento-tab').addEventListener('click', (e) => cambiarPestaña('seguimiento', e.target));
+    document.getElementById('ensayo-tab').addEventListener('click', (e) => cambiarPestaña('ensayo', e.target));
 
-    // Listeners Asignaturas
-    document.getElementById('mat-tab').addEventListener('click', (e) => cambiarAsignatura('mat', e.target));
-    document.getElementById('len-tab').addEventListener('click', (e) => cambiarAsignatura('len', e.target));
-    document.getElementById('dib-tab').addEventListener('click', (e) => cambiarAsignatura('dib', e.target));
 }
 
-// Funciones auxiliares para cambiar el aspecto visual de las pestañas
-export function cambiarPestaña(instancia, boton, contenedor) {
+export function cambiarPestaña(instancia, botonHtml) {
+    // 1. Actualizamos la variable global
     instanciaActual = instancia;
-    document.querySelectorAll(`${contenedor} .nav-link`).forEach(btn => btn.classList.remove('active'));
-    boton.classList.add('active');
+
+    // 2. Le sacamos la clase 'active' a todas las pestañas de ese grupo
+    document.querySelectorAll('#notasSubTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+
+    // 3. Le ponemos la clase 'active' a la que el usuario acaba de tocar
+    botonHtml.classList.add('active');
+
+    // 4. Mandamos a redibujar la tabla con la nueva instancia
     renderizarPlanillaNotas();
 }
+
 
 export function cambiarAsignatura(asignatura, boton) {
     asignaturaActual = asignatura;
     document.querySelectorAll('#asignaturasTabs .nav-link').forEach(btn => btn.classList.remove('active'));
     boton.classList.add('active');
-    renderizarPlanillaNotas();
+    renderizarPlanillaNotas(); // Llama sin argumentos
 }
 
-// --- RENDERIZADO Y AUTO-GUARDADO ---
+
+// =================================================================
+// 3. RENDERIZADO (Adaptado)
+// =================================================================
 export function renderizarPlanillaNotas() {
     const comision = document.getElementById('selectComisionNotas').value;
     const tbody = document.getElementById('tabla-notas-body');
     const headerAsignatura = document.getElementById('header-asignatura');
+    const tituloContexto = document.getElementById('tituloContextoNotas');
 
-
-    const tituloContexto = document.getElementById('tituloContextoNotas'); // Capturamos el nuevo título
-
-    if (!comision) {
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Seleccioná una comisión para empezar.</td></tr>';
-        tituloContexto.classList.add('d-none'); // Lo ocultamos si no hay comisión
+    // Validación Doble: Si no hay comisión o no hay asignatura elegida, mostramos un mensaje
+    if (!comision || !asignaturaActual) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Seleccioná una comisión y una asignatura para empezar.</td></tr>';
+        tituloContexto.classList.add('d-none');
         return;
     }
 
-
-    const nombresAsignaturas = { mat: 'Matemática', len: 'Lengua', dib: 'Dibujo' };
+    const nombresAsignaturasInverso = { 'mat': 'Matemática', 'len': 'Lengua', 'dib': 'Dibujo' };
     const nombresInstancias = { seguimiento: '1º Seguimiento', ensayo: 'Ensayo Examen' };
 
-    // Actualizamos el título dinámico
-    tituloContexto.textContent = `${comision} - ${nombresInstancias[instanciaActual]} - ${nombresAsignaturas[asignaturaActual]}`;
-    tituloContexto.classList.remove('d-none'); // Lo mostramos
+    tituloContexto.textContent = `Comisión ${comision} - ${nombresInstancias[instanciaActual]} - ${nombresAsignaturasInverso[asignaturaActual]}`;
+    tituloContexto.classList.remove('d-none');
+    headerAsignatura.textContent = nombresAsignaturasInverso[asignaturaActual];
 
-    // Actualizamos el título de la columna de la tabla
-    headerAsignatura.textContent = nombresAsignaturas[asignaturaActual];
+    const alumnos = aspirantesGlobalesState
+        .filter(a => String(a.comision) === String(comision))
+        .sort((a, b) => String(a.apellido).localeCompare(String(b.apellido)));
 
-
-    const alumnos = aspirantesGlobales.filter(a => a.comision === comision).sort((a, b) => a.apellido.localeCompare(b.apellido));
     const borradorLocal = JSON.parse(localStorage.getItem(`notas_${instanciaActual}_${comision}`)) || {};
 
     tbody.innerHTML = '';
 
     alumnos.forEach((asp, index) => {
         const tr = document.createElement('tr');
-
-        // Solo traemos la nota de la asignatura seleccionada
         const nota = borradorLocal[asp.id_inscripcion]?.[asignaturaActual] || '';
 
         if (modoEdicionNotas) {
@@ -260,6 +333,7 @@ export function renderizarPlanillaNotas() {
 
     if (modoEdicionNotas) activarNavegacionPorEnterYGuardado(comision);
 }
+
 
 
 // --- MÓDULO DE DASHBOARD GENERAL ---
@@ -414,7 +488,6 @@ export function inicializarCalendario(eventosGlobales) {
 
 
 
-
 // --- archivo: ui.js ---
 export function configurarInterfazPorRol(usuario) {
     // Cambiar la interfaz como si recién se hubieran logueado
@@ -485,4 +558,90 @@ export function renderModalSalud(listaFiltrada) {
 
         tbody.appendChild(tr);
     });
+}
+
+
+// --- LA MAGIA DEL ENTER Y EL LOCALSTORAGE ---
+function activarNavegacionPorEnterYGuardado(comision) {
+    const inputs = document.querySelectorAll('.input-nota');
+
+    inputs.forEach((input, index) => {
+        input.addEventListener('input', () => {
+            let borrador = JSON.parse(localStorage.getItem(`notas_${instanciaActual}_${comision}`)) || {};
+
+            const id = input.dataset.id;
+            const materia = input.dataset.materia;
+
+            if (!borrador[id]) borrador[id] = {};
+            borrador[id][materia] = input.value;
+
+            localStorage.setItem(`notas_${instanciaActual}_${comision}`, JSON.stringify(borrador));
+            document.getElementById('alertaBorradorNotas').classList.remove('d-none');
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const nextInput = inputs[index + 1];
+                if (nextInput) {
+                    nextInput.focus();
+                    nextInput.select();
+                }
+            }
+        });
+    });
+}
+
+
+
+
+export function inicializarFiltroComisiones(aspirantesGlobales) {
+
+    const selectFiltro = document.getElementById('filterComision');
+    const usuarioString = sessionStorage.getItem('usuarioActual');
+    let rolUsuario = "";
+
+    if (usuarioString) {
+        // 2. Lo convertimos de nuevo a un objeto real de JS
+        const usuario = JSON.parse(usuarioString);
+
+        rolUsuario = usuario.rol;
+
+    }
+    // Limpiamos el select por si se vuelve a llamar la función
+    selectFiltro.innerHTML = '<option value="">Todas las Comisiones</option>';
+
+    let comisionesAMostrar = [];
+
+    if (rolUsuario === 'ADMI' || rolUsuario === 'COOR') {
+
+        // Extraemos TODAS las comisiones únicas directamente de la base de datos de alumnos
+        comisionesAMostrar = [...new Set(aspirantesGlobales.map(a => a.comision))]
+            .filter(Boolean) // Filtramos celdas vacías por si algún alumno no tiene comisión
+            .sort((a, b) => a - b);
+
+    } else if (rolUsuario === 'DOCE') {
+
+
+        // Extraemos SOLO las comisiones permitidas desde los permisos del Storage
+        const permisosGuardados = JSON.parse(sessionStorage.getItem('permisos_docente')) || [];
+        comisionesAMostrar = [...new Set(permisosGuardados.map(p => p.id_comision))]
+            .filter(Boolean)
+            .sort((a, b) => a - b);
+    }else{
+    } 
+    // Iteramos el arreglo resultante y armamos las opciones del HTML
+    comisionesAMostrar.forEach(com => {
+        selectFiltro.innerHTML += `<option value="${com}">Comisión ${com}</option>`;
+    });
+
+    // Mejora de UX (Opcional): Si el docente solo tiene UNA comisión asignada, 
+    // la pre-seleccionamos y disparamos el evento para que la tabla ya se filtre sola.
+    if (rolUsuario === 'DOCE' && comisionesAMostrar.length === 1) {
+        selectFiltro.value = comisionesAMostrar[0];
+
+        // Disparamos el evento 'change' manualmente para que se aplique el filtro en la tabla
+        selectFiltro.dispatchEvent(new Event('change'));
+    }
+
 }
