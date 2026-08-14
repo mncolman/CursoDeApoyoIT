@@ -20,7 +20,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
 
     try {
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('l', 'mm', 'a4'); // 'l' para hoja apaisada
+        const pdf = new jsPDF('p', 'mm', 'a4'); // 'l' para hoja apaisada
         const anchoHoja = pdf.internal.pageSize.getWidth();
         const centroX = anchoHoja / 2;
 
@@ -40,8 +40,8 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         // 2. TEXTOS DEL ENCABEZADO
         // =========================================================
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(35);
-        pdf.text("Instituto Técnico", centroX, 16, { align: "center" });
+        pdf.setFontSize(30);
+        pdf.text("INSTITUTO TÉCNICO", centroX, 16, { align: "center" });
 
         pdf.setFont("times", "italic");
         pdf.setFontSize(14);
@@ -85,7 +85,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
             startY: 42, // Arranca en el milímetro 42 (justo abajo de la línea)
             theme: 'grid',
             headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center' },
-            styles: { fontSize: 10, cellPadding: 2 },
+            styles: { fontSize: 9, cellPadding: 2 },
             alternateRowStyles: { fillColor: [245, 245, 245] }
         });
 
