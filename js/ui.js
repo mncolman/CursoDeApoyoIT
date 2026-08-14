@@ -247,7 +247,7 @@ export function inicializarModuloNotas(aspirantesGlobales, permisosDocente) {
         this.innerHTML = modoEdicionNotas ? '🔒 Bloquear Planilla' : '✏️ Habilitar Planilla';
         this.classList.toggle('btn-outline-secondary');
         this.classList.toggle('btn-warning');
-        document.getElementById('btnGuardarNotasServidor').disabled = !modoEdicionNotas;
+        document.getElementById('btnGuardarNotas').disabled = !modoEdicionNotas;
         renderizarPlanillaNotas();
     });
 
@@ -628,8 +628,8 @@ export function inicializarFiltroComisiones(aspirantesGlobales) {
         comisionesAMostrar = [...new Set(permisosGuardados.map(p => p.id_comision))]
             .filter(Boolean)
             .sort((a, b) => a - b);
-    }else{
-    } 
+    } else {
+    }
     // Iteramos el arreglo resultante y armamos las opciones del HTML
     comisionesAMostrar.forEach(com => {
         selectFiltro.innerHTML += `<option value="${com}">Comisión ${com}</option>`;

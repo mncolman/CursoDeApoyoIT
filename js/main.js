@@ -126,11 +126,50 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-// Listener del boton descargar listado como pdf
-    document.getElementById('btnDescargarPlanilla').addEventListener('click', () => {
-        // Si la importaste de ui.js, sería UI.descargarPlanillaPDF()
-        Utils.descargarPlanillaPDF(aspirantesGlobales);
-    });
+    // Listener del boton descargar listado como pdf
+
+document.getElementById('btnDescargarPlanilla').addEventListener('click', () => {
+    // 1. Leemos los valores de los selectores en el momento del clic
+    const comisionSeleccionada = document.getElementById("filterComision").value;
+    const tipoOrden = document.getElementById("sortSelect").value; // Leemos el select de orden
+
+    // 2. Barrera de seguridad
+    if (!aspirantesGlobales || aspirantesGlobales.length === 0) {
+        Swal.fire('Error', 'No hay alumnos cargados en memoria.', 'error');
+        return;
+    }
+
+    // 3. CLONAMOS el arreglo para no alterar el caché global por error
+    let alumnosAProcesar = [...aspirantesGlobales];
+
+
+// 4. Aplicamos el ordenamiento exacto según tu HTML
+    switch (tipoOrden) {
+        case 'nombre_asc':
+            // Ordena por apellido de la A a la Z
+            alumnosAProcesar.sort((a, b) => a.apellido.localeCompare(b.apellido));
+            break;
+            
+        case 'nombre_desc':
+            // Ordena por apellido de la Z a la A (fijate que invertí a y b)
+            alumnosAProcesar.sort((a, b) => b.apellido.localeCompare(a.apellido));
+            break;
+            
+        case 'inscripcion_asc':
+            // Ordena por número de inscripción de menor a mayor
+            alumnosAProcesar.sort((a, b) => a.id_inscripcion - b.id_inscripcion);
+            break;
+            
+        case 'inscripcion_desc':
+            // Ordena por número de inscripción de mayor a menor (invertidos)
+            alumnosAProcesar.sort((a, b) => b.id_inscripcion - a.id_inscripcion);
+            break;
+    }
+
+    // 5. Ejecutamos la función pasándole el arreglo ya ORDENADO
+    Utils.descargarPlanillaPDF(alumnosAProcesar, comisionSeleccionada);
+});
+
 
 
     // 1. Clic en el Ojito del Dashboard

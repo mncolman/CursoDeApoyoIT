@@ -1,4 +1,4 @@
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxv0tdt7XBGmOaN4oLyvEFQmSAq3BL8O2DHT8aD_Ihiyxq2kocHic3U5NbRDSXcmdn_Mg/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwdzr5LeDwwd-I6XKHCLlwqjA3qcSlppxGGAMMXvBKKpA9A40w1WGzVIzmXN2sk-zyv6g/exec';
 
 export async function peticionLogin(email, clave) {
     const peticion = {
