@@ -128,47 +128,58 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Listener del boton descargar listado como pdf
 
-document.getElementById('btnDescargarPlanilla').addEventListener('click', () => {
-    // 1. Leemos los valores de los selectores en el momento del clic
-    const comisionSeleccionada = document.getElementById("filterComision").value;
-    const tipoOrden = document.getElementById("sortSelect").value; // Leemos el select de orden
 
-    // 2. Barrera de seguridad
-    if (!aspirantesGlobales || aspirantesGlobales.length === 0) {
-        Swal.fire('Error', 'No hay alumnos cargados en memoria.', 'error');
-        return;
+
+
+    // Función centralizada para preparar los datos antes de imprimir
+    function prepararYDescargar(tipoDescarga) {
+        const comisionSeleccionada = document.getElementById("filterComision").value;
+
+        if (!aspirantesGlobales || aspirantesGlobales.length === 0) {
+            Swal.fire('Error', 'No hay alumnos cargados en memoria.', 'error');
+            return;
+        }
+
+        let alumnosAProcesar = [...aspirantesGlobales];
+
+        // Ordenamiento estricto para impresión (Apellido -> Nombre)
+        alumnosAProcesar.sort((a, b) => {
+            let comparacionApellido = a.apellido.localeCompare(b.apellido);
+            if (comparacionApellido !== 0) return comparacionApellido;
+            return a.nombre.localeCompare(b.nombre);
+        });
+
+        // Llamamos a la función maestra pasándole el tipo
+        Utils.descargarPlanillaPDF(alumnosAProcesar, comisionSeleccionada, tipoDescarga);
     }
 
-    // 3. CLONAMOS el arreglo para no alterar el caché global por error
-    let alumnosAProcesar = [...aspirantesGlobales];
+    // Escuchadores de los 3 botones del modal
+    document.getElementById('btnDescargarAlumnos').addEventListener('click', () => prepararYDescargar('alumnos'));
+    document.getElementById('btnDescargarAsistenciaSemanal').addEventListener('click', () => prepararYDescargar('semanal'));
+    document.getElementById('btnDescargarAsistenciaMensual').addEventListener('click', () => prepararYDescargar('mensual'));
 
 
-// 4. Aplicamos el ordenamiento exacto según tu HTML
-    switch (tipoOrden) {
-        case 'nombre_asc':
-            // Ordena por apellido de la A a la Z
-            alumnosAProcesar.sort((a, b) => a.apellido.localeCompare(b.apellido));
-            break;
-            
-        case 'nombre_desc':
-            // Ordena por apellido de la Z a la A (fijate que invertí a y b)
-            alumnosAProcesar.sort((a, b) => b.apellido.localeCompare(a.apellido));
-            break;
-            
-        case 'inscripcion_asc':
-            // Ordena por número de inscripción de menor a mayor
-            alumnosAProcesar.sort((a, b) => a.id_inscripcion - b.id_inscripcion);
-            break;
-            
-        case 'inscripcion_desc':
-            // Ordena por número de inscripción de mayor a menor (invertidos)
-            alumnosAProcesar.sort((a, b) => b.id_inscripcion - a.id_inscripcion);
-            break;
-    }
+// =================================================================
+// ACTUALIZAR TEXTO DEL MODAL DE DESCARGAS ANTES DE ABRIRSE
+// =================================================================
+const modalDescargas = document.getElementById('modalOpcionesDescarga');
 
-    // 5. Ejecutamos la función pasándole el arreglo ya ORDENADO
-    Utils.descargarPlanillaPDF(alumnosAProcesar, comisionSeleccionada);
-});
+if (modalDescargas) {
+    modalDescargas.addEventListener('show.bs.modal', () => {
+        // 1. Leemos qué comisión está seleccionada en el filtro principal
+        const comisionSeleccionada = document.getElementById("filterComision").value;
+        
+        // 2. Apuntamos al párrafo que creaste en el modal
+        const textoComision = document.getElementById("comision-seleccionada-modal");
+
+        // 3. Modificamos el texto dinámicamente
+        if (comisionSeleccionada === "") {
+            textoComision.innerHTML = `<strong>Comisión seleccionada:</strong> Todas`;
+        } else {
+            textoComision.innerHTML = `<strong>Comisión seleccionada:</strong> ${comisionSeleccionada}`;
+        }
+    });
+}
 
 
 

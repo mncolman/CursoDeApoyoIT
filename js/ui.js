@@ -522,7 +522,6 @@ export function actualizarMiniReporte(lista) {   // de tabla aspirantes
     document.getElementById('dashTotal').textContent = lista.length;
     document.getElementById('dashF').textContent = lista.filter(a => a.sexo?.trim().toUpperCase() === 'F').length;
     document.getElementById('dashM').textContent = lista.filter(a => a.sexo?.trim().toUpperCase() === 'M').length;
-    document.getElementById('dashX').textContent = lista.filter(a => a.sexo?.trim().toUpperCase() === 'X').length;
 }
 
 

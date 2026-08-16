@@ -4,14 +4,17 @@
 
 .fondo_azul_institucional {
     background-color: #073a86;
+    color:white;
 }
 
 .texto_rojo_institucional {
     color: #c00505;
+
 }
 
 .fondo_rojo_institucional {
     background-color: #c00505;
+    color:white;
 }
 
 

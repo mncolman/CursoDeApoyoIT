@@ -1,7 +1,7 @@
 // Arriba de todo en tu archivo importamos los logos
 import { logoIT, logoUNT } from './assets.js';
 
-export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccionada) {
+export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccionada, tipoDescarga) {
     const filtroComision = document.getElementById('filterComision').value;
 
     // Ya no hace falta hacer document.getElementById acá porque ya te llegó por parámetro
@@ -20,84 +20,127 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
 
     try {
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4'); // 'l' para hoja apaisada
+        let orientacion = 'p';
+
+        // Variables dinámicas que van a cambiar según el botón
+        let tituloPrincipal = "";
+        let cabeceras = [];
+        let filas = [];
+        let configExtraTabla = {}; // Para pisar estilos si necesitamos achicar cosas
+
+        // =========================================================
+        // EL SWITCH MÁGICO
+        // =========================================================
+        switch (tipoDescarga) {
+
+            case 'alumnos':
+                tituloPrincipal = "PLANILLA DE ALUMNOS";
+
+                if (comisionSeleccionada) {
+                    cabeceras = [['DNI', 'Apellido', 'Nombre']];
+                    filas = alumnosParaDescargar.map(a => [a.dni, a.apellido, a.nombre]);
+                } else {
+                    cabeceras = [['DNI', 'Apellido', 'Nombre', 'Comision']];
+                    filas = alumnosParaDescargar.map(a => [a.dni, a.apellido, a.nombre, a.comision]);
+                }
+                configExtraTabla = {
+                    styles: { fontSize: 9, cellPadding: 1 },
+                };
+
+
+                break;
+
+            case 'semanal':
+                tituloPrincipal = "ASISTENCIA SEMANAL";
+                // Agregamos columnas vacías para que el profe marque los días
+                cabeceras = [['Apellido y Nombre', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Observaciones']];
+                filas = alumnosParaDescargar.map(a => [`${a.apellido}, ${a.nombre}`, '', '', '', '', '', '']);
+
+                configExtraTabla = {
+                    styles: { fontSize: 9, cellPadding: 1 },
+                };
+                break;
+
+            case 'mensual':
+                tituloPrincipal = "ASISTENCIA MENSUAL - Mes: ...................";
+                // Planilla intensiva: DNI, Nombre y 20 celdas chiquitas para días hábiles
+                cabeceras = [['Apellido y Nombre', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31']];
+                filas = alumnosParaDescargar.map(a => [`${a.apellido}, ${a.nombre}`, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+
+
+                orientacion = 'l';
+
+// 1. Definimos los anchos fijos de las primeras dos columnas
+                let anchosColumnasMensual = {
+                    0: { cellWidth: 45 }  // Apellido y Nombre
+                };
+
+                // 2. Bucle automático para asignar el mismo ancho (ej: 6.5 mm) del 2 al 32 (los 31 días)
+                // De esta forma todos los días miden exactamente lo mismo y entran perfecto en la hoja
+                for (let i = 1; i <= 32; i++) {
+                    anchosColumnasMensual[i] = { cellWidth: 7.2, halign: 'center' };
+                }
+
+                configExtraTabla = {
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'middle' }, 
+                    columnStyles: anchosColumnasMensual
+                };
+                break;
+
+        }
+
+
+        const pdf = new jsPDF(orientacion, 'mm', 'a4');
+
         const anchoHoja = pdf.internal.pageSize.getWidth();
         const centroX = anchoHoja / 2;
 
         // =========================================================
-        // 1. ESTAMPAR LAS IMÁGENES BASE64
+        // ESTAMPAR CABECERAS (Esto se ejecuta siempre igual)
         // =========================================================
-        // Sintaxis: pdf.addImage(variable_base64, formato, X, Y, Ancho, Alto)
-
-        // Logo Izquierdo (X: 14mm, Y: 10mm, Ancho: 25mm, Alto: 25mm)
         pdf.addImage(logoIT, 'PNG', 14, 10, 25, 25);
+        //                             X,Y alto, ancho
+        pdf.addImage(logoUNT, 'PNG', anchoHoja - 34, 10, 20, 25);
 
-        // Logo Derecho (Calculamos el margen derecho: Ancho Total - 14mm de margen - 25mm del logo)
-        pdf.addImage(logoUNT, 'PNG', anchoHoja - 39, 10, 20, 25);
-
-
-        // =========================================================
-        // 2. TEXTOS DEL ENCABEZADO
-        // =========================================================
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(30);
+        pdf.setFontSize(25);
         pdf.text("INSTITUTO TÉCNICO", centroX, 16, { align: "center" });
 
         pdf.setFont("times", "italic");
         pdf.setFontSize(14);
         pdf.text("Universidad Nacional de Tucumán", centroX, 23, { align: "center" });
 
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(15);
+        pdf.setFont("helvetica", "semibold");
+        pdf.setFontSize(13);
 
+        // Usamos el título dinámico
+        const textoComision = comisionSeleccionada ? ` - Comisión ${comisionSeleccionada}` : "";
+        pdf.text(tituloPrincipal + textoComision, centroX, 33, { align: "center" });
 
-        let cabeceras = [];
-        let filas = [];
-
-        if (comisionSeleccionada) {
-            pdf.text("Comisión " + comisionSeleccionada, centroX, 33, { align: "center" });
-            cabeceras = [['DNI', 'Apellido', 'Nombre']];
-            filas = alumnosParaDescargar.map(asp => [
-                asp.dni, asp.apellido, asp.nombre
-            ]);
-        } else {
-            pdf.text("Todas las comisiones" + comisionSeleccionada, centroX, 33, { align: "center" });
-            cabeceras = [['DNI', 'Apellido', 'Nombre', 'Comisión']];
-            filas = alumnosParaDescargar.map(asp => [
-                asp.dni, asp.apellido, asp.nombre, asp.comision
-            ]);
-        }
-
-        // Línea separadora
         pdf.setDrawColor(180, 180, 180);
         pdf.setLineWidth(0.5);
         pdf.line(14, 38, anchoHoja - 14, 38);
 
-
         // =========================================================
-        // 3. GENERAR LA TABLA (AutoTable)
+        // AUTO-TABLE
         // =========================================================
-
-
         pdf.autoTable({
             head: cabeceras,
             body: filas,
-            startY: 42, // Arranca en el milímetro 42 (justo abajo de la línea)
+            startY: 42,
             theme: 'grid',
             headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center' },
-            styles: { fontSize: 9, cellPadding: 2 },
-            alternateRowStyles: { fillColor: [245, 245, 245] }
+            styles: { fontSize: 10, cellPadding: 2, valign: 'middle' },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+
+            // Los tres puntitos inyectan la configuración dinámica del switch
+            ...configExtraTabla
         });
 
         // 4. Descargar
-        pdf.save(`Planilla_Comision_${filtroComision || 'Todas'}.pdf`);
+        pdf.save(`Planilla_${tipoDescarga}_${comisionSeleccionada || 'Todas'}.pdf`);
 
-        Swal.fire({
-            icon: 'success',
-            title: '¡Planilla generada!',
-            showConfirmButton: false, 
-            timer: 1500 // Se cierra solito después de 1.5 segundos
-        });
+        setTimeout(() => { Swal.close(); }, 1000);
 
     } catch (error) {
         console.error(error);
