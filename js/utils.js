@@ -2,13 +2,12 @@
 import { logoIT, logoUNT } from './assets.js';
 
 export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccionada, tipoDescarga) {
-    const filtroComision = document.getElementById('filterComision').value;
 
-    // Ya no hace falta hacer document.getElementById acá porque ya te llegó por parámetro
+// Filtramos usando el PARÁMETRO, no el document.getElementById
     let alumnosParaDescargar = aspirantesFiltrados;
 
-    if (filtroComision !== "") {
-        alumnosParaDescargar = aspirantesFiltrados.filter(a => String(a.comision) === String(filtroComision));
+    if (comisionSeleccionada !== "") {
+        alumnosParaDescargar = aspirantesFiltrados.filter(a => String(a.comision) === String(comisionSeleccionada));
     }
 
     if (alumnosParaDescargar.length === 0) {
@@ -31,64 +30,69 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         // =========================================================
         // EL SWITCH MÁGICO
         // =========================================================
+// =========================================================
+        // EL SWITCH MÁGICO
+        // =========================================================
         switch (tipoDescarga) {
 
             case 'alumnos':
                 tituloPrincipal = "PLANILLA DE ALUMNOS";
 
                 if (comisionSeleccionada) {
-                    cabeceras = [['DNI', 'Apellido', 'Nombre']];
-                    filas = alumnosParaDescargar.map(a => [a.dni, a.apellido, a.nombre]);
+                    cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre']];
+                    // Agregamos (a, index) y ponemos index + 1 al principio
+                    filas = alumnosParaDescargar.map((a, index) => [index + 1, a.dni, a.apellido, a.nombre]);
                 } else {
-                    cabeceras = [['DNI', 'Apellido', 'Nombre', 'Comision']];
-                    filas = alumnosParaDescargar.map(a => [a.dni, a.apellido, a.nombre, a.comision]);
+                    cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre', 'Comision']];
+                    filas = alumnosParaDescargar.map((a, index) => [index + 1, a.dni, a.apellido, a.nombre, a.comision]);
                 }
                 configExtraTabla = {
-                    styles: { fontSize: 9, cellPadding: 1 },
+                    styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] },
+                    // Le damos un ancho chiquito al contador para que no robe espacio
+                    columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
                 };
-
-
                 break;
 
             case 'semanal':
                 tituloPrincipal = "ASISTENCIA SEMANAL";
-                // Agregamos columnas vacías para que el profe marque los días
-                cabeceras = [['Apellido y Nombre', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Observaciones']];
-                filas = alumnosParaDescargar.map(a => [`${a.apellido}, ${a.nombre}`, '', '', '', '', '', '']);
+                cabeceras = [['Nº', 'Apellido y Nombre', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Observaciones']];
+                filas = alumnosParaDescargar.map((a, index) => [index + 1, `${a.apellido}, ${a.nombre}`, '', '', '', '', '', '']);
 
                 configExtraTabla = {
-                    styles: { fontSize: 9, cellPadding: 1 },
+                    styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] },
+                    columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
                 };
                 break;
 
             case 'mensual':
                 tituloPrincipal = "ASISTENCIA MENSUAL - Mes: ...................";
-                // Planilla intensiva: DNI, Nombre y 20 celdas chiquitas para días hábiles
-                cabeceras = [['Apellido y Nombre', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31']];
-                filas = alumnosParaDescargar.map(a => [`${a.apellido}, ${a.nombre}`, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-
+                cabeceras = [['Nº', 'Apellido y Nombre', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31']];
+                // Hacemos que el map devuelva el número de fila, el nombre y los espacios vacíos correspondientes
+                filas = alumnosParaDescargar.map((a, index) => [
+                    index + 1, 
+                    `${a.apellido}, ${a.nombre}`, 
+                    ...Array(31).fill('') // Truco para generar los 31 espacios vacíos dinámicamente y no hardcodear comillas
+                ]);
 
                 orientacion = 'l';
 
-// 1. Definimos los anchos fijos de las primeras dos columnas
+                // CORRIMOS LOS ÍNDICES PORQUE AHORA HAY UNA COLUMNA NUEVA AL PRINCIPIO
                 let anchosColumnasMensual = {
-                    0: { cellWidth: 45 }  // Apellido y Nombre
+                    0: { cellWidth: 8, halign: 'center' }, // Índice 0: El contador (Nº)
+                    1: { cellWidth: 45 }                   // Índice 1: Apellido y Nombre
                 };
 
-                // 2. Bucle automático para asignar el mismo ancho (ej: 6.5 mm) del 2 al 32 (los 31 días)
-                // De esta forma todos los días miden exactamente lo mismo y entran perfecto en la hoja
-                for (let i = 1; i <= 32; i++) {
+                // Del índice 2 al 32 están las celdas de los 31 días
+                for (let i = 2; i <= 32; i++) {
                     anchosColumnasMensual[i] = { cellWidth: 7.2, halign: 'center' };
                 }
 
                 configExtraTabla = {
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'middle' }, 
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'middle', lineColor: [0, 0, 0] },
                     columnStyles: anchosColumnasMensual
                 };
                 break;
-
         }
-
 
         const pdf = new jsPDF(orientacion, 'mm', 'a4');
 
@@ -125,16 +129,19 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         // AUTO-TABLE
         // =========================================================
         pdf.autoTable({
+            
             head: cabeceras,
             body: filas,
             startY: 42,
             theme: 'grid',
-            headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center' },
-            styles: { fontSize: 10, cellPadding: 2, valign: 'middle' },
+            headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center', lineWidth: 0.3 },
+            styles: {
+                fontSize: 10, cellPadding: 2, valign: 'middle' 
+            },
             alternateRowStyles: { fillColor: [245, 245, 245] },
-
+            
             // Los tres puntitos inyectan la configuración dinámica del switch
-            ...configExtraTabla
+            ...configExtraTabla,
         });
 
         // 4. Descargar

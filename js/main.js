@@ -43,6 +43,26 @@ function orquestarFiltros() {
 // =================================================================
 document.addEventListener('DOMContentLoaded', function () {
 
+    // =================================================================
+    // ESCUCHADOR A PRUEBA DE BALAS: FILTRO DE SEMANAS
+    // =================================================================
+    document.addEventListener('change', (e) => {
+        // Verificamos si el elemento que cambió fue exactamente nuestro select
+        if (e.target && e.target.id === 'filtro-semana-cronograma') {
+
+            const semanaSeleccionada = e.target.value;
+
+            // 1. Recuperamos los eventos del sessionStorage
+            const eventosGuardados = JSON.parse(sessionStorage.getItem('eventosGlobales') || '[]');
+
+            // 2. Volvemos a renderizar la tabla
+            // ATENCIÓN: Si renderizarTablaCronograma está importada dentro de un 
+            // objeto UI (como vi que usabas antes), cambialo a UI.renderizarTablaCronograma
+            UI.renderizarTablaCronograma(eventosGlobales, semanaSeleccionada);
+        }
+    });
+
+
     // --- 1. VERIFICACIÓN Y ORQUESTACIÓN DE SESIÓN ---
     const sesion = Auth.verificarSesionPrevia();
 
@@ -66,7 +86,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         orquestarFiltros();
         UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
-        UI.inicializarCalendario(eventosGlobales);
+        Api.cargarDatosPlanificacion();
+
     } else {
 
         // 1. Limpiamos cualquier basura que haya quedado en memoria
@@ -80,6 +101,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     // --- 2. EVENT LISTENERS GENERALES ---
+
+
 
     // inicio y cierre de sesion
     document.getElementById('loginForm').addEventListener('submit', iniciarSesion); // (O Auth.iniciarSesion si la moviste)
@@ -131,8 +154,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    // Función centralizada para preparar los datos antes de imprimir
-    function prepararYDescargar(tipoDescarga) {
+// Función centralizada para preparar los datos antes de imprimir
+    async function prepararYDescargar(tipoDescarga) {
         const comisionSeleccionada = document.getElementById("filterComision").value;
 
         if (!aspirantesGlobales || aspirantesGlobales.length === 0) {
@@ -149,8 +172,37 @@ document.addEventListener('DOMContentLoaded', function () {
             return a.nombre.localeCompare(b.nombre);
         });
 
-        // Llamamos a la función maestra pasándole el tipo
-        Utils.descargarPlanillaPDF(alumnosAProcesar, comisionSeleccionada, tipoDescarga);
+        // Verificamos si seleccionó "Todas" (valor vacío)
+        if (comisionSeleccionada === "") {
+            
+            // Avisamos al usuario que esto va a demorar un poquito
+            Swal.fire({
+                title: 'Generando lotes...',
+                text: 'Se descargarán 10 archivos consecutivos. Por favor, permití las descargas múltiples si el navegador te lo pide.',
+                icon: 'info',
+                timer: 3000,
+                showConfirmButton: false
+            });
+
+            // Esperamos 3 segundos para que lea el mensaje antes de arrancar
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Bucle del 1 al 10
+            for (let i = 1; i <= 10; i++) {
+                // Llamamos a la función maestra forzando la comisión actual (i)
+                Utils.descargarPlanillaPDF(alumnosAProcesar, String(i), tipoDescarga);
+                
+                // Ponemos una pausa de 1.5 segundos entre cada descarga
+                // para que el navegador no bloquee las descargas masivas y no se rompa el SweetAlert
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            
+            Swal.fire('¡Listo!', 'Se descargaron las 10 planillas.', 'success');
+
+        } else {
+            // Modo normal: descarga solo la comisión que eligió
+            Utils.descargarPlanillaPDF(alumnosAProcesar, comisionSeleccionada, tipoDescarga);
+        }
     }
 
     // Escuchadores de los 3 botones del modal
@@ -159,27 +211,27 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('btnDescargarAsistenciaMensual').addEventListener('click', () => prepararYDescargar('mensual'));
 
 
-// =================================================================
-// ACTUALIZAR TEXTO DEL MODAL DE DESCARGAS ANTES DE ABRIRSE
-// =================================================================
-const modalDescargas = document.getElementById('modalOpcionesDescarga');
+    // =================================================================
+    // ACTUALIZAR TEXTO DEL MODAL DE DESCARGAS ANTES DE ABRIRSE
+    // =================================================================
+    const modalDescargas = document.getElementById('modalOpcionesDescarga');
 
-if (modalDescargas) {
-    modalDescargas.addEventListener('show.bs.modal', () => {
-        // 1. Leemos qué comisión está seleccionada en el filtro principal
-        const comisionSeleccionada = document.getElementById("filterComision").value;
-        
-        // 2. Apuntamos al párrafo que creaste en el modal
-        const textoComision = document.getElementById("comision-seleccionada-modal");
+    if (modalDescargas) {
+        modalDescargas.addEventListener('show.bs.modal', () => {
+            // 1. Leemos qué comisión está seleccionada en el filtro principal
+            const comisionSeleccionada = document.getElementById("filterComision").value;
 
-        // 3. Modificamos el texto dinámicamente
-        if (comisionSeleccionada === "") {
-            textoComision.innerHTML = `<strong>Comisión seleccionada:</strong> Todas`;
-        } else {
-            textoComision.innerHTML = `<strong>Comisión seleccionada:</strong> ${comisionSeleccionada}`;
-        }
-    });
-}
+            // 2. Apuntamos al párrafo que creaste en el modal
+            const textoComision = document.getElementById("comision-seleccionada-modal");
+
+            // 3. Modificamos el texto dinámicamente
+            if (comisionSeleccionada === "") {
+                textoComision.innerHTML = `<strong>Comisión seleccionada:</strong> Todas`;
+            } else {
+                textoComision.innerHTML = `<strong>Comisión seleccionada:</strong> ${comisionSeleccionada}`;
+            }
+        });
+    }
 
 
 
@@ -358,7 +410,7 @@ async function iniciarSesion(e) {
             // 4. Llenar tus variables globales locales del main
             usuarioActual = data.perfil;
             aspirantesGlobales = data.datos;
-            eventosGlobales = data.calendario;
+            //eventosGlobales = data.calendario;
             permisosDocentes = data.permisos_materias;    //permisos_materias viene del backend. en el frontend se traduce a permisosDocentes
 
             // 5. Configurar Interfaz (Delega a UI)
@@ -373,7 +425,7 @@ async function iniciarSesion(e) {
             // 6. Disparar dibujados
             orquestarFiltros();
             UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
-            UI.inicializarCalendario(eventosGlobales);
+            Api.cargarDatosPlanificacion();
 
         } else {
             alert(data.mensaje); // Login incorrecto

@@ -1,9 +1,12 @@
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwdzr5LeDwwd-I6XKHCLlwqjA3qcSlppxGGAMMXvBKKpA9A40w1WGzVIzmXN2sk-zyv6g/exec';
+import * as UI from './ui.js';
 
-export async function peticionLogin(email, clave) {
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwCBucP0mVJYRGke_34enbucw8Th23EHiPoqP9mAmYmK34KkXCbuOzFgtCAWi6F_MNcvg/exec';
+
+export async function peticionLogin(usuario, clave) {
     const peticion = {
         accion: 'login',
-        email: email,
+        usuario: usuario,
         clave: clave
     };
 
@@ -32,7 +35,7 @@ export async function enviarNotasAlServidor(payloadDatos) {
             // Fetch en GAS requiere que sea text/plain o form-urlencoded a veces para evitar el preflight OPTIONS, 
             // pero si tu setup ya maneja JSON puro, esto va de diez.
             headers: {
-                'Content-Type': 'text/plain;charset=utf-8', 
+                'Content-Type': 'text/plain;charset=utf-8',
             },
             body: JSON.stringify(payloadDatos)
         });
@@ -46,9 +49,57 @@ export async function enviarNotasAlServidor(payloadDatos) {
 
     } catch (error) {
         console.error("Fallo la petición fetch:", error);
-        return { 
-            exito: false, 
-            mensaje: "Error de red al intentar contactar al servidor. Revisa tu conexión." 
+        return {
+            exito: false,
+            mensaje: "Error de red al intentar contactar al servidor. Revisa tu conexión."
         };
+    }
+}
+
+
+
+// =================================================================
+// SOLICITAR CRONOGRAMA Y CALENDARIO AL SERVIDOR
+// =================================================================
+export async function cargarDatosPlanificacion() {
+    try {
+
+        // Armamos el paquete
+        const paqueteDatos = {
+            accion: 'obtener_planificacion'
+            // Acá luego podés sumar el token: tokenDocente si implementás la seguridad
+        };
+
+        const opciones = {
+            method: 'POST',
+            // Le agregamos el header text/plain que ayuda con el CORS en Apps Script
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify(paqueteDatos)
+        };
+
+        const response = await fetch(GAS_URL, opciones);
+        if (!response.ok) throw new Error("Error de conexión con el servidor.");
+
+        const resultado = await response.json();
+
+        if (resultado.exito) {
+            const eventosFetch = resultado.datos;
+            console.log("¡Llegaron los datos del calendario!", eventosFetch);
+
+            sessionStorage.setItem('eventosGlobales', JSON.stringify(eventosFetch || []));
+
+
+            // Alimentamos las dos vistas con el mismo array
+            UI.inicializarCalendario(eventosFetch);
+            UI.renderizarTablaCronograma(eventosFetch);
+        } else {
+            // EL FIX ESTÁ ACÁ: Solo leemos el mensaje que nos mandó el servidor
+            console.error("Error del backend:", resultado.mensaje);
+        }
+
+    } catch (error) {
+        console.error("Fallo crítico al traer el cronograma:", error);
     }
 }

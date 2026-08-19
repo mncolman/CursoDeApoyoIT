@@ -32,7 +32,6 @@ export function renderTable(data, isExpandedView) {
             <th>Apellido y Nombre</th>
             <th>DNI</th>
             <th>Comisión</th>
-            <th>Turno</th>
             <th>Depto.</th>
             <th>Domicilio</th>
             <th>Tutor (Principal)</th>
@@ -44,7 +43,6 @@ export function renderTable(data, isExpandedView) {
             <th>Apellido y Nombre</th>
             <th>DNI</th>
             <th>Comisión</th>
-            <th>Turno</th>
             <th>Contacto Tutor</th>
             <th class="text-center">Acciones</th>
         `;
@@ -66,7 +64,6 @@ export function renderTable(data, isExpandedView) {
                 <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
-                <td>${asp.turno_cursillo}</td>
                 <td class="text-uppercase">${asp.departamento}</td>
                 <td>${asp.domicilio}</td>
                 <td>${asp.tel1}</td>
@@ -81,7 +78,6 @@ export function renderTable(data, isExpandedView) {
                 <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
-                <td>${asp.turno_cursillo}</td>
                 <td>${asp.tel1}</td>
                  <td class="d-flex justify-content-center">
                  <button class="btn btn-sm btn-outline-primary  btn-abrir-ficha" data-id="${asp.id_inscripcion}">Ver Ficha</button>
@@ -404,15 +400,14 @@ export function renderizarDashboardGeneral(aspirantesGlobales) {
 
 // --- MÓDULO DE CALENDARIO ---
 export function inicializarCalendario(eventosGlobales) {
-    const calendarEl = document.getElementById('calendar'); // Asegurate que tu div tenga id="calendar"
+    const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
 
-    // Le damos colores automáticos según la materia
+    // 1. Le damos colores automáticos según la materia (Tu lógica original)
     const eventosColoreados = eventosGlobales.map(ev => {
         let colorFondo = '#3788d8'; // Azul por defecto
 
-        const materia = ev.extendedProps.materia.toLowerCase();
-        const titulo = ev.title.toLowerCase();
+        const materia = (ev.extendedProps?.materia || '').toLowerCase();
 
         if (materia.includes('matem')) colorFondo = '#dd1226'; // Rojo
         if (materia.includes('lengua')) colorFondo = '#198754'; // Verde
@@ -425,20 +420,40 @@ export function inicializarCalendario(eventosGlobales) {
         };
     });
 
+    // 2. Inicializamos el calendario
     const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        locale: 'es', // Para que esté en español
+        // --- VISTA Y LENGUAJE ---
+        initialView: 'dayGridMonth', // Pasamos a vista semanal para ver los horarios
+        locale: 'es', // Español
+        allDaySlot: false, // Ocultamos la fila de "todo el día"
+        weekends: false, // Ocultamos sábado y domingo (opcional, borralo si hay clases los findes)
+
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,listWeek'
         },
+
+        buttonText: {
+            today: 'Hoy',
+            month: 'Mes',
+            week: 'Semana',
+            list: 'Agenda'
+        },
+
+        // --- FRANJA HORARIA ESTRICTA ---
+        slotMinTime: '16:30:00', // Arranca a las 16:30
+        slotMaxTime: '20:30:00', // Corta a las 20:30
+        slotLabelFormat: {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false // Formato 24hs (16:30 en lugar de 4:30 PM)
+        },
+
         events: eventosColoreados,
 
-
-        // Al hacer clic en un evento, mostramos el detalle (podés cambiarlo por un modal luego)
+        // --- MODAL AL HACER CLIC (Tu diseño original) ---
         eventClick: function (info) {
-            // Capturamos el color del evento para pintar el botón del modal del mismo color
             const colorFondo = info.event.backgroundColor;
 
             // Formateamos la fecha a formato argentino (DD/MM/YYYY)
@@ -452,10 +467,10 @@ export function inicializarCalendario(eventosGlobales) {
                 title: info.event.title,
                 html: `
                     <div style="text-align: left; margin-top: 15px; font-size: 1.1em;">
-                        <p><strong>📚 Materia:</strong> ${info.event.extendedProps.materia}</p>
+                        <p><strong>📚 Materia:</strong> ${info.event.extendedProps.materia || 'No especificada'}</p>
                         <p><strong>📅 Fecha:</strong> <span style="text-transform: capitalize;">${fechaFormateada}</span></p>
                         <hr>
-                        <p><strong>📝 Detalle de la clase:</strong><br> ${info.event.extendedProps.descripcion}</p>
+                        <p><strong>📝 Detalle de la clase:</strong><br> ${info.event.extendedProps.descripcion || 'Sin detalles'}</p>
                     </div>
                 `,
                 icon: 'info',
@@ -470,20 +485,23 @@ export function inicializarCalendario(eventosGlobales) {
                 }
             });
         }
-
-
     });
 
-    // Truco para que FullCalendar se dibuje bien dentro de un Tab de Bootstrap
-    const tabCalendario = document.querySelector('button[data-bs-target="#calendario"]'); // Ajustá el selector si tu botón tiene otro ID o data-bs-target
-    if (tabCalendario) {
-        tabCalendario.addEventListener('shown.bs.tab', () => {
+    // ==========================================
+    // TRUCO: RENDERIZAR AL ABRIR DESDE EL DROPDOWN
+    // ==========================================
+    const botonTabCalendario = document.querySelector('button[data-bs-target="#tab-calendario"]');
+
+    if (botonTabCalendario) {
+        botonTabCalendario.addEventListener('shown.bs.tab', () => {
             calendar.render();
         });
     } else {
-        // Si no estás usando tabs, lo renderizamos directo
+        // Fallback por si carga directo
         calendar.render();
     }
+
+
 }
 
 
@@ -643,4 +661,104 @@ export function inicializarFiltroComisiones(aspirantesGlobales) {
         selectFiltro.dispatchEvent(new Event('change'));
     }
 
+}
+
+
+// =================================================================
+// RENDERIZAR TABLA DE CRONOGRAMA DETALLADO
+// =================================================================
+export function renderizarTablaCronograma(eventosGlobales, filtroSemana = 'todas') {
+    const tbody = document.getElementById('tabla-cronograma-body');
+    if (!tbody) return;
+
+    // 1. Limpiamos el mensaje de "Cargando..."
+    tbody.innerHTML = '';
+
+    // 2. FILTRAMOS POR SEMANA ANTES DE ORDENAR
+    let eventosFiltrados = eventosGlobales;
+
+
+    if (filtroSemana !== 'todas') {
+
+        eventosFiltrados = eventosGlobales.filter(ev => {
+
+            const semanaEvento = ev.extendedProps ? ev.extendedProps.semana : undefined;
+            const coincide = String(semanaEvento) === String(filtroSemana);
+
+            return coincide;
+        });
+    }
+
+    // 3. Ordenamos cronológicamente (vital para formato lista)
+    const eventosOrdenados = [...eventosFiltrados].sort((a, b) => new Date(a.start) - new Date(b.start));
+
+    // 4. Verificamos si hay datos
+    if (eventosOrdenados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <!-- Colspan actualizado a 6 -->
+                <td colspan="6" class="text-center text-muted py-4">
+                    No hay clases programadas para esta semana.
+                </td>
+            </tr>`;
+        return;
+    }
+
+    // 5. Generamos las filas dinámicamente
+    eventosOrdenados.forEach(ev => {
+        const props = ev.extendedProps;
+
+        // Formateamos las fechas y horas para que queden prolijas
+const fechaObj = new Date(ev.start + "T12:00:00");
+
+        const fechaStr = fechaObj.toLocaleDateString('es-AR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit'
+        }); // Ej: mié, 19/08
+
+        //const horaInicio = fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+        //const horaFin = new Date(ev.end).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+        // Extraemos el título del tema
+        let temaClase = ev.title;
+        if (temaClase.includes(' - ')) {
+            temaClase = temaClase.split(' - ')[1];
+        }
+
+
+// 1. Entramos a la mochila de comisiones
+        const comisiones = props.detalleComisiones || [];
+
+        // 2. Extraemos y unimos a los docentes sin repetir
+        let docentesUnidos = "Sin asignar";
+        if (comisiones.length > 0) {
+            // .map saca solo los nombres
+            // new Set(...) elimina los nombres duplicados
+            // .join pega todo con un salto de línea y un emoji para que quede en lista
+            docentesUnidos = [...new Set(comisiones.map(c => c.docente))].join('<br>👤 ');
+        }
+
+
+
+        // Creamos e inyectamos la fila
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="align-middle">
+                <span class="badge bg-secondary px-2 py-1">Semana ${props.semana || '-'}</span>
+            </td>
+            <td>
+                <strong class="text-capitalize">${fechaStr}</strong><br>
+            </td>
+            <td>👤 ${docentesUnidos}</td>
+            <td>📍 ${props.gabinete || 'A definir'}</td>
+            <td>
+                <strong>${props.materia || '-'}</strong><br>
+                <small class="text-muted">${temaClase}</small>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+    //console.log(eventosFiltrados);   
 }

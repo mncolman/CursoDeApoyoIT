@@ -42,3 +42,33 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
+
+
+/* =======================================================
+   AJUSTES DE FULLCALENDAR PARA CELULARES (Responsive)
+   ======================================================= */
+@media (max-width: 768px) {
+    /* 1. Apilamos los tres bloques (izq, centro, der) uno arriba del otro */
+    .fc .fc-header-toolbar {
+        flex-direction: column;
+        gap: 12px; /* Separación entre las filas */
+    }
+    
+    /* 2. Forzamos a que todo quede bien centrado */
+    .fc .fc-toolbar-chunk {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+
+    /* 3. Achicamos el tamaño de la letra del mes (que suele ser gigante) */
+    .fc .fc-toolbar-title {
+        font-size: 1.3rem !important; 
+    }
+
+    /* 4. Reducimos el padding y la fuente de todos los botones */
+    .fc .fc-button {
+        padding: 0.3rem 0.6rem !important;
+        font-size: 0.85rem !important;
+    }
+}

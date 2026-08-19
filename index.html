@@ -35,8 +35,7 @@
                         <form id="loginForm">
                             <section class="mb-3">
                                 <label class="form-label">Correo Electrónico</label>
-                                <input type="email" id="loginEmail" class="form-control" required
-                                    value="">
+                                <input type="email" id="loginEmail" class="form-control" required value="">
                             </section>
                             <section class="mb-4">
                                 <label class="form-label">Contraseña</label>
@@ -79,7 +78,8 @@
         <main class="container-fluid px-0 px-md-4">
 
             <!-- Contenedor del Menú de Pestañas (Responsive) -->
-            <nav class="navbar navbar-expand-lg navbar-light bg-light rounded mb-4 px-3 border">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light rounded mb-4 px-3 border sticky-top "
+                style="z-index: 1050;">
                 <div class="container-fluid px-0">
 
                     <!-- Título visible solo en celulares para dar contexto al menú -->
@@ -101,20 +101,65 @@
                                     data-bs-toggle="pill" data-bs-target="#listado" type="button" role="tab">Listado de
                                     Aspirantes</button>
                             </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link text-start text-lg-center" id="calendario-tab"
-                                    data-bs-toggle="pill" data-bs-target="#calendario" type="button"
-                                    role="tab">Planificación (Calendario)</button>
+
+                            <!-- DROPDOWN: PLANIFICACIÓN -->
+                            <!-- ========================================================= -->
+                            <!-- 🖥️ VERSIÓN ESCRITORIO: Menú Dropdown (Se oculta en celus) -->
+                            <!-- ========================================================= -->
+                            <li class="nav-item dropdown d-none d-lg-block">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarPlanificacion" role="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                    Planificación
+                                </a>
+                                <ul class="dropdown-menu shadow" aria-labelledby="navbarPlanificacion">
+                                    <li>
+                                        <button class="dropdown-item" id="nav-calendario-tab-desktop"
+                                            data-bs-toggle="tab" data-bs-target="#tab-calendario" type="button"
+                                            role="tab">
+                                            📆 Calendario
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item" id="nav-cronograma-tab-desktop"
+                                            data-bs-toggle="tab" data-bs-target="#tab-cronograma" type="button"
+                                            role="tab">
+                                            📋 Cronograma Detallado
+                                        </button>
+                                    </li>
+                                </ul>
                             </li>
+
+                            <!-- ========================================================= -->
+                            <!-- 📱 VERSIÓN MÓVIL: Pestañas directas (Se oculta en compus) -->
+                            <!-- ========================================================= -->
+                            <li class="nav-item d-lg-none">
+                                <button class="nav-link bg-transparent border-0 text-start w-100"
+                                    id="nav-calendario-tab-movil" data-bs-toggle="tab" data-bs-target="#tab-calendario"
+                                    type="button" role="tab">
+                                    Calendario
+                                </button>
+                            </li>
+                            <li class="nav-item d-lg-none">
+                                <button class="nav-link bg-transparent border-0 text-start w-100"
+                                    id="nav-cronograma-tab-movil" data-bs-toggle="tab" data-bs-target="#tab-cronograma"
+                                    type="button" role="tab">
+                                    Cronograma Detallado
+                                </button>
+                            </li>
+
+
+                            <!--
+
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link text-start text-lg-center" id="notas-tab" data-bs-toggle="pill"
                                     data-bs-target="#notas" type="button" role="tab">Carga de Notas</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link text-start text-lg-center" id="trayectoria-tab"
-                                    data-bs-toggle="pill" data-bs-target="#trayectoria" type="button"
-                                    role="tab">Trayectoria Aspirantes</button>
+                                data-bs-toggle="pill" data-bs-target="#trayectoria" type="button"
+                                role="tab">Trayectoria Aspirantes</button>
                             </li>
+                            --->
 
                             <!-- Pestaña exclusiva para directivos -->
                             <li class="nav-item d-none" role="presentation" id="nav-item-dashboard">
@@ -138,7 +183,7 @@
                     <div class="table-wrapper">
 
                         <!-- BARRA DE HERRAMIENTAS Y FILTROS -->
-                        <div class="row g-2 mb-4 align-items-center bg-light p-3 rounded sticky-top shadow-lg"
+                        <div class="row g-2 mb-4 align-items-center bg-light p-3 rounded  shadow-sm"
                             style="top: 15px; z-index: 1000;">
 
                             <!-- Buscador -->
@@ -239,11 +284,74 @@
                 </article>
 
 
+                <!-- ========================================== -->
+                <!-- SUBPESTAÑA 1: CALENDARIO VISUAL               -->
+                <!-- ========================================== -->
+                <div class="tab-pane fade" id="tab-calendario" role="tabpanel" tabindex="0">
+                    <div class="container-fluid mt-3">
+                        <!-- El contenedor que usa FullCalendar -->
+                        <div id="calendar" style="min-height: 800px;"></div>
+                    </div>
+                </div>
+                <!-- ========================================== -->
+                <!-- SUBPESTAÑA 2: CRONOGRAMA DETALLADO         -->
+                <!-- ========================================== -->
+                <div class="tab-pane fade" id="tab-cronograma" role="tabpanel" tabindex="0">
+                    <div class="container-fluid mt-3">
 
-                <!-- PESTAÑA 2: Calendario -->
-                <article class="tab-pane fade" id="calendario" role="tabpanel">
-                    <div id="calendar"></div>
-                </article>
+                        <!-- NUEVO: Contenedor del Filtro por Semana -->
+                        <div class="row mb-3 justify-content-end">
+                            <div class="col-12 col-md-4">
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-light border-0">
+                                        🗓️ Filtrar por
+                                    </span>
+                                    <select class="form-select border-0" id="filtro-semana-cronograma">
+                                        <option value="todas" selected>Todas las semanas</option>
+                                        <option value="1">Semana 1</option>
+                                        <option value="2">Semana 2</option>
+                                        <option value="3">Semana 3</option>
+                                        <option value="4">Semana 4</option>
+                                        <option value="5">Semana 5</option>
+                                        <option value="6">Semana 6</option>
+                                        <option value="7">Semana 7</option>
+                                        <option value="8">Semana 8</option>
+                                        <option value="9">Semana 9</option>
+                                        <option value="10">Semana 10</option>
+                                        <option value="11">Semana 11</option>
+                                        <option value="12">Semana 12</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Cronograma -->
+                        <div class="table-responsive bg-white rounded shadow-sm p-3">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <!-- Nueva columna agregada -->
+                                        <th>Semana</th>
+                                        <th>Fecha y Hora</th>
+                                        <th>Docente</th>
+                                        <th>Espacio / Gabinete</th>
+                                        <th>Actividad del Día</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-cronograma-body">
+                                    <tr>
+                                        <!-- Colspan actualizado a 6 por la nueva columna -->
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            Cargando cronograma...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+
 
 
 
@@ -613,7 +721,7 @@
                 <!-- Cuerpo del Modal (Los 3 Botones) -->
                 <div class="modal-body">
                     <div class="d-grid gap-3 p-2">
-                        
+
                         <p id="comision-seleccionada-modal" class="fs-5 text-center text-dark mb-3"></p>
 
                         <button class="btn btn-outline-dark btn-lg" id="btnDescargarAlumnos">
