@@ -762,3 +762,5 @@ const fechaObj = new Date(ev.start + "T12:00:00");
     });
     //console.log(eventosFiltrados);   
 }
+
+
