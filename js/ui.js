@@ -660,7 +660,7 @@ export function inicializarFiltroComisiones(aspirantesGlobales) {
 // =================================================================
 // RENDERIZAR TABLA DE CRONOGRAMA DETALLADO
 // =================================================================
-export function renderizarTablaCronograma(eventosGlobales, filtroSemana = '1') {
+export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
     const tbody = document.getElementById('tabla-cronograma-body');
     if (!tbody) return;
 
@@ -671,7 +671,7 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana = '1') {
     let eventosFiltrados = eventosGlobales;
 
 
-    if (filtroSemana !== 'todas') {
+    
 
         eventosFiltrados = eventosGlobales.filter(ev => {
 
@@ -680,7 +680,7 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana = '1') {
 
             return coincide;
         });
-    }
+
 
     // 3. Ordenamos cronológicamente (vital para formato lista)
     const eventosOrdenados = [...eventosFiltrados].sort((a, b) => new Date(a.start) - new Date(b.start));
