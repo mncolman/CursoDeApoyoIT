@@ -104,48 +104,48 @@
 
                             <!-- DROPDOWN: PLANIFICACIÓN -->
                             <!-- ========================================================= -->
-                            <!-- 🖥️ VERSIÓN ESCRITORIO: Menú Dropdown (Se oculta en celus) -->
-                            <!-- ========================================================= -->
+                            <!-- 🖥️ VERSIÓN ESCRITORIO: Menú Dropdown (Se oculta en celus) 
+                             
                             <li class="nav-item dropdown d-none d-lg-block">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarPlanificacion" role="button"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
-                                    Planificación
-                                </a>
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                                Planificación
+                            </a>
                                 <ul class="dropdown-menu shadow" aria-labelledby="navbarPlanificacion">
                                     <li>
                                         <button class="dropdown-item" id="nav-calendario-tab-desktop"
-                                            data-bs-toggle="tab" data-bs-target="#tab-calendario" type="button"
-                                            role="tab">
-                                            📆 Calendario
-                                        </button>
-                                    </li>
-                                    <li>
-                                        <button class="dropdown-item" id="nav-cronograma-tab-desktop"
-                                            data-bs-toggle="tab" data-bs-target="#tab-cronograma" type="button"
-                                            role="tab">
-                                            📋 Cronograma Detallado
-                                        </button>
-                                    </li>
-                                </ul>
+                                        data-bs-toggle="tab" data-bs-target="#tab-calendario" type="button"
+                                        role="tab">
+                                        📆 Calendario
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item" id="nav-cronograma-tab-desktop"
+                                    data-bs-toggle="tab" data-bs-target="#tab-cronograma" type="button"
+                                    role="tab">
+                                    📋 Cronograma Detallado
+                                </button>
                             </li>
+                        </ul>
+                    </li>
+                    -->
 
                             <!-- ========================================================= -->
                             <!-- 📱 VERSIÓN MÓVIL: Pestañas directas (Se oculta en compus) -->
                             <!-- ========================================================= -->
-                            <li class="nav-item d-lg-none">
-                                <button class="nav-link bg-transparent border-0 text-start w-100"
-                                    id="nav-calendario-tab-movil" data-bs-toggle="tab" data-bs-target="#tab-calendario"
-                                    type="button" role="tab">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link text-start text-lg-center w-100" id="nav-calendario-tab-movil"
+                                    data-bs-toggle="pill" data-bs-target="#tab-calendario" type="button" role="tab">
                                     Calendario
                                 </button>
                             </li>
-                            <li class="nav-item d-lg-none">
-                                <button class="nav-link bg-transparent border-0 text-start w-100"
-                                    id="nav-cronograma-tab-movil" data-bs-toggle="tab" data-bs-target="#tab-cronograma"
-                                    type="button" role="tab">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link text-start text-lg-center w-100" id="nav-cronograma-tab"
+                                    data-bs-toggle="pill" data-bs-target="#tab-cronograma" type="button" role="tab">
                                     Cronograma Detallado
                                 </button>
                             </li>
+
 
 
                             <!--
@@ -307,8 +307,7 @@
                                         🗓️ Filtrar por
                                     </span>
                                     <select class="form-select border-0" id="filtro-semana-cronograma">
-                                        <option value="todas" selected>Todas las semanas</option>
-                                        <option value="1">Semana 1</option>
+                                        <option value="1" selected>Semana 1</option>
                                         <option value="2">Semana 2</option>
                                         <option value="3">Semana 3</option>
                                         <option value="4">Semana 4</option>

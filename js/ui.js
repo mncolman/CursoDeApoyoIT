@@ -443,7 +443,7 @@ export function inicializarCalendario(eventosGlobales) {
 
         // --- FRANJA HORARIA ESTRICTA ---
         slotMinTime: '16:30:00', // Arranca a las 16:30
-        slotMaxTime: '20:30:00', // Corta a las 20:30
+        slotMaxTime: '21:30:01', // Corta a las 20:30
         slotLabelFormat: {
             hour: '2-digit',
             minute: '2-digit',
@@ -487,20 +487,7 @@ export function inicializarCalendario(eventosGlobales) {
         }
     });
 
-    // ==========================================
-    // TRUCO: RENDERIZAR AL ABRIR DESDE EL DROPDOWN
-    // ==========================================
-    const botonTabCalendario = document.querySelector('button[data-bs-target="#tab-calendario"]');
-
-    if (botonTabCalendario) {
-        botonTabCalendario.addEventListener('shown.bs.tab', () => {
-            calendar.render();
-        });
-    } else {
-        // Fallback por si carga directo
-        calendar.render();
-    }
-
+    calendar.render();
 
 }
 
@@ -667,7 +654,7 @@ export function inicializarFiltroComisiones(aspirantesGlobales) {
 // =================================================================
 // RENDERIZAR TABLA DE CRONOGRAMA DETALLADO
 // =================================================================
-export function renderizarTablaCronograma(eventosGlobales, filtroSemana = 'todas') {
+export function renderizarTablaCronograma(eventosGlobales, filtroSemana = '1') {
     const tbody = document.getElementById('tabla-cronograma-body');
     if (!tbody) return;
 
@@ -709,7 +696,7 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana = 'todas
         const props = ev.extendedProps;
 
         // Formateamos las fechas y horas para que queden prolijas
-const fechaObj = new Date(ev.start + "T12:00:00");
+        const fechaObj = new Date(ev.start + "T12:00:00");
 
         const fechaStr = fechaObj.toLocaleDateString('es-AR', {
             weekday: 'short',
@@ -727,7 +714,7 @@ const fechaObj = new Date(ev.start + "T12:00:00");
         }
 
 
-// 1. Entramos a la mochila de comisiones
+        // 1. Entramos a la mochila de comisiones
         const comisiones = props.detalleComisiones || [];
 
         // 2. Extraemos y unimos a los docentes sin repetir
@@ -760,7 +747,6 @@ const fechaObj = new Date(ev.start + "T12:00:00");
 
         tbody.appendChild(tr);
     });
-    //console.log(eventosFiltrados);   
 }
 
 
