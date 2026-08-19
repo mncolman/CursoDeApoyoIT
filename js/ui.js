@@ -489,6 +489,12 @@ export function inicializarCalendario(eventosGlobales) {
 
     calendar.render();
 
+    // --- NUEVO 2: EL "VIGILANTE" DE TAMAÑO ---
+    // Esto reemplaza a todos los event listeners de Bootstrap.
+    new ResizeObserver(() => {
+        calendar.updateSize();
+    }).observe(calendarEl);
+
 }
 
 
