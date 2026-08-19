@@ -110,6 +110,8 @@ document.addEventListener('DOMContentLoaded', function () {
 // TOGGLE VISIBILIDAD DE CONTRASEÑA
 // =================================================================
 document.getElementById('btnVerClave').addEventListener('click', function () {
+e.preventDefault();
+
     const inputClave = document.getElementById('loginClave');
     const iconoOjo = document.getElementById('iconoOjo');
     
