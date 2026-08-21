@@ -7,6 +7,7 @@ let modoEdicionNotas = false;
 let instanciaActual = 'seguimiento'; // Mantenemos las pestañas para Seguimiento/Ensayo
 let asignaturaActual = ''; // Ahora arranca vacío hasta que elija en el select
 
+
 // Diccionario para traducir lo que manda tu backend a las claves de tu frontend
 const mapaAsignaturas = {
     'Matematica': 'mat',
@@ -428,17 +429,20 @@ export function inicializarCalendario(eventosGlobales) {
         allDaySlot: false, // Ocultamos la fila de "todo el día"
         weekends: false, // Ocultamos sábado y domingo (opcional, borralo si hay clases los findes)
 
+        allDayText: '1° y 2° Turno',
+
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listWeek'
+            right: 'dayGridMonth,listWeek'
         },
 
         buttonText: {
             today: 'Hoy',
             month: 'Mes',
             week: 'Semana',
-            list: 'Agenda'
+            list: 'Agenda',
+
         },
 
         // --- FRANJA HORARIA ESTRICTA ---
@@ -543,6 +547,7 @@ export function actualizarMiniReporte(lista) {   // de tabla aspirantes
 export function renderModalSalud(listaFiltrada) {
     const tbody = document.getElementById('tbodySalud');
     tbody.innerHTML = ''; // Limpiamos
+
 
     if (listaFiltrada.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted p-3">No hay alumnos registrados con afecciones de salud.</td></tr>`;
@@ -671,15 +676,15 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
     let eventosFiltrados = eventosGlobales;
 
 
-    
 
-        eventosFiltrados = eventosGlobales.filter(ev => {
 
-            const semanaEvento = ev.extendedProps ? ev.extendedProps.semana : undefined;
-            const coincide = String(semanaEvento) === String(filtroSemana);
+    eventosFiltrados = eventosGlobales.filter(ev => {
 
-            return coincide;
-        });
+        const semanaEvento = ev.extendedProps ? ev.extendedProps.semana : undefined;
+        const coincide = String(semanaEvento) === String(filtroSemana);
+
+        return coincide;
+    });
 
 
     // 3. Ordenamos cronológicamente (vital para formato lista)

@@ -1,6 +1,6 @@
 
 // --- archivo: filters.js ---
-export function filtrarYOrdenar(listaOriginal, search, comision, sortMethod) {
+export function filtrarYOrdenar(listaOriginal, search, comision, sortMethod, turno) {
     // 1. Filtrado
     let filteredData = listaOriginal.filter(asp => {
         // (Asegurate de tener quitarAcentos disponible en este archivo)
@@ -13,7 +13,13 @@ export function filtrarYOrdenar(listaOriginal, search, comision, sortMethod) {
 
         const matchComision = (comision === "") || (String(asp.comision) === comision);
 
-        return matchSearch && matchComision;
+        // --- NUEVO: Validamos el turno ---
+        // ATENCIÓN: Asumo que en tu JSON/BD la propiedad se llama "turno". 
+        // Si se llama distinto (ej: asp.horario), cambialo acá.
+        const matchTurno = (!turno || turno === "") || (String(asp.turno_cursillo) === turno);
+
+        // Devolvemos true solo si cumple TODAS las condiciones
+        return matchSearch && matchComision && matchTurno;
     });
 
     // 2. Ordenamiento
@@ -33,8 +39,6 @@ export function filtrarYOrdenar(listaOriginal, search, comision, sortMethod) {
 
     return filteredData; // <-- Solo devuelve la lista procesada
 }
-
-
 
 
 // Función para eliminar acentos y diacríticos

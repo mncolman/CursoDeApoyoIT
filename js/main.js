@@ -20,19 +20,19 @@ let isExpandedView = false;
 // 2. funcion puente para invocar filtros
 // =================================================================
 function orquestarFiltros() {
-    // 1. Leemos qué quiere el usuario (El estado actual del DOM)
     const searchRaw = document.getElementById('searchInput').value.toLowerCase();
-    // (Podes llamar a quitarAcentos acá si la tenés exportada, o mandarlo raw)
     const search = searchRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
     const comision = document.getElementById('filterComision').value;
     const sortMethod = document.getElementById('sortSelect').value;
+    const turno = document.getElementById('turnoSelect').value;
 
-    // 2. Mandamos a calcular (Lógica pura)
-    const listaFiltrada = Filtros.filtrarYOrdenar(aspirantesGlobales, search, String(comision), sortMethod);
+    const listaFiltrada = Filtros.filtrarYOrdenar(aspirantesGlobales, search, String(comision), sortMethod, turno);
 
-    // 3. Mandamos a dibujar (Vista pura)
     UI.actualizarMiniReporte(listaFiltrada);
-    UI.renderTable(listaFiltrada, isExpandedView); // Pasale la variable extra isExpandedView si la necesita
+    UI.renderTable(listaFiltrada, isExpandedView); 
+    
+    return listaFiltrada;
 }
 
 
@@ -62,6 +62,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+
+    document.getElementById('btnDescargarSalud').addEventListener('click', () => {
+        // Si ya tenés la lista filtrada guardada en memoria, se la pasás directo
+        const alumnosConSalud = aspirantesGlobales.filter(a => (a.enfermedad).trim() !== '');
+        Utils.descargarPlanillaSaludPDF(alumnosConSalud);
+    });
+
+
+const turnoSelect = document.getElementById('turnoSelect');
+    if (turnoSelect) {
+        turnoSelect.addEventListener('change', orquestarFiltros);
+    }
 
     // --- 1. VERIFICACIÓN Y ORQUESTACIÓN DE SESIÓN ---
     const sesion = Auth.verificarSesionPrevia();
@@ -105,41 +117,41 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-/*
-// =================================================================
-// TOGGLE VISIBILIDAD DE CONTRASEÑA (Protegido con DOMContentLoaded)
-// =================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    
-    const btnVerClave = document.getElementById('btnVerClave');
-    
-    // Verificamos que el botón realmente exista en esta página
-    if (btnVerClave) {
-        btnVerClave.addEventListener('click', function (e) {
-            
-            // Escudo anti-celulares: evita que el input pierda el foco
-            e.preventDefault(); 
-            
-            const inputClave = document.getElementById('loginClave');
-            const iconoOjo = document.getElementById('iconoOjo');
-            
-            if (inputClave.type === 'password') {
-                inputClave.type = 'text';
-                iconoOjo.innerHTML = `
-                    <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l-.708-.709z"/>
-                    <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
-                    <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
-                `;
-            } else {
-                inputClave.type = 'password';
-                iconoOjo.innerHTML = `
-                    <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
-                    <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
-                `;
-            }
-        });
-    }
-});*/
+    /*
+    // =================================================================
+    // TOGGLE VISIBILIDAD DE CONTRASEÑA (Protegido con DOMContentLoaded)
+    // =================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        const btnVerClave = document.getElementById('btnVerClave');
+        
+        // Verificamos que el botón realmente exista en esta página
+        if (btnVerClave) {
+            btnVerClave.addEventListener('click', function (e) {
+                
+                // Escudo anti-celulares: evita que el input pierda el foco
+                e.preventDefault(); 
+                
+                const inputClave = document.getElementById('loginClave');
+                const iconoOjo = document.getElementById('iconoOjo');
+                
+                if (inputClave.type === 'password') {
+                    inputClave.type = 'text';
+                    iconoOjo.innerHTML = `
+                        <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l-.708-.709z"/>
+                        <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
+                        <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
+                    `;
+                } else {
+                    inputClave.type = 'password';
+                    iconoOjo.innerHTML = `
+                        <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                        <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                    `;
+                }
+            });
+        }
+    });*/
 
 
 
@@ -193,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-// Función centralizada para preparar los datos antes de imprimir
+    // Función centralizada para preparar los datos antes de imprimir
     async function prepararYDescargar(tipoDescarga) {
         const comisionSeleccionada = document.getElementById("filterComision").value;
 
@@ -202,18 +214,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let alumnosAProcesar = [...aspirantesGlobales];
+        let alumnosAProcesar = orquestarFiltros();
 
-        // Ordenamiento estricto para impresión (Apellido -> Nombre)
-        alumnosAProcesar.sort((a, b) => {
-            let comparacionApellido = a.apellido.localeCompare(b.apellido);
-            if (comparacionApellido !== 0) return comparacionApellido;
-            return a.nombre.localeCompare(b.nombre);
-        });
-
+        /*
         // Verificamos si seleccionó "Todas" (valor vacío)
         if (comisionSeleccionada === "") {
-            
+
             // Avisamos al usuario que esto va a demorar un poquito
             Swal.fire({
                 title: 'Generando lotes...',
@@ -230,18 +236,18 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let i = 1; i <= 10; i++) {
                 // Llamamos a la función maestra forzando la comisión actual (i)
                 Utils.descargarPlanillaPDF(alumnosAProcesar, String(i), tipoDescarga);
-                
+
                 // Ponemos una pausa de 1.5 segundos entre cada descarga
                 // para que el navegador no bloquee las descargas masivas y no se rompa el SweetAlert
                 await new Promise(resolve => setTimeout(resolve, 1500));
-            }
-            
+            } 
             Swal.fire('¡Listo!', 'Se descargaron las 10 planillas.', 'success');
+                
+            */
 
-        } else {
             // Modo normal: descarga solo la comisión que eligió
             Utils.descargarPlanillaPDF(alumnosAProcesar, comisionSeleccionada, tipoDescarga);
-        }
+        
     }
 
     // Escuchadores de los 3 botones del modal
