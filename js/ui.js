@@ -710,7 +710,7 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
         const fechaObj = new Date(ev.start + "T12:00:00");
 
         const fechaStr = fechaObj.toLocaleDateString('es-AR', {
-            weekday: 'short',
+            weekday: 'long',
             day: '2-digit',
             month: '2-digit'
         }); // Ej: mié, 19/08
@@ -728,31 +728,59 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
         // 1. Entramos a la mochila de comisiones
         const comisiones = props.detalleComisiones || [];
 
-        // 2. Extraemos y unimos a los docentes sin repetir
-        let docentesUnidos = "Sin asignar";
+
+        // 2. Extraemos y agrupamos docentes, aulas y comisiones
+        let listadoDocentesGabinete = "Sin asignar";
+
         if (comisiones.length > 0) {
-            // .map saca solo los nombres
-            // new Set(...) elimina los nombres duplicados
-            // .join pega todo con un salto de línea y un emoji para que quede en lista
-            docentesUnidos = [...new Set(comisiones.map(c => c.docente))].join('<br>👤 ');
+            // 2.1 Agrupamos con reduce()
+            const agrupados = comisiones.reduce((acumulador, c) => {
+                // Armamos el texto base que servirá como identificador único
+                const clave = `👤 ${c.docente}  (${c.aula || 'Sin aula'})`;
+
+                // Si este docente+aula todavía no existe en el acumulador, lo creamos
+                if (!acumulador[clave]) {
+                    acumulador[clave] = [];
+                }
+
+                // Le guardamos la comisión adentro de su lista
+                acumulador[clave].push(c.comision);
+
+                return acumulador;
+            }, {}); // {} es el acumulador inicial vacío
+
+            // 2.2 Transformamos ese objeto agrupado en el texto final
+            // Object.entries convierte el objeto en un array para poder recorrerlo
+            const lineas = Object.entries(agrupados).map(([datosDocente, arrayComisiones]) => {
+                // arrayComisiones tiene ej: [1, 2, 3]. Lo unimos con comas.
+                return `Com. ${arrayComisiones.join(', ')} - ${datosDocente}`;
+            });
+
+            // 2.3 Unimos cada grupo con un salto de línea
+            listadoDocentesGabinete = lineas.join('<br>');
         }
 
-
-
-        // Creamos e inyectamos la fila
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="align-middle">
-                <span class="badge bg-secondary px-2 py-1">Semana ${props.semana || '-'}</span>
+            <td class="align-middle text-nowrap">
+                <span class="badge fondo_azul_institucional px-2 py-1">Semana ${props.semana || '-'}</span>
             </td>
-            <td>
+            
+            <!-- Le clavamos text-nowrap para que los horarios no se partan -->
+            <td class="text-nowrap">
                 <strong class="text-capitalize">${fechaStr}</strong><br>
+                <small class="text-muted">1º - 17:00 a 18:20</small><br>
+                <small class="text-muted">2º - 18:50 a 20:10</small>
             </td>
-            <td>👤 ${docentesUnidos}</td>
-            <td>📍 ${props.gabinete || 'A definir'}</td>
-            <td>
+            
+            <!-- text-nowrap para que el profe y el aula queden en una sola línea -->
+            <td class="text-nowrap">${listadoDocentesGabinete}</td>
+            
+            <!-- A este lo dejamos normal para que el texto largo del tema sí pueda acomodarse un poco -->
+            <td class="text-nowrap">
                 <strong>${props.materia || '-'}</strong><br>
-                <small class="text-muted">${temaClase}</small>
+                <small class="text-muted">${temaClase}</small> - 
+                <small class="text-muted">${props.descripcion}</small>
             </td>
         `;
 

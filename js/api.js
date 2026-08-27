@@ -1,7 +1,7 @@
 import * as UI from './ui.js';
 
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwCBucP0mVJYRGke_34enbucw8Th23EHiPoqP9mAmYmK34KkXCbuOzFgtCAWi6F_MNcvg/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyLEOeL6pKxxxYXTl9uWqwwAfLP67TsLuM44w4XWxCHAJWaRbZ17JAiztvXZhs5FXKtHQ/exec';
 
 export async function peticionLogin(usuario, clave) {
     const peticion = {
@@ -57,49 +57,34 @@ export async function enviarNotasAlServidor(payloadDatos) {
 }
 
 
-
-// =================================================================
-// SOLICITAR CRONOGRAMA Y CALENDARIO AL SERVIDOR
-// =================================================================
 export async function cargarDatosPlanificacion() {
     try {
-
-        // Armamos el paquete
-        const paqueteDatos = {
-            accion: 'obtener_planificacion'
-            // Acá luego podés sumar el token: tokenDocente si implementás la seguridad
-        };
-
+        const paqueteDatos = { accion: 'obtener_planificacion' };
         const opciones = {
             method: 'POST',
-            // Le agregamos el header text/plain que ayuda con el CORS en Apps Script
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8'
-            },
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(paqueteDatos)
         };
 
         const response = await fetch(GAS_URL, opciones);
-        if (!response.ok) throw new Error("Error de conexión con el servidor.");
+        if (!response.ok) throw new Error("Error de conexión");
 
         const resultado = await response.json();
 
         if (resultado.exito) {
             const eventosFetch = resultado.datos;
-            console.log("¡Llegaron los datos del calendario!", eventosFetch);
-
             sessionStorage.setItem('eventosGlobales', JSON.stringify(eventosFetch || []));
 
-
-            // Alimentamos las dos vistas con el mismo array
             UI.inicializarCalendario(eventosFetch);
-            UI.renderizarTablaCronograma(eventosFetch);
+
+            return eventosFetch;
         } else {
-            // EL FIX ESTÁ ACÁ: Solo leemos el mensaje que nos mandó el servidor
             console.error("Error del backend:", resultado.mensaje);
+            return [];
         }
 
     } catch (error) {
-        console.error("Fallo crítico al traer el cronograma:", error);
+        console.error("Fallo crítico:", error);
+        return [];
     }
 }

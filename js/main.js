@@ -22,7 +22,7 @@ let isExpandedView = false;
 function orquestarFiltros() {
     const searchRaw = document.getElementById('searchInput').value.toLowerCase();
     const search = searchRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
+
     const comision = document.getElementById('filterComision').value;
     const sortMethod = document.getElementById('sortSelect').value;
     const turno = document.getElementById('turnoSelect').value;
@@ -30,10 +30,12 @@ function orquestarFiltros() {
     const listaFiltrada = Filtros.filtrarYOrdenar(aspirantesGlobales, search, String(comision), sortMethod, turno);
 
     UI.actualizarMiniReporte(listaFiltrada);
-    UI.renderTable(listaFiltrada, isExpandedView); 
-    
+    UI.renderTable(listaFiltrada, isExpandedView);
+
     return listaFiltrada;
 }
+
+
 
 
 
@@ -43,24 +45,31 @@ function orquestarFiltros() {
 // =================================================================
 document.addEventListener('DOMContentLoaded', function () {
 
-    // =================================================================
-    // ESCUCHADOR A PRUEBA DE BALAS: FILTRO DE SEMANAS
-    // =================================================================
-    document.addEventListener('change', (e) => {
-        // Verificamos si el elemento que cambió fue exactamente nuestro select
-        if (e.target && e.target.id === 'filtro-semana-cronograma') {
+// 1. Buscamos el select usando el ID real que me acabas de mostrar
+    const selectSemana = document.getElementById('filtro-semana-cronograma'); 
+    
+    // 2. Escuchamos el cambio manual del select
+    if (selectSemana) {
+        selectSemana.addEventListener('change', () => {
+            UI.renderizarTablaCronograma(eventosGlobales, selectSemana.value);
+        });
+    }
 
-            const semanaSeleccionada = e.target.value;
+    // 3. Cuando el usuario entra a la pestaña, forzamos el redibujado
+    // (Asegurate de que 'tab-cronograma' sea el ID de tu botón/enlace de la pestaña)
+    const botonPestanaCronograma = document.getElementById('tab-cronograma');
+    if (botonPestanaCronograma) {
+        botonPestanaCronograma.addEventListener('shown.bs.tab', () => {
+            if (eventosGlobales && eventosGlobales.length > 0 && selectSemana) {
+                UI.renderizarTablaCronograma(eventosGlobales, selectSemana.value);
+            }
+        });
+    }
 
-            // 1. Recuperamos los eventos del sessionStorage
-            const eventosGuardados = JSON.parse(sessionStorage.getItem('eventosGlobales') || '[]');
 
-            // 2. Volvemos a renderizar la tabla
-            // ATENCIÓN: Si renderizarTablaCronograma está importada dentro de un 
-            // objeto UI (como vi que usabas antes), cambialo a UI.renderizarTablaCronograma
-            UI.renderizarTablaCronograma(eventosGlobales, semanaSeleccionada);
-        }
-    });
+
+
+
 
 
     document.getElementById('btnDescargarSalud').addEventListener('click', () => {
@@ -70,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 
-const turnoSelect = document.getElementById('turnoSelect');
+    const turnoSelect = document.getElementById('turnoSelect');
     if (turnoSelect) {
         turnoSelect.addEventListener('change', orquestarFiltros);
     }
@@ -99,6 +108,17 @@ const turnoSelect = document.getElementById('turnoSelect');
         orquestarFiltros();
         UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
         Api.cargarDatosPlanificacion();
+
+        // 2. FORZAMOS EL DIBUJADO INICIAL
+        // (Asegurate de que 'filtroSemana' sea el ID real de tu <select> de semanas en el HTML)
+        const selectSemana = document.getElementById('filtro-semana-cronograma');
+        if (selectSemana) {
+            // Le decimos al select que se ponga en la "Semana 1" por defecto (o el value que uses)
+            selectSemana.value = "3";
+
+            // Disparamos el evento para que tu código reaccione y dibuje la tabla
+            selectSemana.dispatchEvent(new Event('change'));
+        }
 
     } else {
 
@@ -245,9 +265,9 @@ const turnoSelect = document.getElementById('turnoSelect');
                 
             */
 
-            // Modo normal: descarga solo la comisión que eligió
-            Utils.descargarPlanillaPDF(alumnosAProcesar, comisionSeleccionada, tipoDescarga);
-        
+        // Modo normal: descarga solo la comisión que eligió
+        Utils.descargarPlanillaPDF(alumnosAProcesar, comisionSeleccionada, tipoDescarga);
+
     }
 
     // Escuchadores de los 3 botones del modal
@@ -470,7 +490,14 @@ async function iniciarSesion(e) {
             // 6. Disparar dibujados
             orquestarFiltros();
             UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
-            Api.cargarDatosPlanificacion();
+
+            eventosGlobales = await Api.cargarDatosPlanificacion();
+
+
+            const selectSemana = document.getElementById('filtro-semana-cronograma'); // <-- Asegurate de poner el ID correcto de tu select
+            if (selectSemana) {
+                selectSemana.dispatchEvent(new Event('change'));
+            }
 
         } else {
             alert(data.mensaje); // Login incorrecto

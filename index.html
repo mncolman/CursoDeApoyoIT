@@ -296,7 +296,7 @@
                 <div class="tab-pane fade" id="tab-calendario" role="tabpanel" tabindex="0">
                     <div class="container-fluid mt-3">
                         <!-- El contenedor que usa FullCalendar -->
-                        <div id="calendar" style="min-height: 800px;"></div>
+                        <div id="calendar" style="min-height: 600px;"></div>
                     </div>
                 </div>
                 <!-- ========================================== -->
@@ -313,9 +313,9 @@
                                         🗓️ Filtrar por
                                     </span>
                                     <select class="form-select border-0" id="filtro-semana-cronograma">
-                                        <option value="1" selected>Semana 1</option>
+                                        <option value="1" >Semana 1</option>
                                         <option value="2">Semana 2</option>
-                                        <option value="3">Semana 3</option>
+                                        <option value="3" selected>Semana 3</option>
                                         <option value="4">Semana 4</option>
                                         <option value="5">Semana 5</option>
                                         <option value="6">Semana 6</option>
@@ -338,15 +338,14 @@
                                         <!-- Nueva columna agregada -->
                                         <th>Semana</th>
                                         <th>Fecha y Hora</th>
-                                        <th>Docente</th>
-                                        <th>Espacio / Gabinete</th>
+                                        <th>Docente y comisiones</th>                                      
                                         <th>Actividad del Día</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabla-cronograma-body">
                                     <tr>
                                         <!-- Colspan actualizado a 6 por la nueva columna -->
-                                        <td colspan="6" class="text-center text-muted py-4">
+                                        <td colspan="5" class="text-center text-muted py-4">
                                             Cargando cronograma...
                                         </td>
                                     </tr>
@@ -772,7 +771,7 @@
                         <table class="table table-striped table-hover align-middle mb-0">
                             <thead class="table-primary">
                                 <tr>
-                                    <th>Nº inscripcion</th>
+                                    <th>Nº ins.</th>
                                     <th>Nombre Completo</th>
                                     <th>DNI</th>
                                     <th>Comisión</th>
