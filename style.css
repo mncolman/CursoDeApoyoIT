@@ -75,3 +75,248 @@ body {
         font-size: 0.85rem !important;
     }
 }
+
+
+
+
+
+/* 1. Evitar que los textos y números de los días sean links azules */
+.fc a {
+    color: #333333 !important; /* Gris oscuro para que sea súper legible */
+    text-decoration: none !important;
+}
+
+.fc a:hover {
+    color: #00305d !important; /* Tu azul institucional cuando pasan el mouse */
+}
+
+/* 2. Sobrescribir los botones del calendario (Mes, Semana, Hoy, flechas) */
+:root {
+    --fc-button-bg-color: #00305d;
+    --fc-button-border-color: #00305d;
+    --fc-button-hover-bg-color: #001f3f;
+    --fc-button-hover-border-color: #001f3f;
+    --fc-button-active-bg-color: #001226;
+    --fc-button-active-border-color: #001226;
+    
+    /* Color de la línea indicadora de la hora actual en la vista agenda */
+    --fc-now-indicator-color: #dc3545; /* Rojo tipo Bootstrap danger */
+
+    /* Fondo rojo clarito para el día actual (10% de opacidad) */
+    --fc-today-bg-color: rgba(220, 53, 70, 0.26) !important; 
+}
+
+
+
+
+
+/* ==========================================================================
+   PERSONALIZACIÓN DE PESTAÑAS (NAV-PILLS) - COLOR INSTITUCIONAL
+   ========================================================================== */
+
+/* 1. Color de la pestaña ACTIVA (Fondo azul institucional, texto blanco) */
+.nav-pills .nav-link.active, 
+.nav-pills .nav-link.active:hover,
+.nav-pills .nav-link.active:focus,
+.nav-pills .show > .nav-link {
+    background-color: #073a86 !important;
+    color: #ffffff !important;
+}
+
+/* 2. Color del texto de las pestañas INACTIVAS (Gris oscuro por defecto) */
+.nav-pills .nav-link {
+    color: #495057 !important; 
+    font-weight: 500;
+    transition: all 0.3s ease; 
+}
+
+/* 3. HOVER SOLO para las inactivas. 
+   Usamos :not(.active) para no romper la pestaña que ya está pintada de azul sólido */
+.nav-pills .nav-link:not(.active):hover {
+    color: #073a86 !important; 
+    background-color: rgba(7, 58, 134, 0.05) !important; 
+}
+
+/* 4. Cambiar SOLO el color del "anillo" de foco (outline). 
+   Le sacamos el "color: #ffffff" para que no vuelva blanco el texto de las inactivas */
+.nav-pills .nav-link:focus {
+    box-shadow: 0 0 0 0.25rem rgba(7, 58, 134, 0.25) !important; 
+}
+
+
+
+
+/* ==========================================================================
+   BOTÓN OUTLINE ROJO INSTITUCIONAL
+   ========================================================================== */
+
+/* Estado Normal: Letra y borde rojo, fondo transparente */
+.btn-outline-rojo-institucional {
+    color: #c00505; /* Reemplazar por tu rojo institucional */
+    border-color: #c00505;
+    background-color: transparent;
+}
+
+/* Estados Interactivos: Hover (mouse arriba), Focus (teclado), y Show (cuando el dropdown está abierto) */
+.btn-outline-rojo-institucional:hover,
+.btn-outline-rojo-institucional:focus,
+.btn-outline-rojo-institucional:active,
+.show > .btn-outline-rojo-institucional { /* Este es clave para que no se apague al abrir el menú */
+    color: #ffffff !important;
+    background-color: #c00505 !important;
+    border-color: #c00505 !important;
+}
+
+/* El anillo difuminado al hacer clic (opcional para mantener accesibilidad) */
+.btn-outline-rojo-institucional:focus {
+    box-shadow: 0 0 0 0.25rem rgba(158, 27, 29, 0.25) !important; 
+}
+/* ==========================================================================
+   BOTÓN OUTLINE AZUL INSTITUCIONAL
+   ========================================================================== */
+
+/* Estado Normal: Letra y borde azul, fondo transparente */
+.btn-outline-azul-institucional {
+    color: #073a86; 
+    border-color: #073a86;
+    background-color: transparent;
+}
+
+/* Estados Interactivos: Hover, Focus, Active y Show (menú desplegado) */
+.btn-outline-azul-institucional:hover,
+.btn-outline-azul-institucional:focus,
+.btn-outline-azul-institucional:active,
+.show > .btn-outline-azul-institucional {
+    color: #ffffff !important;
+    background-color: #073a86 !important;
+    border-color: #073a86 !important;
+}
+
+/* El anillo difuminado al hacer clic o navegar con teclado */
+.btn-outline-azul-institucional:focus {
+    box-shadow: 0 0 0 0.25rem rgba(7, 58, 134, 0.25) !important; 
+}
+
+/* Cuando el checkbox oculto está "checked" (activado), el label se vuelve azul sólido */
+.btn-check:checked + .btn-outline-azul-institucional,
+.btn-check:active + .btn-outline-azul-institucional {
+    color: #ffffff !important;
+    background-color: #073a86 !important;
+    border-color: #073a86 !important;
+}
+
+/* Para arreglar el anillo de foco si navegan con la tecla TAB sobre el checkbox oculto */
+.btn-check:focus + .btn-outline-azul-institucional {
+    box-shadow: 0 0 0 0.25rem rgba(7, 58, 134, 0.25) !important;
+}
+
+
+
+/* ==========================================================================
+   BOTÓN AZUL INSTITUCIONAL INVERSO (Sólido -> Outline)
+   ========================================================================== */
+
+/* Estado Normal: Fondo azul sólido, texto blanco */
+.btn-azul-institucional-inverso {
+    color: #ffffff; 
+    background-color: #073a86;
+    border-color: #073a86;
+    transition: all 0.3s ease;
+}
+
+/* Estados Interactivos: Hover, Focus, Active y Show (menú desplegado) 
+   Se vuelve fondo transparente (outline) con texto azul */
+.btn-azul-institucional-inverso:hover,
+.btn-azul-institucional-inverso:focus,
+.btn-azul-institucional-inverso:active,
+.show > .btn-azul-institucional-inverso {
+    color: #073a86 !important;
+    background-color: transparent !important; 
+    border-color: #073a86 !important;
+}
+
+/* El anillo difuminado al hacer clic o navegar con teclado */
+.btn-azul-institucional-inverso:focus {
+    box-shadow: 0 0 0 0.25rem rgba(7, 58, 134, 0.25) !important; 
+}
+
+
+
+
+
+#footer {
+    background-color: #022041;
+    color: #e0e8f5;
+    font-size: 0.9em;
+    margin-top: 2em;
+}
+
+.footer-principal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5em 2em;
+    gap: 1em;
+    flex-wrap: wrap;
+}
+
+.footer-logo img {
+    width: 60px;
+    border-radius: 4px;
+}
+
+.footer-logo {
+    margin: 0;
+    padding: 0;
+}
+
+.footer-info {
+    text-align: center;
+    line-height: 1.8;
+    flex: 1;
+}
+
+.footer-info p {
+    margin: 0;
+}
+
+.footer-cue {
+    margin-top: 0.5em !important;
+}
+
+.footer-redes {
+    display: flex;
+    gap: 0.8em;
+    font-size: 1.3em;
+}
+
+.footer-redes a {
+    color: #e0e8f5;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.footer-redes a:hover {
+    opacity: 0.7;
+}
+
+.footer-copyright {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+    padding: 0.8em;
+    font-size: 0.85em;
+    color: #c0cfe8;
+}
+
+.footer-copyright p {
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .footer-principal {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}

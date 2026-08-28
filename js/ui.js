@@ -410,9 +410,9 @@ export function inicializarCalendario(eventosGlobales) {
 
         const materia = (ev.extendedProps?.materia || '').toLowerCase();
 
-        if (materia.includes('matem')) colorFondo = '#dd1226'; // Rojo
-        if (materia.includes('lengua')) colorFondo = '#198754'; // Verde
-        if (materia.includes('dibujo')) colorFondo = '#fd7e14'; // Naranja
+        if (materia.includes('matem')) colorFondo = '#c40808'; // Rojo
+        if (materia.includes('lengua')) colorFondo = '#0d8631'; // Verde
+        if (materia.includes('dibujo')) colorFondo = '#f84f00'; // Naranja
 
         return {
             ...ev,
@@ -695,7 +695,7 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
         tbody.innerHTML = `
             <tr>
                 <!-- Colspan actualizado a 6 -->
-                <td colspan="6" class="text-center text-muted py-4">
+                <td colspan="5" class="text-center text-muted py-4">
                     No hay clases programadas para esta semana.
                 </td>
             </tr>`;
@@ -709,11 +709,15 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
         // Formateamos las fechas y horas para que queden prolijas
         const fechaObj = new Date(ev.start + "T12:00:00");
 
-        const fechaStr = fechaObj.toLocaleDateString('es-AR', {
+        const dia = String(fechaObj.getDate()).padStart(2, '0');
+        const mes = String(fechaObj.getMonth() + 1).padStart(2, '0'); // Se suma 1 porque los meses arrancan en 0
+
+        const fechaStr = `${dia}/${mes}`; // Ej: 05/08
+
+        const diaStr = fechaObj.toLocaleDateString('es-AR', {
             weekday: 'long',
-            day: '2-digit',
-            month: '2-digit'
-        }); // Ej: mié, 19/08
+
+        }); // Ej: miércoles
 
         //const horaInicio = fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
         //const horaFin = new Date(ev.end).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -762,10 +766,10 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="align-middle text-nowrap">
-                <span class="badge fondo_azul_institucional px-2 py-1">Semana ${props.semana || '-'}</span>
+            <!-- Le clavamos text-nowrap para que los horarios no se partan -->
+            <td class="text-nowrap">
+                <strong class="text-capitalize">${diaStr.toLocaleUpperCase()}</strong><br>
             </td>
-            
             <!-- Le clavamos text-nowrap para que los horarios no se partan -->
             <td class="text-nowrap">
                 <strong class="text-capitalize">${fechaStr}</strong><br>

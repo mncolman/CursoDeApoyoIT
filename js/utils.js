@@ -103,7 +103,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
                 configExtraTabla = {
                     styles: { fontSize: 9, cellPadding: 3, lineColor: [0, 0, 0], minCellHeight: 9 },
                     columnStyles: {
-                        0: { cellWidth:10, halign: 'center' },
+                        0: { cellWidth: 10, halign: 'center' },
                         1: { cellWidth: 45 },
                         2: { cellWidth: 25, halign: 'center' },
                         3: { cellWidth: 23 },
@@ -256,6 +256,266 @@ export async function descargarPlanillaSaludPDF(listaFiltrada) {
         pdf.save(`Planilla_Salud.pdf`);
 
         setTimeout(() => { Swal.close(); }, 800);
+
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'Hubo un problema al crear el PDF.', 'error');
+    }
+}
+
+
+// =================================================================
+// RENDERIZAR PDF DEL CRONOGRAMA POR ÁREA
+// =================================================================
+export async function descargarPlanillaCronograma(eventosGlobales, areaSeleccionada) {
+
+    // 1. Normalizamos el texto para evitar problemas con mayúsculas/tildes
+    const areaNormalizada = areaSeleccionada.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+
+    // 2. FILTRO PARA EL AÑO 2026
+    const fechaCorte = new Date("2026-08-31T00:00:00"); // Lunes 31 de Agosto (año actual)
+
+    const eventosArea = eventosGlobales.filter(ev => {
+        // Verificamos la materia
+        const materiaEvento = ev.extendedProps?.materia || "";
+        const materiaLimpia = materiaEvento.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const coincideMateria = materiaLimpia === areaNormalizada;
+
+        // Verificamos la fecha (le sumamos T12:00:00 para evitar desfasajes horarios de medianoche)
+        const fechaEvento = new Date(ev.start + "T12:00:00");
+        const esFechaPosterior = fechaEvento >= fechaCorte;
+
+        // Tiene que cumplir ambas condiciones
+        return coincideMateria && esFechaPosterior;
+    });
+
+
+
+    if (eventosArea.length === 0) {
+        Swal.fire('Atención', `No hay clases programadas para el área de ${areaSeleccionada}.`, 'warning');
+        return;
+    }
+
+    Swal.fire({ title: 'Generando Cronograma...', didOpen: () => { Swal.showLoading(); } });
+
+    try {
+        // 3. Ordenamos cronológicamente (vital para un seguimiento)
+        eventosArea.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+        // 4. Mapeamos los datos a las filas de la tabla
+        const filas = eventosArea.map((ev, index) => {
+            // Formateo rápido de fecha
+            const fechaObj = new Date(ev.start + "T12:00:00");
+
+            let fechaStr = fechaObj.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+            // Pone la primera letra en mayúscula y elimina la coma
+            fechaStr = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1).replace(',', '');
+
+            // Extraemos solo el tema (le sacamos el prefijo "Materia - ")
+            let tema = ev.title;
+            let descripcion = ev.extendedProps.descripcion;
+            if (tema.includes(' - ')) {
+                tema = tema.split(' - ')[1];
+            }
+
+            // Retornamos el array de la fila. Las últimas dos celdas van vacías para tildar.
+            return [
+                index + 1,
+                fechaStr,
+                tema.toUpperCase() + ' - ' + (descripcion),
+                ''  // Celda Finalizado
+            ];
+        });
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const anchoHoja = pdf.internal.pageSize.getWidth();
+        const centroX = anchoHoja / 2;
+
+        // =========================================================
+        // ESTAMPAR CABECERAS (Reutilizando tu formato)
+        // =========================================================
+        pdf.addImage(logoIT, 'PNG', 14, 10, 25, 25);
+        pdf.addImage(logoUNT, 'PNG', anchoHoja - 34, 10, 20, 25);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(25);
+        pdf.text("INSTITUTO TÉCNICO", centroX, 16, { align: "center" });
+
+        pdf.setFont("times", "italic");
+        pdf.setFontSize(14);
+        pdf.text("Universidad Nacional de Tucumán", centroX, 23, { align: "center" });
+
+        pdf.setFont("helvetica", "semibold");
+        pdf.setFontSize(13);
+
+        const tituloPrincipal = `CRONOGRAMA DE ACTIVIDADES - ${areaSeleccionada.toUpperCase()}`;
+        pdf.text(tituloPrincipal, centroX, 33, { align: "center" });
+
+// 1. Dibujamos la línea separadora ARRIBA del subtítulo (Y = 37)
+        pdf.setDrawColor(180, 180, 180);
+        pdf.setLineWidth(0.5);
+        pdf.line(14, 37, anchoHoja - 14, 37);
+
+        // 2. Subtítulo de Docente y Comisión ABAJO de la línea (Y = 43)
+        const subtitulo = "Comisión: ....................................................   -   Docente: ....................................................";
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(11);
+        pdf.text(subtitulo, centroX, 43, { align: "center" });
+
+
+        // =========================================================
+        // AUTO-TABLE
+        // =========================================================
+        pdf.autoTable({
+            head: [['Nº', 'Fecha', 'Detalle de la Actividad', 'Finalizado']],
+            body: filas,
+            startY: 47,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center', valign: 'middle', lineWidth: 0.3 },
+            styles: { fontSize: 9, cellPadding: 2, valign: 'middle', lineColor: [0, 0, 0] },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+
+            // Configuración de anchos para dejar espacio a los tildes
+            columnStyles: {
+                0: { cellWidth: 10, halign: 'center' }, // Nº
+                1: { cellWidth: 20, halign: 'center' }, // Fecha (Ej: 19/08)
+                2: { cellWidth: 'auto' },               // Detalle (Ocupa el resto)
+                3: { cellWidth: 20, halign: 'center' }  // Finalizado
+            }
+        });
+
+        pdf.save(`Cronograma_${areaSeleccionada}.pdf`);
+        setTimeout(() => { Swal.close(); }, 1000);
+
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'Hubo un problema al crear el cronograma.', 'error');
+    }
+}
+
+
+
+
+// =================================================================
+// RENDERIZAR PDF DEL CRONOGRAMA DE LA SEMANA SELECCIONADA
+// =================================================================
+export async function descargarCronogramaSemanal(eventosGlobales) {
+    
+    // 1. Capturamos qué semana está viendo el usuario ahora mismo
+    const selectSemana = document.getElementById('filtro-semana-cronograma');
+    if (!selectSemana) return;
+    const semanaSeleccionada = selectSemana.value;
+
+    // 2. Filtramos los eventos de esa semana exacta
+    const eventosSemana = eventosGlobales.filter(ev => {
+        const semanaEvento = ev.extendedProps ? ev.extendedProps.semana : undefined;
+        return String(semanaEvento) === String(semanaSeleccionada);
+    });
+
+    if (eventosSemana.length === 0) {
+        Swal.fire('Atención', `No hay clases programadas para la Semana ${semanaSeleccionada}.`, 'warning');
+        return;
+    }
+
+    Swal.fire({ title: 'Generando Cronograma...', didOpen: () => { Swal.showLoading(); } });
+
+    try {
+        // 3. Ordenamos cronológicamente
+        eventosSemana.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+        // 4. Mapeamos los datos igual que en la tabla HTML, pero para PDF
+        const filas = eventosSemana.map(ev => {
+            const props = ev.extendedProps;
+
+            // -- FECHA --
+            const fechaObj = new Date(ev.start + "T12:00:00");
+            let fechaStr = fechaObj.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            fechaStr = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1).replace(',', '');
+            
+            // (Replicamos los horarios fijos que tenés en la UI)
+            const fechaYHora = `${fechaStr}\n1º - 17:00 a 18:20\n2º - 18:50 a 20:10`;
+
+            // -- TEMA --
+            let temaClase = ev.title;
+            if (temaClase.includes(' - ')) {
+                temaClase = temaClase.split(' - ')[1];
+            }
+            const actividad = `${props.materia || '-'}\n${temaClase}`;
+
+            // -- AGRUPACIÓN DE DOCENTES Y COMISIONES --
+            const comisiones = props.detalleComisiones || [];
+            let listadoDocentesGabinete = "Sin asignar";
+
+            if (comisiones.length > 0) {
+                const agrupados = comisiones.reduce((acc, c) => {
+                    const clave = `${c.docente} (${c.aula || 'Sin aula'})`;
+                    if (!acc[clave]) acc[clave] = [];
+                    acc[clave].push(c.comision);
+                    return acc;
+                }, {});
+
+                const lineas = Object.entries(agrupados).map(([datosDocente, arrayComisiones]) => {
+                    return `Com. ${arrayComisiones.join(', ')} - ${datosDocente}`;
+                });
+                // ATENCIÓN ACÁ: Usamos \n en lugar de <br> para el salto de línea en el PDF
+                listadoDocentesGabinete = lineas.join('\n'); 
+            }
+
+            return [
+                fechaYHora,
+                listadoDocentesGabinete,
+                actividad
+            ];
+        });
+
+        // 5. ARMADO DEL PDF (Usamos 'l' para Landscape/Horizontal)
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('l', 'mm', 'a4'); 
+        const anchoHoja = pdf.internal.pageSize.getWidth();
+        const centroX = anchoHoja / 2;
+
+        // --- CABECERAS ---
+        pdf.addImage(logoIT, 'PNG', 14, 10, 25, 25);
+        pdf.addImage(logoUNT, 'PNG', anchoHoja - 34, 10, 20, 25);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(25);
+        pdf.text("INSTITUTO TÉCNICO", centroX, 16, { align: "center" });
+
+        pdf.setFont("times", "italic");
+        pdf.setFontSize(14);
+        pdf.text("Universidad Nacional de Tucumán", centroX, 23, { align: "center" });
+
+        pdf.setFont("helvetica", "semibold");
+        pdf.setFontSize(13);
+        pdf.text(`CRONOGRAMA DETALLADO - SEMANA ${semanaSeleccionada}`, centroX, 33, { align: "center" });
+
+        pdf.setDrawColor(180, 180, 180);
+        pdf.setLineWidth(0.5);
+        pdf.line(14, 38, anchoHoja - 14, 38);
+
+        // --- TABLA ---
+        pdf.autoTable({
+            head: [['Fecha y Hora', 'Docente y Comisiones', 'Actividad del Día']],
+            body: filas,
+            startY: 42,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center', valign: 'middle', lineWidth: 0.3 },
+            styles: { fontSize: 9, cellPadding: 3, valign: 'middle', lineColor: [0, 0, 0] },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            
+            // Ajustamos anchos para aprovechar la hoja apaisada
+            columnStyles: {
+                0: { cellWidth: 35, halign: 'center' }, // Fecha y Hora
+                1: { cellWidth: 120 },                  // Docentes (la más ancha porque agrupa varios)
+                2: { cellWidth: 'auto' }                // Actividad
+            }
+        });
+
+        pdf.save(`Cronograma_Semana_${semanaSeleccionada}.pdf`);
+        setTimeout(() => { Swal.close(); }, 1000);
 
     } catch (error) {
         console.error(error);

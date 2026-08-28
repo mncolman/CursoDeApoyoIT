@@ -277,6 +277,21 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('btnDescargarPlanillaObservaciones').addEventListener('click', () => prepararYDescargar('observaciones'));
 
 
+    document.getElementById('btnCronogramaMatematicas').addEventListener('click', () => Utils.descargarPlanillaCronograma(eventosGlobales, 'Matematica'));
+    document.getElementById('btnCronogramaDibujo').addEventListener('click', () => Utils.descargarPlanillaCronograma(eventosGlobales, 'Dibujo'));
+    document.getElementById('btnCronogramaLengua').addEventListener('click', () => Utils.descargarPlanillaCronograma(eventosGlobales, 'Lengua'));
+
+
+    const btnDescargarCronogramaSemana = document.getElementById('btnDescargarCronogramaSemanal');
+    if (btnDescargarCronogramaSemana) {
+        btnDescargarCronogramaSemana.addEventListener('click', () => {
+            // Asegurate de importar descargarCronogramaSemanal si está en otro archivo
+            Utils.descargarCronogramaSemanal(eventosGlobales);
+        });
+    }
+
+
+
     // =================================================================
     // ACTUALIZAR TEXTO DEL MODAL DE DESCARGAS ANTES DE ABRIRSE
     // =================================================================
