@@ -45,9 +45,9 @@ function orquestarFiltros() {
 // =================================================================
 document.addEventListener('DOMContentLoaded', function () {
 
-// 1. Buscamos el select usando el ID real que me acabas de mostrar
-    const selectSemana = document.getElementById('filtro-semana-cronograma'); 
-    
+    // 1. Buscamos el select usando el ID real que me acabas de mostrar
+    const selectSemana = document.getElementById('filtro-semana-cronograma');
+
     // 2. Escuchamos el cambio manual del select
     if (selectSemana) {
         selectSemana.addEventListener('change', () => {
@@ -270,10 +270,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
-    // Escuchadores de los 3 botones del modal
+    // Escuchadores de los 4 botones del modal
     document.getElementById('btnDescargarAlumnos').addEventListener('click', () => prepararYDescargar('alumnos'));
     document.getElementById('btnDescargarAsistenciaSemanal').addEventListener('click', () => prepararYDescargar('semanal'));
     document.getElementById('btnDescargarAsistenciaMensual').addEventListener('click', () => prepararYDescargar('mensual'));
+    document.getElementById('btnDescargarPlanillaObservaciones').addEventListener('click', () => prepararYDescargar('observaciones'));
 
 
     // =================================================================

@@ -776,11 +776,10 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
             <!-- text-nowrap para que el profe y el aula queden en una sola línea -->
             <td class="text-nowrap">${listadoDocentesGabinete}</td>
             
-            <!-- A este lo dejamos normal para que el texto largo del tema sí pueda acomodarse un poco -->
             <td class="text-nowrap">
-                <strong>${props.materia || '-'}</strong><br>
-                <small class="text-muted">${temaClase}</small> - 
-                <small class="text-muted">${props.descripcion}</small>
+                <strong>${props.materia || '-'}</strong>
+                <strong class=""> - ${temaClase || ''}</strong><br>
+                <small class="text-muted fs-5">${props.descripcion}</small>
             </td>
         `;
 

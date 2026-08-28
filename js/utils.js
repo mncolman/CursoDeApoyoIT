@@ -3,14 +3,14 @@ import { logoIT, logoUNT } from './assets.js';
 
 export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccionada, tipoDescarga) {
 
-    // Filtramos usando el PARÁMETRO, no el document.getElementById
     let alumnosParaDescargar = aspirantesFiltrados;
 
     if (comisionSeleccionada !== "") {
         alumnosParaDescargar = aspirantesFiltrados.filter(a => String(a.comision) === String(comisionSeleccionada));
     }
 
-    if (alumnosParaDescargar.length === 0) {
+    // 1. EL CAMBIO CLAVE: Dejamos pasar si es la planilla de observaciones
+    if (alumnosParaDescargar.length === 0 && tipoDescarga !== 'observaciones') {
         Swal.fire('Atención', 'No hay alumnos en esta comisión.', 'warning');
         return;
     }
@@ -21,20 +21,19 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         const { jsPDF } = window.jspdf;
         let orientacion = 'p';
 
-        // Variables dinámicas que van a cambiar según el botón
+        // Variables dinámicas
         let tituloPrincipal = "";
+        let subtitulo = ""; // NUEVA VARIABLE PARA LOS PUNTITOS
         let cabeceras = [];
         let filas = [];
-        let configExtraTabla = {}; // Para pisar estilos si necesitamos achicar cosas
+        let configExtraTabla = {};
 
         switch (tipoDescarga) {
 
             case 'alumnos':
                 tituloPrincipal = "PLANILLA DE ALUMNOS";
-
                 if (comisionSeleccionada) {
                     cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre']];
-                    // Agregamos (a, index) y ponemos index + 1 al principio
                     filas = alumnosParaDescargar.map((a, index) => [index + 1, a.dni, a.apellido, a.nombre]);
                 } else {
                     cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre', 'Comision']];
@@ -42,7 +41,6 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
                 }
                 configExtraTabla = {
                     styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] },
-                    // Le damos un ancho chiquito al contador para que no robe espacio
                     columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
                 };
                 break;
@@ -61,22 +59,19 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
             case 'mensual':
                 tituloPrincipal = "ASISTENCIA MENSUAL - Mes: ...................";
                 cabeceras = [['Nº', 'Apellido y Nombre', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31']];
-                // Hacemos que el map devuelva el número de fila, el nombre y los espacios vacíos correspondientes
                 filas = alumnosParaDescargar.map((a, index) => [
                     index + 1,
                     `${a.apellido}, ${a.nombre}`,
-                    ...Array(31).fill('') // Truco para generar los 31 espacios vacíos dinámicamente y no hardcodear comillas
+                    ...Array(31).fill('')
                 ]);
 
                 orientacion = 'l';
 
-                // CORRIMOS LOS ÍNDICES PORQUE AHORA HAY UNA COLUMNA NUEVA AL PRINCIPIO
                 let anchosColumnasMensual = {
-                    0: { cellWidth: 8, halign: 'center' }, // Índice 0: El contador (Nº)
-                    1: { cellWidth: 45 }                   // Índice 1: Apellido y Nombre
+                    0: { cellWidth: 8, halign: 'center' },
+                    1: { cellWidth: 45 }
                 };
 
-                // Del índice 2 al 32 están las celdas de los 31 días
                 for (let i = 2; i <= 32; i++) {
                     anchosColumnasMensual[i] = { cellWidth: 7.2, halign: 'center' };
                 }
@@ -84,6 +79,36 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
                 configExtraTabla = {
                     styles: { fontSize: 7, cellPadding: 1, valign: 'middle', lineColor: [0, 0, 0] },
                     columnStyles: anchosColumnasMensual
+                };
+                break;
+
+            case 'observaciones':
+                tituloPrincipal = "PLANILLA DE OBSERVACIONES";
+                // Llenamos el subtítulo con los espacios para completar a mano
+                subtitulo = "Comisión: ....................................................   -   Docente: ....................................................";
+
+                // Acá están las cabeceras que habíamos acordado
+                cabeceras = [['Nº', 'Apellido y Nombre', 'Documento', 'Fecha', 'Observación']];
+
+                // Vaciamos la comisión para que no la concatene al título principal automáticamente
+                comisionSeleccionada = "";
+
+                const cantidadFilas = 14;
+                filas = Array.from({ length: cantidadFilas }, (_, index) => [
+                    '', '', '', '', ''
+                ]);
+
+                orientacion = 'l';
+
+                configExtraTabla = {
+                    styles: { fontSize: 9, cellPadding: 3, lineColor: [0, 0, 0], minCellHeight: 9 },
+                    columnStyles: {
+                        0: { cellWidth:10, halign: 'center' },
+                        1: { cellWidth: 45 },
+                        2: { cellWidth: 25, halign: 'center' },
+                        3: { cellWidth: 23 },
+                        4: { cellWidth: 'auto' }
+                    }
                 };
                 break;
         }
@@ -94,10 +119,9 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         const centroX = anchoHoja / 2;
 
         // =========================================================
-        // ESTAMPAR CABECERAS (Esto se ejecuta siempre igual)
+        // ESTAMPAR CABECERAS
         // =========================================================
         pdf.addImage(logoIT, 'PNG', 14, 10, 25, 25);
-        //                             X,Y alto, ancho
         pdf.addImage(logoUNT, 'PNG', anchoHoja - 34, 10, 20, 25);
 
         pdf.setFont("helvetica", "normal");
@@ -111,35 +135,43 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         pdf.setFont("helvetica", "semibold");
         pdf.setFontSize(13);
 
-        // Usamos el título dinámico
         const textoComision = comisionSeleccionada ? ` - Comisión ${comisionSeleccionada}` : "";
         pdf.text(tituloPrincipal + textoComision, centroX, 33, { align: "center" });
 
+        // --- NUEVO: Logica de dibujado para el subtítulo ---
+        let startYTabla = 42;
+        let startYLinea = 38;
+
+        if (subtitulo !== "") {
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(11); // Un poco más chico que el título principal
+            pdf.text(subtitulo, centroX, 39, { align: "center" });
+            // Empujamos la línea separadora y la tabla un poco para abajo
+            startYLinea = 42;
+            startYTabla = 46;
+        }
+
         pdf.setDrawColor(180, 180, 180);
         pdf.setLineWidth(0.5);
-        pdf.line(14, 38, anchoHoja - 14, 38);
+        pdf.line(14, startYLinea, anchoHoja - 14, startYLinea);
 
         // =========================================================
         // AUTO-TABLE
         // =========================================================
         pdf.autoTable({
-
             head: cabeceras,
             body: filas,
-            startY: 42,
+            startY: startYTabla,
             theme: 'grid',
             headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center', lineWidth: 0.3 },
             styles: {
                 fontSize: 10, cellPadding: 2, valign: 'middle'
             },
             alternateRowStyles: { fillColor: [245, 245, 245] },
-
-            // Los tres puntitos inyectan la configuración dinámica del switch
             ...configExtraTabla,
         });
 
-        // 4. Descargar
-        pdf.save(`Planilla_${tipoDescarga}_${comisionSeleccionada || 'Todas'}.pdf`);
+        pdf.save(`Planilla_${tipoDescarga}_${comisionSeleccionada || 'Generica'}.pdf`);
 
         setTimeout(() => { Swal.close(); }, 1000);
 
