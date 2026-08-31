@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // inicio y cierre de sesion
     document.getElementById('loginForm').addEventListener('submit', iniciarSesion); // (O Auth.iniciarSesion si la moviste)
-    document.getElementById('btnCerrarSesion').addEventListener('click', Auth.cerrarSesionLocal);
+    document.getElementById('btnCerrarSesion').addEventListener('click', Auth.cerrarSesion);
 
     // Buscador y Filtros
     document.getElementById('searchInput').addEventListener('input', orquestarFiltros);

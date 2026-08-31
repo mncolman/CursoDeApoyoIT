@@ -1,38 +1,63 @@
-export function guardarSesion(data) {
-    sessionStorage.setItem('sesionActiva', 'true');
-    // Si viene el token lo guarda, si no, guarda string vacío
-    sessionStorage.setItem('token_sesion', data.token || ''); 
-    
-    // Le agregamos "paracaídas" (||) a todos por si el backend no manda ese dato
-    sessionStorage.setItem('usuarioActual', JSON.stringify(data.perfil || {}));
-    sessionStorage.setItem('aspirantesGlobales', JSON.stringify(data.datos || []));
-    //sessionStorage.setItem('eventosGlobales', JSON.stringify(data.calendario || []));
-    
-    // Guardamos con la llave 'permisos_docente'
-    sessionStorage.setItem('permisos_docente', JSON.stringify(data.permisos_materias || []));
+// =================================================================
+// ARCHIVO: auth.js
+// =================================================================
+
+    export function guardarSesion(data) {
+    // 1. Definir el tiempo de vida (Ej: 2 horas)
+    const HORAS_DURACION = 2;
+    const tiempoExpiracion = new Date().getTime() + (HORAS_DURACION * 60 * 60 * 1000);
+
+    // 2. Armar el paquete sumándole los paracaídas (||) por si falta un dato
+    const paqueteSesion = {
+        token: data.token || '',
+        usuarioActual: data.perfil || {},
+        aspirantesGlobales: data.datos || [],
+        permisos_docente: data.permisos_materias || [],
+        expira: tiempoExpiracion
+    };
+
+    // 3. Guardar en localStorage (sobrevive a PDFs y pestañas cerradas)
+    localStorage.setItem('sesionInstitutoTecnico', JSON.stringify(paqueteSesion));
 }
 
-// --- archivo: auth.js ---
 export function verificarSesionPrevia() {
-    if (sessionStorage.getItem('sesionActiva') === 'true') {
-        return {
-            activa: true,
-            // Agregamos paracaídas al leer también, por las dudas
-            usuario: JSON.parse(sessionStorage.getItem('usuarioActual') || '{}'),
-            aspirantes: JSON.parse(sessionStorage.getItem('aspirantesGlobales') || '[]'),
-            eventos: JSON.parse(sessionStorage.getItem('eventosGlobales') || '[]'),
-            
-            // CORRECCIÓN: Leemos exactamente la misma llave que usamos al guardar
-            permisosGuardados: JSON.parse(sessionStorage.getItem('permisos_docente') || '[]')
-        };
+    // 1. Buscamos el paquete en la memoria
+    const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
+    
+    if (!dataGuardada) {
+        return { activa: false };
     }
-    return { activa: false };
+
+    const sesion = JSON.parse(dataGuardada);
+    const ahora = new Date().getTime();
+
+    // 2. Verificamos si la sesión ya caducó (pasaron las 2 horas)
+    if (ahora > sesion.expira) {
+        console.warn("La sesión expiró por tiempo límite. Requiere nuevo login.");
+        cerrarSesion(false); // Llamamos a cerrarSesion sin recargar la página todavía
+        return { activa: false };
+    }
+
+    // 3. Si el tiempo está vigente, devolvemos los datos para main.js
+    return {
+        activa: true,
+        token: sesion.token,
+        usuario: sesion.usuarioActual,
+        aspirantes: sesion.aspirantesGlobales,
+        permisos_docente: sesion.permisos_docente,
+        
+        // Leemos los eventos del localStorage (guardados previamente por Api.js)
+        eventos: JSON.parse(localStorage.getItem('eventosGlobales') || '[]')
+    };
 }
 
-export async function cerrarSesionLocal() {
+export function cerrarSesion(recargarPagina = true) {
+    // Limpiamos todo rastro de la sesión
+    localStorage.removeItem('sesionInstitutoTecnico');
+    localStorage.removeItem('eventosGlobales');
     
-    localStorage.removeItem('token_sesion');
-    sessionStorage.clear();
-    location.reload(); // Recarga la página volviendo al login
+    if (recargarPagina) {
+        window.location.reload();
+    }
 }
 
