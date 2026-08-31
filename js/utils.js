@@ -423,7 +423,8 @@ export async function descargarCronogramaSemanal(eventosGlobales) {
             if (temaClase.includes(' - ')) {
                 temaClase = temaClase.split(' - ')[1];
             }
-            const actividad = `${props.materia || '-'}\n${temaClase}`;
+
+            const actividad = `${props.materia || '-'}\n${temaClase} ${props.descripcion}`;
 
             // -- AGRUPACIÓN DE DOCENTES Y COMISIONES --
             const comisiones = props.detalleComisiones || [];
@@ -490,7 +491,7 @@ export async function descargarCronogramaSemanal(eventosGlobales) {
             // Ajustamos anchos para aprovechar la hoja apaisada
             columnStyles: {
                 0: { cellWidth: 35, halign: 'center' }, // Fecha y Hora
-                1: { cellWidth: 120 },                  // Docentes (la más ancha porque agrupa varios)
+                1: { cellWidth: 100 },                  // Docentes (la más ancha porque agrupa varios)
                 2: { cellWidth: 'auto' }                // Actividad
             }
         });

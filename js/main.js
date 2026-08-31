@@ -73,24 +73,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
         (async () => {
             try {
-                await Api.cargarDatosPlanificacion();
-                // Si necesitas actualizar alguna variable global acá adentro, podés hacerlo:
                 eventosGlobales = await Api.cargarDatosPlanificacion();
+
+
+                // (Asegurate de que 'filtroSemana' sea el ID real de tu <select> de semanas en el HTML)
+                const selectSemana = document.getElementById('filtro-semana-cronograma');
+                if (selectSemana) {
+
+                    selectSemana.value = "3";
+
+                    selectSemana.dispatchEvent(new Event('change'));
+                }
+
             } catch (error) {
                 console.error("Error en la ejecución encapsulada de la planificación:", error);
             }
         })();
 
-        // 2. FORZAMOS EL DIBUJADO INICIAL
-        // (Asegurate de que 'filtroSemana' sea el ID real de tu <select> de semanas en el HTML)
-        const selectSemana = document.getElementById('filtro-semana-cronograma');
-        if (selectSemana) {
-            // Le decimos al select que se ponga en la "Semana 1" por defecto (o el value que uses)
-            selectSemana.value = "3";
-
-            // Disparamos el evento para que tu código reaccione y dibuje la tabla
-            selectSemana.dispatchEvent(new Event('change'));
-        }
 
     } else {
 
@@ -530,10 +529,12 @@ async function iniciarSesion(e) {
 
             eventosGlobales = await Api.cargarDatosPlanificacion();
 
-
-            const selectSemana = document.getElementById('filtro-semana-cronograma'); // <-- Asegurate de poner el ID correcto de tu select
+  // 7. Forzamos el dibujado inicial directo (Sin depender de eventos fantasma)
+            const selectSemana = document.getElementById('filtro-semana-cronograma');
             if (selectSemana) {
-                selectSemana.dispatchEvent(new Event('change'));
+                selectSemana.value = "3"; // Tu semana por defecto
+                
+                UI.renderizarTablaCronograma(eventosGlobales || [], selectSemana.value);
             }
 
         } else {
