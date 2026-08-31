@@ -97,7 +97,7 @@
                         <ul class="nav nav-pills flex-column flex-lg-row w-100 mt-3 mt-lg-0" id="mainTabs"
                             role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active text-start text-lg-center" id="listado-tab"
+                                <button class="nav-link active text-start text-lg-center w-100" id="listado-tab"
                                     data-bs-toggle="pill" data-bs-target="#listado" type="button" role="tab">Listado de
                                     Aspirantes</button>
                             </li>
@@ -163,7 +163,7 @@
 
                             <!-- Pestaña exclusiva para directivos -->
                             <li class="nav-item d-none" role="presentation" id="nav-item-dashboard">
-                                <button class="nav-link text-start text-lg-center fw-bold" id="dashboard-tab"
+                                <button class="nav-link text-start text-lg-center fw-bold w-100" id="dashboard-tab"
                                     data-bs-toggle="pill" data-bs-target="#dashboard" type="button" role="tab">
                                     📊 Reporte Inscriptos
                                 </button>
@@ -788,50 +788,57 @@
 
                 <!-- Cabecera del Modal -->
                 <div class="modal-header  fondo_azul_institucional">
-                    <h5 class="modal-title" id="modalOpcionesDescargaLabel">📥 Seleccionar Tipo de Planilla</h5>
+                    <h5 class="modal-title" id="modalOpcionesDescargaLabel"> Seleccionar Tipo de Planilla</h5>
                     <button type="button" class="btn-close-white btn-close" data-bs-dismiss="modal"
                         aria-label="Cerrar"></button>
                 </div>
 
-<!-- Cuerpo del Modal -->
-<div class="modal-body">
-    <div class="d-grid gap-3 p-1">
+                <!-- Cuerpo del Modal -->
+                <div class="modal-body">
+                    <div class="d-grid gap-3 p-1">
 
-        <!-- Mensajito de aviso con ícono de info -->
-        <div class="alert alert-info py-2 mb-1 text-center" role="alert" style="font-size: 0.9rem;">
-            <i class="bi bi-info-circle me-1"></i> <strong>Nota:</strong> Las descargas respetan las búsquedas, filtros y el orden actual de la tabla.
-        </div>
+                        <!-- Mensajito de aviso con ícono de info -->
+                        <div class="alert alert-info py-2 mb-1 text-center" role="alert" style="font-size: 0.9rem;">
+                            <i class="bi bi-info-circle me-1"></i> <strong>Nota:</strong> Las descargas respetan las
+                            búsquedas, filtros y el orden actual de la tabla.
+                        </div>
 
-        <p id="comision-seleccionada-modal" class="fs-5 text-center text-dark mb-3"></p>
+                        <p id="comision-seleccionada-modal" class="fs-5 text-center text-dark mb-3"></p>
 
-        <!-- Botones con Flexbox para centrado perfecto -->
-        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center" id="btnDescargarListadoCompleto">
-            <span><i class="bi bi-people-fill me-2"></i> Listado General</span>
-            <i class="bi bi-download"></i>
-        </button>
+                        <!-- Botones con Flexbox para centrado perfecto -->
+                        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center"
+                            id="btnDescargarListadoCompleto">
+                            <span><i class="bi bi-people-fill me-2"></i> Listado General</span>
+                            <i class="bi bi-download"></i>
+                        </button>
 
-        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center" id="btnDescargarComisiones">
-            <span><i class="bi bi-collection-fill me-2"></i> Listado por Comisiones</span>
-            <i class="bi bi-download"></i>
-        </button>
+                        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center"
+                            id="btnDescargarComisiones">
+                            <span><i class="bi bi-collection-fill me-2"></i> Listado por Comisiones</span>
+                            <i class="bi bi-download"></i>
+                        </button>
 
-        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center d-none" id="btnDescargarAsistenciaSemanal">
-            <span><i class="bi bi-calendar-week me-2"></i> Asistencia Semanal</span>
-            <i class="bi bi-download"></i>
-        </button>
+                        <button
+                            class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center d-none"
+                            id="btnDescargarAsistenciaSemanal">
+                            <span><i class="bi bi-calendar-week me-2"></i> Asistencia Semanal</span>
+                            <i class="bi bi-download"></i>
+                        </button>
 
-        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center" id="btnDescargarAsistenciaMensual">
-            <span><i class="bi bi-calendar-month me-2"></i> Asistencia Mensual</span>
-            <i class="bi bi-download"></i>
-        </button>
+                        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center"
+                            id="btnDescargarAsistenciaMensual">
+                            <span><i class="bi bi-calendar-month me-2"></i> Asistencia Mensual</span>
+                            <i class="bi bi-download"></i>
+                        </button>
 
-        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center" id="btnDescargarPlanillaObservaciones">
-            <span><i class="bi bi-clipboard-data me-2"></i> Planilla Observaciones</span>
-            <i class="bi bi-download"></i>
-        </button>
+                        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center"
+                            id="btnDescargarPlanillaObservaciones">
+                            <span><i class="bi bi-clipboard-data me-2"></i> Planilla Observaciones</span>
+                            <i class="bi bi-download"></i>
+                        </button>
 
-    </div>
-</div>
+                    </div>
+                </div>
 
                 <!-- Pie del Modal -->
                 <div class="modal-footer">
