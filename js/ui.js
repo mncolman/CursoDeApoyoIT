@@ -676,8 +676,6 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
     let eventosFiltrados = eventosGlobales;
 
 
-
-
     eventosFiltrados = eventosGlobales.filter(ev => {
 
         const semanaEvento = ev.extendedProps ? ev.extendedProps.semana : undefined;
@@ -768,11 +766,7 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
         tr.innerHTML = `
             <!-- Le clavamos text-nowrap para que los horarios no se partan -->
             <td class="text-nowrap">
-                <strong class="text-capitalize">${diaStr.toLocaleUpperCase()}</strong><br>
-            </td>
-            <!-- Le clavamos text-nowrap para que los horarios no se partan -->
-            <td class="text-nowrap">
-                <strong class="text-capitalize">${fechaStr}</strong><br>
+                <strong class="text-capitalize">${diaStr.toLocaleUpperCase()} - ${fechaStr}</strong><br>
                 <small class="text-muted">1º - 17:00 a 18:20</small><br>
                 <small class="text-muted">2º - 18:50 a 20:10</small>
             </td>

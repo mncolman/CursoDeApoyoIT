@@ -45,39 +45,7 @@ function orquestarFiltros() {
 // =================================================================
 document.addEventListener('DOMContentLoaded', function () {
 
-    // 1. Buscamos el select usando el ID real que me acabas de mostrar
-    const selectSemana = document.getElementById('filtro-semana-cronograma');
 
-    // 2. Escuchamos el cambio manual del select
-    if (selectSemana) {
-        selectSemana.addEventListener('change', () => {
-            UI.renderizarTablaCronograma(eventosGlobales, selectSemana.value);
-        });
-    }
-
-    // 3. Cuando el usuario entra a la pestaña, forzamos el redibujado
-    // (Asegurate de que 'tab-cronograma' sea el ID de tu botón/enlace de la pestaña)
-    const botonPestanaCronograma = document.getElementById('tab-cronograma');
-    if (botonPestanaCronograma) {
-        botonPestanaCronograma.addEventListener('shown.bs.tab', () => {
-            if (eventosGlobales && eventosGlobales.length > 0 && selectSemana) {
-                UI.renderizarTablaCronograma(eventosGlobales, selectSemana.value);
-            }
-        });
-    }
-
-
-    document.getElementById('btnDescargarSalud').addEventListener('click', () => {
-        // Si ya tenés la lista filtrada guardada en memoria, se la pasás directo
-        const alumnosConSalud = aspirantesGlobales.filter(a => (a.enfermedad).trim() !== '');
-        Utils.descargarPlanillaSaludPDF(alumnosConSalud);
-    });
-
-
-    const turnoSelect = document.getElementById('turnoSelect');
-    if (turnoSelect) {
-        turnoSelect.addEventListener('change', orquestarFiltros);
-    }
 
     // --- 1. VERIFICACIÓN Y ORQUESTACIÓN DE SESIÓN ---
     const sesion = Auth.verificarSesionPrevia();
@@ -102,7 +70,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         orquestarFiltros();
         UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
-        Api.cargarDatosPlanificacion();
+
+        (async () => {
+            try {
+                await Api.cargarDatosPlanificacion();
+                // Si necesitas actualizar alguna variable global acá adentro, podés hacerlo:
+                eventosGlobales = await Api.cargarDatosPlanificacion();
+            } catch (error) {
+                console.error("Error en la ejecución encapsulada de la planificación:", error);
+            }
+        })();
 
         // 2. FORZAMOS EL DIBUJADO INICIAL
         // (Asegurate de que 'filtroSemana' sea el ID real de tu <select> de semanas en el HTML)
@@ -125,6 +102,42 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('app-container').classList.add('d-none');
     }
 
+
+
+
+    // 1. Buscamos el select usando el ID real que me acabas de mostrar
+    const selectSemana = document.getElementById('filtro-semana-cronograma');
+
+    // 2. Escuchamos el cambio manual del select
+    if (selectSemana) {
+        selectSemana.addEventListener('change', () => {
+            UI.renderizarTablaCronograma(eventosGlobales || [], selectSemana.value);
+        });
+    }
+
+    // 3. Cuando el usuario entra a la pestaña, forzamos el redibujado
+    // (Asegurate de que 'tab-cronograma' sea el ID de tu botón/enlace de la pestaña)
+    const botonPestanaCronograma = document.getElementById('tab-cronograma');
+    if (botonPestanaCronograma) {
+        botonPestanaCronograma.addEventListener('shown.bs.tab', () => {
+            if (eventosGlobales && eventosGlobales.length > 0 && selectSemana) {
+                UI.renderizarTablaCronograma(eventosGlobales || [], selectSemana.value);
+            }
+        });
+    }
+
+
+    document.getElementById('btnDescargarSalud').addEventListener('click', () => {
+        // Si ya tenés la lista filtrada guardada en memoria, se la pasás directo
+        const alumnosConSalud = aspirantesGlobales.filter(a => (a.enfermedad).trim() !== '');
+        Utils.descargarPlanillaSaludPDF(alumnosConSalud);
+    });
+
+
+    const turnoSelect = document.getElementById('turnoSelect');
+    if (turnoSelect) {
+        turnoSelect.addEventListener('change', orquestarFiltros);
+    }
 
 
     // --- 2. EVENT LISTENERS GENERALES ---

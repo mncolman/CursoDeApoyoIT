@@ -56,7 +56,6 @@ export async function enviarNotasAlServidor(payloadDatos) {
     }
 }
 
-
 export async function cargarDatosPlanificacion() {
     try {
         const paqueteDatos = { accion: 'obtener_planificacion' };
@@ -73,6 +72,8 @@ export async function cargarDatosPlanificacion() {
 
         if (resultado.exito) {
             const eventosFetch = resultado.datos;
+            
+            // VOLVEMOS AL ORIGEN: Guardamos en sessionStorage
             sessionStorage.setItem('eventosGlobales', JSON.stringify(eventosFetch || []));
 
             UI.inicializarCalendario(eventosFetch);
