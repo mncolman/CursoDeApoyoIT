@@ -67,11 +67,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-
-
-
-
-
     document.getElementById('btnDescargarSalud').addEventListener('click', () => {
         // Si ya tenés la lista filtrada guardada en memoria, se la pasás directo
         const alumnosConSalud = aspirantesGlobales.filter(a => (a.enfermedad).trim() !== '');
@@ -271,10 +266,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Escuchadores de los 4 botones del modal
-    document.getElementById('btnDescargarAlumnos').addEventListener('click', () => prepararYDescargar('alumnos'));
+    document.getElementById('btnDescargarComisiones').addEventListener('click', () => prepararYDescargar('alumnos'));
     document.getElementById('btnDescargarAsistenciaSemanal').addEventListener('click', () => prepararYDescargar('semanal'));
     document.getElementById('btnDescargarAsistenciaMensual').addEventListener('click', () => prepararYDescargar('mensual'));
     document.getElementById('btnDescargarPlanillaObservaciones').addEventListener('click', () => prepararYDescargar('observaciones'));
+
+    const btnDescargarCompleto = document.getElementById('btnDescargarListadoCompleto');
+    if (btnDescargarCompleto) {
+        btnDescargarCompleto.addEventListener('click', () => {
+
+            const tipoPDF = 'alumnos';
+            let alumnosAProcesar = orquestarFiltros();
+
+            Utils.descargarPlanillaPDF(alumnosAProcesar, "", tipoPDF, true);
+        });
+    }
+
+
 
 
     document.getElementById('btnCronogramaMatematicas').addEventListener('click', () => Utils.descargarPlanillaCronograma(eventosGlobales, 'Matematica'));

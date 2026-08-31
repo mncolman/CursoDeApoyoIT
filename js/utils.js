@@ -1,17 +1,10 @@
 // Arriba de todo en tu archivo importamos los logos
 import { logoIT, logoUNT } from './assets.js';
 
-export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccionada, tipoDescarga) {
+export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccionada, tipoDescarga, esListadoCompleto = false) {
 
-    let alumnosParaDescargar = aspirantesFiltrados;
-
-    if (comisionSeleccionada !== "") {
-        alumnosParaDescargar = aspirantesFiltrados.filter(a => String(a.comision) === String(comisionSeleccionada));
-    }
-
-    // 1. EL CAMBIO CLAVE: Dejamos pasar si es la planilla de observaciones
-    if (alumnosParaDescargar.length === 0 && tipoDescarga !== 'observaciones') {
-        Swal.fire('Atención', 'No hay alumnos en esta comisión.', 'warning');
+    if (aspirantesFiltrados.length === 0 && tipoDescarga !== 'observaciones') {
+        Swal.fire('Atención', 'No hay alumnos para generar el documento.', 'warning');
         return;
     }
 
@@ -19,160 +12,149 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
 
     try {
         const { jsPDF } = window.jspdf;
-        let orientacion = 'p';
 
-        // Variables dinámicas
-        let tituloPrincipal = "";
-        let subtitulo = ""; // NUEVA VARIABLE PARA LOS PUNTITOS
-        let cabeceras = [];
-        let filas = [];
-        let configExtraTabla = {};
-
-        switch (tipoDescarga) {
-
-            case 'alumnos':
-                tituloPrincipal = "PLANILLA DE ALUMNOS";
-                if (comisionSeleccionada) {
-                    cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre']];
-                    filas = alumnosParaDescargar.map((a, index) => [index + 1, a.dni, a.apellido, a.nombre]);
-                } else {
-                    cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre', 'Comision']];
-                    filas = alumnosParaDescargar.map((a, index) => [index + 1, a.dni, a.apellido, a.nombre, a.comision]);
-                }
-                configExtraTabla = {
-                    styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] },
-                    columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
-                };
-                break;
-
-            case 'semanal':
-                tituloPrincipal = "ASISTENCIA SEMANAL";
-                cabeceras = [['Nº', 'Apellido y Nombre', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Observaciones']];
-                filas = alumnosParaDescargar.map((a, index) => [index + 1, `${a.apellido}, ${a.nombre}`, '', '', '', '', '', '']);
-
-                configExtraTabla = {
-                    styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] },
-                    columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
-                };
-                break;
-
-            case 'mensual':
-                tituloPrincipal = "ASISTENCIA MENSUAL - Mes: ...................";
-                cabeceras = [['Nº', 'Apellido y Nombre', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31']];
-                filas = alumnosParaDescargar.map((a, index) => [
-                    index + 1,
-                    `${a.apellido}, ${a.nombre}`,
-                    ...Array(31).fill('')
-                ]);
-
-                orientacion = 'l';
-
-                let anchosColumnasMensual = {
-                    0: { cellWidth: 8, halign: 'center' },
-                    1: { cellWidth: 45 }
-                };
-
-                for (let i = 2; i <= 32; i++) {
-                    anchosColumnasMensual[i] = { cellWidth: 7.2, halign: 'center' };
-                }
-
-                configExtraTabla = {
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'middle', lineColor: [0, 0, 0] },
-                    columnStyles: anchosColumnasMensual
-                };
-                break;
-
-            case 'observaciones':
-                tituloPrincipal = "PLANILLA DE OBSERVACIONES";
-                // Llenamos el subtítulo con los espacios para completar a mano
-                subtitulo = "Comisión: ....................................................   -   Docente: ....................................................";
-
-                // Acá están las cabeceras que habíamos acordado
-                cabeceras = [['Nº', 'Apellido y Nombre', 'Documento', 'Fecha', 'Observación']];
-
-                // Vaciamos la comisión para que no la concatene al título principal automáticamente
-                comisionSeleccionada = "";
-
-                const cantidadFilas = 14;
-                filas = Array.from({ length: cantidadFilas }, (_, index) => [
-                    '', '', '', '', ''
-                ]);
-
-                orientacion = 'l';
-
-                configExtraTabla = {
-                    styles: { fontSize: 9, cellPadding: 3, lineColor: [0, 0, 0], minCellHeight: 9 },
-                    columnStyles: {
-                        0: { cellWidth: 10, halign: 'center' },
-                        1: { cellWidth: 45 },
-                        2: { cellWidth: 25, halign: 'center' },
-                        3: { cellWidth: 23 },
-                        4: { cellWidth: 'auto' }
-                    }
-                };
-                break;
+        // 2. Identificar qué comisiones vamos a procesar
+        let comisionesAProcesar = [];
+        
+        if (esListadoCompleto) {
+            // Si es listado completo, forzamos un array de un solo elemento para que el bucle dé una sola vuelta
+            comisionesAProcesar = ["COMPLETO"];
+        } else if (comisionSeleccionada !== "") {
+            comisionesAProcesar = [String(comisionSeleccionada)];
+        } else {
+            if (tipoDescarga === 'observaciones' && aspirantesFiltrados.length === 0) {
+                comisionesAProcesar = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+            } else {
+                const unicas = new Set(aspirantesFiltrados.map(a => String(a.comision)));
+                comisionesAProcesar = [...unicas]
+                    .filter(c => c && c.trim() !== 'undefined' && c.trim() !== '')
+                    .sort((a, b) => parseInt(a) - parseInt(b));
+            }
         }
 
+        let orientacion = (tipoDescarga === 'mensual' || tipoDescarga === 'observaciones') ? 'l' : 'p';
         const pdf = new jsPDF(orientacion, 'mm', 'a4');
-
         const anchoHoja = pdf.internal.pageSize.getWidth();
         const centroX = anchoHoja / 2;
 
         // =========================================================
-        // ESTAMPAR CABECERAS
+        // BUCLE DE HOJAS
         // =========================================================
-        pdf.addImage(logoIT, 'PNG', 14, 10, 25, 25);
-        pdf.addImage(logoUNT, 'PNG', anchoHoja - 34, 10, 20, 25);
+        comisionesAProcesar.forEach((comisionActual, index) => {
+            
+            // Si es listado completo, metemos a TODOS. Si no, filtramos por la comisión de esta vuelta
+            let alumnosDeEstaComision = esListadoCompleto 
+                ? aspirantesFiltrados 
+                : aspirantesFiltrados.filter(a => String(a.comision) === comisionActual);
 
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(25);
-        pdf.text("INSTITUTO TÉCNICO", centroX, 16, { align: "center" });
+            let tituloPrincipal = "";
+            let subtitulo = "";
+            let cabeceras = [];
+            let filas = [];
+            let configExtraTabla = {};
 
-        pdf.setFont("times", "italic");
-        pdf.setFontSize(14);
-        pdf.text("Universidad Nacional de Tucumán", centroX, 23, { align: "center" });
+            switch (tipoDescarga) {
+                case 'alumnos':
+                    tituloPrincipal = "PLANILLA DE ALUMNOS";
+                    
+                    // Si es listado completo, mostramos la columna de "Comisión" extra
+                    if (esListadoCompleto) {
+                        cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre', 'Comisión']];
+                        filas = alumnosDeEstaComision.map((a, i) => [i + 1, a.dni, a.apellido, a.nombre, a.comision || '-']);
+                    } else {
+                        cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre']];
+                        filas = alumnosDeEstaComision.map((a, i) => [i + 1, a.dni, a.apellido, a.nombre]);
+                    }
+                    
+                    configExtraTabla = {
+                        styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] },
+                        columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
+                    };
+                    break;
 
-        pdf.setFont("helvetica", "semibold");
-        pdf.setFontSize(13);
+                case 'semanal':
+                    tituloPrincipal = "ASISTENCIA SEMANAL";
+                    cabeceras = [['Nº', 'Apellido y Nombre', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Observaciones']];
+                    filas = alumnosDeEstaComision.map((a, i) => [i + 1, `${a.apellido}, ${a.nombre}`, '', '', '', '', '', '']);
+                    configExtraTabla = { styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] }, columnStyles: { 0: { cellWidth: 10, halign: 'center' } } };
+                    break;
 
-        const textoComision = comisionSeleccionada ? ` - Comisión ${comisionSeleccionada}` : "";
-        pdf.text(tituloPrincipal + textoComision, centroX, 33, { align: "center" });
+                case 'mensual':
+                    tituloPrincipal = "ASISTENCIA MENSUAL - Mes: ...................";
+                    cabeceras = [['Nº', 'Apellido y Nombre', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31']];
+                    filas = alumnosDeEstaComision.map((a, i) => [i + 1, `${a.apellido}, ${a.nombre}`, ...Array(31).fill('')]);
+                    let anchosColumnasMensual = { 0: { cellWidth: 8, halign: 'center' }, 1: { cellWidth: 45 } };
+                    for (let i = 2; i <= 32; i++) { anchosColumnasMensual[i] = { cellWidth: 7.2, halign: 'center' }; }
+                    configExtraTabla = { styles: { fontSize: 7, cellPadding: 1, valign: 'middle', lineColor: [0, 0, 0] }, columnStyles: anchosColumnasMensual };
+                    break;
 
-        // --- NUEVO: Logica de dibujado para el subtítulo ---
-        let startYTabla = 42;
-        let startYLinea = 38;
+                case 'observaciones':
+                    tituloPrincipal = "PLANILLA DE OBSERVACIONES";
+                    subtitulo = esListadoCompleto 
+                        ? `Comisión: TODAS   -   Docente: ....................................................`
+                        : `Comisión: ........ ${comisionActual} ........   -   Docente: ....................................................`;
+                    cabeceras = [['Nº', 'Apellido y Nombre', 'Documento', 'Fecha', 'Observación']];
+                    filas = Array.from({ length: 14 }, () => ['', '', '', '', '']);
+                    configExtraTabla = { styles: { fontSize: 9, cellPadding: 3, lineColor: [0, 0, 0], minCellHeight: 9 }, columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 1: { cellWidth: 45 }, 2: { cellWidth: 25, halign: 'center' }, 3: { cellWidth: 23 }, 4: { cellWidth: 'auto' } } };
+                    break;
+            }
 
-        if (subtitulo !== "") {
+            // 5. Estampar logos y textos
+            pdf.addImage(logoIT, 'PNG', 14, 10, 25, 25);
+            pdf.addImage(logoUNT, 'PNG', anchoHoja - 34, 10, 20, 25);
             pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(11); // Un poco más chico que el título principal
-            pdf.text(subtitulo, centroX, 39, { align: "center" });
-            // Empujamos la línea separadora y la tabla un poco para abajo
-            startYLinea = 42;
-            startYTabla = 46;
-        }
+            pdf.setFontSize(25);
+            pdf.text("INSTITUTO TÉCNICO", centroX, 16, { align: "center" });
+            pdf.setFont("times", "italic");
+            pdf.setFontSize(14);
+            pdf.text("Universidad Nacional de Tucumán", centroX, 23, { align: "center" });
+            pdf.setFont("helvetica", "semibold");
+            pdf.setFontSize(13);
 
-        pdf.setDrawColor(180, 180, 180);
-        pdf.setLineWidth(0.5);
-        pdf.line(14, startYLinea, anchoHoja - 14, startYLinea);
+            // Si es listado completo, no ponemos " - Comisión X" en el título general
+            const textoComisionInfo = (!esListadoCompleto && tipoDescarga !== 'observaciones') ? ` - Comisión ${comisionActual}` : (esListadoCompleto ? " (General)" : "");
+            pdf.text(tituloPrincipal + textoComisionInfo, centroX, 33, { align: "center" });
 
-        // =========================================================
-        // AUTO-TABLE
-        // =========================================================
-        pdf.autoTable({
-            head: cabeceras,
-            body: filas,
-            startY: startYTabla,
-            theme: 'grid',
-            headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center', lineWidth: 0.3 },
-            styles: {
-                fontSize: 10, cellPadding: 2, valign: 'middle'
-            },
-            alternateRowStyles: { fillColor: [245, 245, 245] },
-            ...configExtraTabla,
+            let startYTabla = 42;
+            let startYLinea = 38;
+
+            if (subtitulo !== "") {
+                pdf.setFont("helvetica", "normal");
+                pdf.setFontSize(11);
+                pdf.text(subtitulo, centroX, 39, { align: "center" });
+                startYLinea = 42;
+                startYTabla = 46;
+            }
+
+            pdf.setDrawColor(180, 180, 180);
+            pdf.setLineWidth(0.5);
+            pdf.line(14, startYLinea, anchoHoja - 14, startYLinea);
+
+            // 6. Dibujar la tabla
+            pdf.autoTable({
+                head: cabeceras,
+                body: filas,
+                startY: startYTabla,
+                theme: 'grid',
+                headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center', lineWidth: 0.3 },
+                styles: { fontSize: 10, cellPadding: 2, valign: 'middle' },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+                ...configExtraTabla,
+            });
+
+            // 7. Hoja nueva si no es la última vuelta
+            if (index < comisionesAProcesar.length - 1) {
+                pdf.addPage();
+            }
         });
 
-        pdf.save(`Planilla_${tipoDescarga}_${comisionSeleccionada || 'Generica'}.pdf`);
-
+        // 8. Guardar el PDF unificado
+        let nombreArchivo = `Planilla_${tipoDescarga}`;
+        if (esListadoCompleto) nombreArchivo += `_General_Sabana.pdf`;
+        else if (comisionSeleccionada) nombreArchivo += `_Comision_${comisionSeleccionada}.pdf`;
+        else nombreArchivo += `_Separadas_Por_Comision.pdf`;
+        
+        pdf.save(nombreArchivo);
         setTimeout(() => { Swal.close(); }, 1000);
 
     } catch (error) {
@@ -180,7 +162,6 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         Swal.fire('Error', 'Hubo un problema al crear el PDF.', 'error');
     }
 }
-
 
 
 export async function descargarPlanillaSaludPDF(listaFiltrada) {
