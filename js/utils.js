@@ -350,7 +350,7 @@ export async function descargarPlanillaCronograma(eventosGlobales, areaSeleccion
         // AUTO-TABLE
         // =========================================================
         pdf.autoTable({
-            head: [['Nº', 'Fecha', 'Detalle de la Actividad', 'Finalizado']],
+            head: [['Nº', 'Fecha', 'Detalle de la Actividad', 'Finalizado','Parcial','Pendiente']],
             body: filas,
             startY: 47,
             theme: 'grid',
@@ -360,10 +360,12 @@ export async function descargarPlanillaCronograma(eventosGlobales, areaSeleccion
 
             // Configuración de anchos para dejar espacio a los tildes
             columnStyles: {
-                0: { cellWidth: 10, halign: 'center' }, // Nº
-                1: { cellWidth: 20, halign: 'center' }, // Fecha (Ej: 19/08)
+                0: { cellWidth: 9, halign: 'center' }, // Nº
+                1: { cellWidth: 18, halign: 'center' }, // Fecha (Ej: 19/08)
                 2: { cellWidth: 'auto' },               // Detalle (Ocupa el resto)
-                3: { cellWidth: 20, halign: 'center' }  // Finalizado
+                3: { cellWidth: 20, halign: 'center' },  // Finalizado
+                4: { cellWidth: 19, halign: 'center' }, // Parcial
+                5: { cellWidth: 19, halign: 'center' }  // Pendiente
             }
         });
 
