@@ -1,90 +1,114 @@
 import * as UI from './ui.js';
+import * as Utils from './utils.js';
 
+export const EstadoDashboard = {
+    alumnos: [],
+    examenes: {}
+};
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyLEOeL6pKxxxYXTl9uWqwwAfLP67TsLuM44w4XWxCHAJWaRbZ17JAiztvXZhs5FXKtHQ/exec';
-
-export async function peticionLogin(usuario, clave) {
-    const peticion = {
-        accion: 'login',
-        usuario: usuario,
-        clave: clave
-    };
-
-    const response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(peticion)
-    });
-
-    return await response.json();
-}
-
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxrF4ppbNMvG0gFGUrcEeSuWKYaTVtvnWjUQbsrLImFBXZAZLxxHvN-prWb7Z8REcCp4w/exec';
 
 /**
- * Envía el lote de calificaciones al backend de GAS.
- * @param {Object} payloadDatos - El objeto JSON con la estructura definida.
- * @returns {Promise<Object>} La respuesta del servidor.
+ * 🔹 ENRUTADOR CENTRALIZADO PARA TODAS LAS PETICIONES AL SERVIDOR
+ * Inyecta automáticamente el token de sesión y maneja los errores HTTP.
  */
-export async function enviarNotasAlServidor(payloadDatos) {
-    try {
-        // Mostramos un spinner o bloqueamos la pantalla visualmente aquí si queremos
-        console.log("Enviando notas al servidor...", payloadDatos);
+async function peticionAutenticada(accion, datosExtra = {}) {
+    // Obtenemos el token guardado en la sesión (si no hay, envía string vacío)
+    const token = sessionStorage.getItem('token_sesion') || '';
 
-        const respuesta = await fetch(URL_WEB_APP, {
+    const payload = {
+        accion: accion,
+        token: token,
+        ...datosExtra
+    };
+
+    try {
+        const respuesta = await fetch(GAS_URL, {
             method: 'POST',
-            // Fetch en GAS requiere que sea text/plain o form-urlencoded a veces para evitar el preflight OPTIONS, 
-            // pero si tu setup ya maneja JSON puro, esto va de diez.
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
-            },
-            body: JSON.stringify(payloadDatos)
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
         });
 
         if (!respuesta.ok) {
-            throw new Error(`HTTP error! status: ${respuesta.status}`);
+            throw new Error(`Error HTTP: ${respuesta.status}`);
         }
 
-        const datosCrudos = await respuesta.json();
-        return datosCrudos;
-
+        const data = await respuesta.json();
+        return data;
+        
     } catch (error) {
-        console.error("Fallo la petición fetch:", error);
-        return {
-            exito: false,
-            mensaje: "Error de red al intentar contactar al servidor. Revisa tu conexión."
-        };
+        console.error(`❌ Fallo en petición [${accion}]:`, error);
+        // Retornamos un objeto de error estándar para que las funciones lo manejen fácil
+        return { exito: false, error: true, mensaje: error.message };
     }
 }
 
+// =========================================================
+// FUNCIONES ESPECÍFICAS (Usan el enrutador centralizado)
+// =========================================================
+
+export async function peticionLogin(usuario, clave) {
+    const respuesta = await peticionAutenticada('login', { usuario, clave });
+    console.log("Respuesta Login:", respuesta);
+    return respuesta;
+}
+
+export async function enviarNotasAlServidor(payloadDatos) {
+    console.log("Enviando notas al servidor...", payloadDatos);
+    
+    // Le pasamos todo el objeto payloadDatos desplegado
+    const respuesta = await peticionAutenticada('guardar_notas', payloadDatos);
+    
+    if (respuesta.error || !respuesta.exito) {
+        return {
+            exito: false,
+            mensaje: respuesta.mensaje || "Error al intentar guardar las notas en el servidor."
+        };
+    }
+    
+    return respuesta;
+}
 
 export async function cargarDatosPlanificacion() {
-    try {
-        const paqueteDatos = { accion: 'obtener_planificacion' };
-        const opciones = {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(paqueteDatos)
-        };
+    const resultado = await peticionAutenticada('obtener_planificacion');
 
-        const response = await fetch(GAS_URL, opciones);
-        if (!response.ok) throw new Error("Error de conexión");
+    if (resultado.exito) {
+        const eventosFetch = resultado.datos;
 
-        const resultado = await response.json();
+        sessionStorage.setItem('eventosGlobales', JSON.stringify(eventosFetch || []));
+        UI.inicializarCalendario(eventosFetch);
 
-        if (resultado.exito) {
-            const eventosFetch = resultado.datos;
-            sessionStorage.setItem('eventosGlobales', JSON.stringify(eventosFetch || []));
+        // Procesamos y guardamos el banco de datos docente indexado
+        const matrizDocentes = Utils.procesarDocentesYComisiones(eventosFetch);
+        sessionStorage.setItem('bancoDocentes', JSON.stringify(matrizDocentes));
 
-            UI.inicializarCalendario(eventosFetch);
-
-            return eventosFetch;
-        } else {
-            console.error("Error del backend:", resultado.mensaje);
-            return [];
-        }
-
-    } catch (error) {
-        console.error("Fallo crítico:", error);
+        return eventosFetch;
+    } else {
+        console.error("Error al cargar planificación:", resultado.mensaje);
         return [];
+    }
+}
+
+export async function cargarDatosEstadisticos() {
+    const btnActualizar = document.getElementById('btn-actualizar-graficos');
+    if (btnActualizar) btnActualizar.innerHTML = "⏳ Cargando...";
+
+    const json = await peticionAutenticada('obtener_estadisticas');
+
+    if (btnActualizar) btnActualizar.innerHTML = "Actualizar Datos";
+
+    if (json.exito) {
+        console.log("✅ Datos estadísticos recibidos del servidor.");
+
+        // Guardamos los datos en nuestro Estado Global
+        EstadoDashboard.alumnos = json.datos.alumnos;
+        EstadoDashboard.examenes = json.datos.estructura_examenes;
+
+        return true;
+    } else {
+        console.error("❌ Error del servidor al cargar estadísticas:", json.mensaje);
+        alert("No se pudieron cargar las estadísticas: " + (json.mensaje || "Error desconocido."));
+        return false;
     }
 }

@@ -1,3 +1,7 @@
+
+// Importamos el estado y la función
+import { EstadoDashboard  } from './api.js';
+
 // =================================================================
 // 1. ESTADO GLOBAL DEL MÓDULO
 // =================================================================
@@ -510,12 +514,19 @@ export function configurarInterfazPorRol(usuario) {
     document.getElementById('app-container').classList.remove('d-none');
     document.getElementById('userNameDisplay').textContent = `${usuario.nombre} (${usuario.rol})`;
 
+
     // Lógica de Permisos de Interfaz
     const tabDashboard = document.getElementById('nav-item-dashboard');
+    const tabMetrics = document.getElementById('nav-item-metrics');
+
     if (usuario.rol === 'ADMI' || usuario.rol === 'COOR') {
         tabDashboard.classList.remove('d-none');
+        tabMetrics.classList.remove('d-none');
+        //cargarDatosEstadisticos(); 
+
     } else {
         tabDashboard.classList.add('d-none');
+        tabMetrics.classList.add('d-none');
     }
 }
 
@@ -666,6 +677,7 @@ export function inicializarFiltroComisiones(aspirantesGlobales) {
 // RENDERIZAR TABLA DE CRONOGRAMA DETALLADO
 // =================================================================
 export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
+    
     const tbody = document.getElementById('tabla-cronograma-body');
     if (!tbody) return;
 
@@ -792,3 +804,178 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
 }
 
 
+export function renderizarRadarDinamico(materia, idCanvas, colorBorde, colorFondo) {
+    // 1. Leemos el estado global
+    const alumnos = EstadoDashboard.alumnos;
+    const estructura = EstadoDashboard.examenes[materia]; // Busca 'matematica', 'lengua' o 'dibujo'
+    
+    if (!alumnos || !estructura) {
+        console.warn(`No hay datos o estructura para la materia: ${materia}`);
+        return;
+    }
+
+    // 2. Filtramos solo los que rindieron esta materia específica
+    // Al usar los corchetes [], podemos evaluar variables dinámicas (ej: estado_matematica)
+    const presentes = alumnos.filter(a => a.datos_examen[`estado_${materia}`] === "Presente");
+    if (presentes.length === 0) return;
+
+    // 3. Extraemos los incisos
+    const incisos = Object.keys(estructura);
+    const promedios = [];
+    const maximosEsperados = [];
+
+    // 4. Calculamos
+    incisos.forEach(inciso => {
+        maximosEsperados.push(estructura[inciso].maximo);
+
+        const sumaTotal = presentes.reduce((suma, alumno) => {
+            const notasMateria = alumno.datos_examen[`incisos_${materia}`];
+            const nota = parseFloat(notasMateria[inciso]) || 0;
+            return suma + nota;
+        }, 0);
+        
+        promedios.push((sumaTotal / presentes.length).toFixed(2));
+    });
+
+    // 5. Dibujamos el Gráfico
+    const canvas = document.getElementById(idCanvas);
+    if (!canvas) return;
+    
+    // Destruimos el viejo para que Chart.js no se queje al actualizar
+    if (Chart.getChart(canvas)) {
+        Chart.getChart(canvas).destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: incisos,
+            datasets: [
+                {
+                    label: `Promedio ${materia.toUpperCase()}`,
+                    data: promedios,
+                    backgroundColor: colorFondo,
+                    borderColor: colorBorde,
+                    pointBackgroundColor: colorBorde,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Puntaje Ideal',
+                    data: maximosEsperados,
+                    backgroundColor: 'rgba(200, 200, 200, 0.1)',
+                    borderColor: 'rgba(150, 150, 150, 0.5)',
+                    borderDash: [5, 5],
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    suggestedMax: Math.max(...maximosEsperados)
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: (context) => {
+                            const inciso = context[0].label;
+                            return `Inciso ${inciso}: ${estructura[inciso].descripcion}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+
+
+// ==========================================
+// 2. FUNCIONES DE INTERFAZ (UI)
+// ==========================================
+
+export function calcularResumenKpis(alumnos) {
+    if (!alumnos || alumnos.length === 0) {
+        console.warn("No hay alumnos para calcular KPIs");
+        return;
+    }
+
+    // 1. Total de Inscriptos
+    document.getElementById('kpi-inscriptos').innerText = alumnos.length;
+
+    // 2. Alumnos que rindieron (Se presentaron a AL MENOS un examen)
+    const alumnosQueRindieron = alumnos.filter(a => 
+        a.datos_examen.estado_matematica === "Presente" || 
+        a.datos_examen.estado_lengua === "Presente" || 
+        a.datos_examen.estado_dibujo === "Presente"
+    );
+    document.getElementById('kpi-rindieron').innerText = alumnosQueRindieron.length;
+
+    // 3. Mini-función auxiliar para calcular cualquier materia sin repetir código
+    const calcularMateria = (materia) => {
+        const presentes = alumnos.filter(a => a.datos_examen[`estado_${materia}`] === "Presente");
+        
+        if (presentes.length > 0) {
+            const notas = presentes.map(a => a.datos_examen[`nota_final_${materia}`]);
+            const promedio = (notas.reduce((acc, val) => acc + val, 0) / notas.length).toFixed(2);
+            const maximo = Math.max(...notas).toFixed(2);
+
+            document.getElementById(`kpi-promedio-${materia}`).innerText = promedio;
+            document.getElementById(`kpi-max-${materia}`).innerText = maximo;
+        } else {
+            // Si nadie rindió aún, ponemos un guión
+            document.getElementById(`kpi-promedio-${materia}`).innerText = "-";
+            document.getElementById(`kpi-max-${materia}`).innerText = "-";
+        }
+    };
+
+    // Calculamos las 3 materias al instante
+    calcularMateria('matematica');
+    calcularMateria('lengua');
+    calcularMateria('dibujo');
+
+    // 4. Promedio General (Promedio del desempeño de cada alumno en las áreas que rindió)
+    if (alumnosQueRindieron.length > 0) {
+        let sumaPromediosAlumnos = 0;
+        let maxGeneral = 0;
+
+        alumnosQueRindieron.forEach(alumno => {
+            const notasAlumno = [];
+            if (alumno.datos_examen.estado_matematica === "Presente") notasAlumno.push(alumno.datos_examen.nota_final_matematica);
+            if (alumno.datos_examen.estado_lengua === "Presente") notasAlumno.push(alumno.datos_examen.nota_final_lengua);
+            if (alumno.datos_examen.estado_dibujo === "Presente") notasAlumno.push(alumno.datos_examen.nota_final_dibujo);
+
+            const promedioDelAlumno = notasAlumno.reduce((acc, val) => acc + val, 0) / notasAlumno.length;
+            
+            sumaPromediosAlumnos += promedioDelAlumno;
+            if (promedioDelAlumno > maxGeneral) {
+                maxGeneral = promedioDelAlumno;
+            }
+        });
+
+        const promedioGeneralTotal = (sumaPromediosAlumnos / alumnosQueRindieron.length).toFixed(2);
+        document.getElementById('kpi-promedio-general').innerText = promedioGeneralTotal;
+        document.getElementById('kpi-max-general').innerText = maxGeneral.toFixed(2);
+    } else {
+        document.getElementById('kpi-promedio-general').innerText = "-";
+        document.getElementById('kpi-max-general').innerText = "-";
+    }
+}
+
+export function inicializarFiltrosMerito() {
+    const alumnos = EstadoDashboard.alumnos;
+    if (!alumnos || alumnos.length === 0) return;
+
+    const totalAlumnos = alumnos.length;
+    
+    const inputMax = document.getElementById('filtro-merito-max');
+    inputMax.max = totalAlumnos;
+    inputMax.placeholder = totalAlumnos;
+}

@@ -241,6 +241,14 @@ body {
 }
 
 
+@media (max-width: 767.98px) {
+    .table th, th {
+        font-size: 0.8rem; /* Ajustá este valor a tu preferencia */
+    }
+}
+
+
+
 
 
 

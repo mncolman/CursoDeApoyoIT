@@ -1,29 +1,34 @@
+import * as Utils from './utils.js'; // 👈 Fundamental para poder llamar a la función
+
 export function guardarSesion(data) {
     sessionStorage.setItem('sesionActiva', 'true');
-    // Si viene el token lo guarda, si no, guarda string vacío
     sessionStorage.setItem('token_sesion', data.token || ''); 
     
-    // Le agregamos "paracaídas" (||) a todos por si el backend no manda ese dato
     sessionStorage.setItem('usuarioActual', JSON.stringify(data.perfil || {}));
     sessionStorage.setItem('aspirantesGlobales', JSON.stringify(data.datos || []));
-    //sessionStorage.setItem('eventosGlobales', JSON.stringify(data.calendario || []));
     
-    // Guardamos con la llave 'permisos_docente'
+    // Guardamos los eventos crudos si existen
+    const eventos = data.calendario || [];
+    sessionStorage.setItem('eventosGlobales', JSON.stringify(eventos));
+    
+    // 🔹 ACÁ ESTÁ LA CLAVE: Procesamos los eventos y guardamos el índice indexado de docentes
+    const matrizDocentes = Utils.procesarDocentesYComisiones(eventos);
+    sessionStorage.setItem('bancoDocentes', JSON.stringify(matrizDocentes));
+
     sessionStorage.setItem('permisos_docente', JSON.stringify(data.permisos_materias || []));
 }
 
-// --- archivo: auth.js ---
 export function verificarSesionPrevia() {
     if (sessionStorage.getItem('sesionActiva') === 'true') {
         return {
             activa: true,
-            // Agregamos paracaídas al leer también, por las dudas
             usuario: JSON.parse(sessionStorage.getItem('usuarioActual') || '{}'),
             aspirantes: JSON.parse(sessionStorage.getItem('aspirantesGlobales') || '[]'),
             eventos: JSON.parse(sessionStorage.getItem('eventosGlobales') || '[]'),
+            permisosGuardados: JSON.parse(sessionStorage.getItem('permisos_docente') || '[]'),
             
-            // CORRECCIÓN: Leemos exactamente la misma llave que usamos al guardar
-            permisosGuardados: JSON.parse(sessionStorage.getItem('permisos_docente') || '[]')
+            // 🔹 Recuperamos el índice procesado
+            bancoDocentes: JSON.parse(sessionStorage.getItem('bancoDocentes') || '{"mapaComisionMateria":{},"docentes":{}}')
         };
     }
     return { activa: false };

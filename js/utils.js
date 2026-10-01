@@ -522,3 +522,82 @@ export async function descargarCronogramaSemanal(eventosGlobales) {
         Swal.fire('Error', 'Hubo un problema al crear el PDF.', 'error');
     }
 }
+
+
+// Obtiene o calcula el promedio del alumno sobre la marcha
+export function obtenerPromedioAlumno(a) {
+    if (typeof a.promedioGeneral === 'number') return a.promedioGeneral;
+
+    const ex = a.datos_examen || {};
+    const notas = [];
+
+    if (ex.estado_matematica === 'Presente' && !isNaN(ex.nota_final_matematica)) {
+        notas.push(parseFloat(ex.nota_final_matematica));
+    }
+    if (ex.estado_lengua === 'Presente' && !isNaN(ex.nota_final_lengua)) {
+        notas.push(parseFloat(ex.nota_final_lengua));
+    }
+    if (ex.estado_dibujo === 'Presente' && !isNaN(ex.nota_final_dibujo)) {
+        notas.push(parseFloat(ex.nota_final_dibujo));
+    }
+
+    return notas.length > 0 ? (notas.reduce((acc, n) => acc + n, 0) / notas.length) : 0;
+}
+
+
+
+
+// --- archivo: utils.js ---
+
+export function procesarDocentesYComisiones(eventos = []) {
+    const mapaComisionMateria = {}; // Clave: "1_matematica" -> ["Docente A", "Docente B"]
+    const docentes = {};            // Clave: "Nombre Docente" -> { area: "Matemática", comisiones: [1, 4] }
+
+    if (!Array.isArray(eventos)) return { mapaComisionMateria, docentes };
+
+    eventos.forEach(evento => {
+        const detalle = evento?.extendedProps?.detalleComisiones;
+        if (!Array.isArray(detalle)) return;
+
+        detalle.forEach(item => {
+            const nombreDocente = item.docente?.trim();
+            const materia = item.materia?.trim();
+            const comision = item.comision !== undefined ? String(item.comision) : null;
+
+            if (!nombreDocente || !materia || !comision) return;
+
+            const materiaKey = materia.toLowerCase();
+            const claveComision = `${comision}_${materiaKey}`;
+
+            // 1. Mapeo Comisión + Materia -> Lista de docentes (sin duplicados)
+            if (!mapaComisionMateria[claveComision]) {
+                mapaComisionMateria[claveComision] = [];
+            }
+            if (!mapaComisionMateria[claveComision].includes(nombreDocente)) {
+                mapaComisionMateria[claveComision].push(nombreDocente);
+            }
+
+            // 2. Banco individual por Docente (área única fija y sus comisiones)
+            const numComision = Number(comision);
+
+            if (!docentes[nombreDocente]) {
+                docentes[nombreDocente] = {
+                    area: materia,          // Área pedagógica única
+                    comisiones: []
+                };
+            }
+
+            if (!docentes[nombreDocente].comisiones.includes(numComision)) {
+                docentes[nombreDocente].comisiones.push(numComision);
+            }
+        });
+    });
+
+    // Ordenamos numéricamente las comisiones asignadas a cada docente
+    Object.values(docentes).forEach(d => d.comisiones.sort((a, b) => a - b));
+
+    return {
+        mapaComisionMateria,
+        docentes
+    };
+}

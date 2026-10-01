@@ -1,10 +1,19 @@
 import * as Api from './api.js';
 import * as Auth from './auth.js';
 import * as UI from './ui.js';
+import * as UImetrics from './ui-metricas.js';
 import * as Filtros from './filters.js';
 import * as Utils from './utils.js';
 
 
+// Importamos el estado y la función
+import { EstadoDashboard, cargarDatosEstadisticos } from './api.js';
+
+
+// Constantes de colores para los gráficos
+const COLOR_MATEMATICA = { borde: 'rgb(138, 0, 0)', fondo: 'rgba(235, 54, 54, 0.4)' };
+const COLOR_LENGUA = { borde: 'rgb(4, 19, 87)', fondo: 'rgba(75, 77, 192, 0.4)' };
+const COLOR_DIBUJO = { borde: 'rgb(50, 50, 50)', fondo: 'rgba(219, 200, 145, 0.4)' };
 
 
 // --- 1. ESTADO GLOBAL Y CACHÉ ---
@@ -14,6 +23,8 @@ let eventosGlobales = [];
 let permisosDocentes = [];
 let usuarioActual = null;
 let isExpandedView = false;
+
+
 
 
 // =================================================================
@@ -85,50 +96,62 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- 1. VERIFICACIÓN Y ORQUESTACIÓN DE SESIÓN ---
-    const sesion = Auth.verificarSesionPrevia();
+const sesion = Auth.verificarSesionPrevia();
 
-    if (sesion.activa) {
-        // Restaurar variables globales en main.js
-        usuarioActual = sesion.usuario;
-        aspirantesGlobales = sesion.aspirantes;
-        eventosGlobales = sesion.eventos;
-        permisosDocentes = sesion.permisos_docente;
+if (sesion.activa) {
+    console.log("Sesión activa recuperada de sessionStorage");
 
-        // Configurar la vista según los permisos (UI.js)
-        UI.configurarInterfazPorRol(usuarioActual);
+    // 1. Restaurar variables globales en main.js
+    usuarioActual = sesion.usuario;
+    aspirantesGlobales = sesion.aspirantes;
+    eventosGlobales = sesion.eventos; 
+    
+    // CORRECCIÓN: En auth.js lo retorna como 'permisosGuardados', no 'permisos_docente'
+    permisosDocentes = sesion.permisosGuardados || []; 
 
-        // Disparar las funciones de renderizado
-        if (usuarioActual.rol === 'ADMI' || usuarioActual.rol === 'COOR') {
-            // Asumo que esta función ya la moviste a UI o está global por ahora
-            UI.renderizarDashboardGeneral(aspirantesGlobales);
-        }
+    // 2. Configurar la vista según el rol del usuario
+    UI.configurarInterfazPorRol(usuarioActual);
 
-        UI.inicializarFiltroComisiones(aspirantesGlobales);
-
-        orquestarFiltros();
-        UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
-        Api.cargarDatosPlanificacion();
-
-        // 2. FORZAMOS EL DIBUJADO INICIAL
-        // (Asegurate de que 'filtroSemana' sea el ID real de tu <select> de semanas en el HTML)
-        const selectSemana = document.getElementById('filtro-semana-cronograma');
-        if (selectSemana) {
-            // Le decimos al select que se ponga en la "Semana 1" por defecto (o el value que uses)
-            selectSemana.value = "3";
-
-            // Disparamos el evento para que tu código reaccione y dibuje la tabla
-            selectSemana.dispatchEvent(new Event('change'));
-        }
-
-    } else {
-
-        // 1. Limpiamos cualquier basura que haya quedado en memoria
-        sessionStorage.clear();
-
-        // 2. Nos aseguramos de que el usuario vea SOLO el login
-        document.getElementById('login-container').classList.remove('d-none');
-        document.getElementById('app-container').classList.add('d-none');
+    // 3. Renderizar Dashboard si corresponde
+    if (usuarioActual.rol === 'ADMI' || usuarioActual.rol === 'COOR') {
+        UI.renderizarDashboardGeneral(aspirantesGlobales);
     }
+
+    // 4. Inicializar selects y módulos
+    UI.inicializarFiltroComisiones(aspirantesGlobales);
+    UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
+    
+    // 5. 🔹 INICIALIZAMOS EL CALENDARIO Y CRONOGRAMA
+    // Acá estaba faltando pasarle los eventos al FullCalendar
+    UI.inicializarCalendario(eventosGlobales); 
+    
+    // Llamamos al render del cronograma por si tu función lo requiere de entrada
+    UI.renderizarTablaCronograma(eventosGlobales); 
+
+    // 6. Aplicar filtros cruzados (gráficos y tablas)
+    orquestarFiltros();
+
+    // 7. Forzar el dibujado de la semana 3 en el cronograma
+    const selectSemana = document.getElementById('filtro-semana-cronograma');
+    if (selectSemana) {
+        selectSemana.value = "3";
+        // Disparamos el evento para que la tabla se dibuje filtrada
+        selectSemana.dispatchEvent(new Event('change'));
+    }
+
+} else {
+    // Si la sesión no existe o expiró
+    
+    // 1. Limpiamos cualquier basura o rastro previo en memoria
+    sessionStorage.clear();
+
+    // 2. Nos aseguramos de que el usuario vea SOLO la pantalla de login
+    const loginContainer = document.getElementById('login-container');
+    const appContainer = document.getElementById('app-container');
+    
+    if (loginContainer) loginContainer.classList.remove('d-none');
+    if (appContainer) appContainer.classList.add('d-none');
+}
 
 
 
@@ -193,7 +216,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Cierra el menú hamburguesa al hacer clic en una pestaña (solo en móviles)
     const navLinks = document.querySelectorAll('#collapsibleTabs .nav-link');
     const menuCollapse = document.getElementById('collapsibleTabs');
-
     navLinks.forEach(link => {
         link.addEventListener('click', () => {
             if (window.innerWidth < 992) { // 992px es el breakpoint 'lg' de Bootstrap
@@ -383,9 +405,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-
-
-
     document.getElementById('btnGuardarNotas').addEventListener('click', async () => {
 
         const tokenActual = sessionStorage.getItem('sesion_activa');
@@ -467,9 +486,135 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.innerHTML = 'Guardar Planilla';
     });
 
+
+
+
+    // Escuchamos el buscador de texto en tiempo real
+    document.getElementById('filtro-buscar-alumno')?.addEventListener('input', () => {
+        actualizarDashboardFiltrado();
+    });
+
+    // Escuchamos los inputs de rango de mérito
+    document.getElementById('filtro-merito-min')?.addEventListener('input', () => {
+        actualizarDashboardFiltrado();
+    });
+
+    document.getElementById('filtro-merito-max')?.addEventListener('input', () => {
+        actualizarDashboardFiltrado();
+    });
+
+
+    // Cuando se reciben los datos por primera vez:
+    function inicializarYRenderizarDashboard() {
+        // 1. Calculamos los KPIs grandes con la TOTALIDAD de alumnos (una sola vez)
+        UImetrics.calcularKpisGlobales(EstadoDashboard.alumnos);
+
+        // 2. Inicializamos los límites numéricos de los inputs
+        Filtros.obtenerAlumnosFiltradosPorMerito();
+
+        // 3. Disparamos el primer filtrado (que dibuja tabla, mini-KPIs y gráficos)
+        actualizarDashboardFiltrado();
+
+        UImetrics.inicializarSelectorComisiones(EstadoDashboard.alumnos);
+        UImetrics.renderizarGraficoComisiones(EstadoDashboard.alumnos, 'todas');
+        UImetrics.renderizarTablaComisiones(EstadoDashboard.alumnos);
+
+    }
+
+
+    // 1. En tu función de actualización habitual:
+    function actualizarDashboardFiltrado() {
+        const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos);
+
+
+        UImetrics.renderizarTablaMerito(alumnosFiltrados);
+
+        UImetrics.calcularMiniKpisFiltrados(alumnosFiltrados);
+
+        UImetrics.renderizarRadarDinamico('matematica', 'radarMatematica', COLOR_MATEMATICA.borde, COLOR_MATEMATICA.fondo, alumnosFiltrados);
+        UImetrics.renderizarRadarDinamico('lengua', 'radarLengua', COLOR_LENGUA.borde, COLOR_LENGUA.fondo, alumnosFiltrados);
+        UImetrics.renderizarRadarDinamico('dibujo', 'radarDibujo', COLOR_DIBUJO.borde, COLOR_DIBUJO.fondo, alumnosFiltrados);
+        UImetrics.renderizarGraficoDistribucion(alumnosFiltrados);
+        // 🔹 Histograma de distribución de notas
+
+        UImetrics.renderizarGraficoComisiones(EstadoDashboard.alumnos, 'todas');
+        UImetrics.renderizarTablaComisiones(alumnosFiltrados);
+
+
+
+
+        UImetrics.renderizarRadarsDocentes(alumnosFiltrados);
+        UImetrics.renderizarTablaDocentes(alumnosFiltrados);
+    }
+
+    // Listener para el selector de orden de la tabla docente
+    document.getElementById('select-ordenar-docentes-tabla')?.addEventListener('change', () => {
+        const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos);
+        UImetrics.renderizarTablaDocentes(alumnosFiltrados);
+    });
+
+    document.getElementById('select-filtro-comision')?.addEventListener('change', (e) => {
+        const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos);
+        UImetrics.renderizarGraficoComisiones(alumnosFiltrados, e.target.value);
+    });
+
+    // 2. Escuchamos el cambio de píldora (General / Matemática / Lengua / Dibujo)
+    document.querySelectorAll('input[name="btn-distribucion"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos);
+            UImetrics.renderizarGraficoDistribucion(alumnosFiltrados, e.target.value);
+        });
+    });
+
+    // Escuchamos el cambio en el selector de orden de comisiones
+    document.getElementById('select-ordenar-comisiones')?.addEventListener('change', () => {
+        const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos);
+        UImetrics.renderizarTablaComisiones(alumnosFiltrados);
+    });
+
+
+
+
+
+    // =================================================================
+    // 2. LISTENERS DE FILTROS EN TIEMPO REAL
+    // =================================================================
+
+    document.getElementById('filtro-merito-min').addEventListener('input', () => {
+        actualizarDashboardFiltrado();
+    });
+
+    document.getElementById('filtro-merito-max').addEventListener('input', () => {
+        actualizarDashboardFiltrado();
+    });
+
+    // =================================================================
+    // 3. DISPARADORES DE CARGA (Sin tareas duplicadas)
+    // =================================================================
+
+    // Opción A: Botón "Actualizar" (Fuerza la descarga de datos nuevos)
+    document.getElementById('btn-actualizar-graficos').addEventListener('click', async () => {
+        const exito = await cargarDatosEstadisticos();
+        if (exito) {
+            inicializarYRenderizarDashboard();
+        }
+    });
+
+    // Opción B: Clic en pestaña (Carga automática SOLO si la memoria está vacía)
+    document.getElementById('dashboard-tab').addEventListener('click', async () => {
+        const sinDatos = !EstadoDashboard.alumnos || EstadoDashboard.alumnos.length === 0;
+
+        if (sinDatos) {
+            const exito = await cargarDatosEstadisticos();
+            if (exito) {
+                inicializarYRenderizarDashboard();
+            }
+        }
+    });
+
+
+
 });
-
-
 
 async function iniciarSesion(e) {
     e.preventDefault();
@@ -477,24 +622,24 @@ async function iniciarSesion(e) {
     const email = document.getElementById('loginEmail').value;
     const clave = document.getElementById('loginClave').value;
 
-    // 1. Mostrar spinner (Delega a UI)
+    // 1. Mostrar spinner
     UI.setEstadoCargaLogin(true);
 
     try {
-        // 2. Hacer petición (Delega a API)
+        // 2. Hacer petición al GAS
         const data = await Api.peticionLogin(email, clave);
 
         if (data.exito) {
-            // 3. Guardar sesión (Delega a Auth)
+            // 3. Guardar sesión y procesar docentes internamente (Delega a Auth)
             Auth.guardarSesion(data);
 
-            // 4. Llenar tus variables globales locales del main
+            // 4. Llenar variables globales locales del main
             usuarioActual = data.perfil;
             aspirantesGlobales = data.datos;
-            //eventosGlobales = data.calendario;
-            permisosDocentes = data.permisos_materias;    //permisos_materias viene del backend. en el frontend se traduce a permisosDocentes
+            permisosDocentes = data.permisos_materias;
+            eventosGlobales = data.calendario || []; // 🔹 DESCOMENTADO: Ahora sí usamos el calendario
 
-            // 5. Configurar Interfaz (Delega a UI)
+            // 5. Configurar Interfaz General
             UI.configurarInterfazPorRol(usuarioActual);
             UI.inicializarFiltroComisiones(aspirantesGlobales);
 
@@ -502,28 +647,32 @@ async function iniciarSesion(e) {
                 UI.renderizarDashboardGeneral(aspirantesGlobales);
             }
 
+            // 6. 🔹 Inicializar el Calendario y Cronograma usando los eventos
+            UI.inicializarCalendario(eventosGlobales); // Llama a FullCalendar
+            
+            // Verificá si tu función renderizarTablaCronograma necesita recibir los eventos:
+            // Si la función los lee del sessionStorage internamente, así está bien. 
+            // Si antes le pasabas el array, deberías hacer: UI.renderizarTablaCronograma(eventosGlobales);
+            UI.renderizarTablaCronograma(eventosGlobales); 
 
-            // 6. Disparar dibujados
+            // 7. Disparar dibujados y módulos restantes
             orquestarFiltros();
             UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
 
-            eventosGlobales = await Api.cargarDatosPlanificacion();
-
-
-            const selectSemana = document.getElementById('filtro-semana-cronograma'); // <-- Asegurate de poner el ID correcto de tu select
+            // 8. Forzar la primera vista de la semana
+            const selectSemana = document.getElementById('filtro-semana-cronograma');
             if (selectSemana) {
                 selectSemana.dispatchEvent(new Event('change'));
             }
 
         } else {
-            alert(data.mensaje); // Login incorrecto
+            alert(data.mensaje || "Credenciales incorrectas.");
         }
     } catch (error) {
-        console.error(error);
+        console.error("Fallo durante el inicio de sesión:", error);
         alert("Ocurrió un error al intentar conectar con el servidor.");
     } finally {
-        // 7. Restaurar botón (Delega a UI)
-
+        // 9. Restaurar botón
         UI.setEstadoCargaLogin(false);
     }
 }
