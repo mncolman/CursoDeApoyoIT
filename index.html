@@ -147,19 +147,17 @@
                             </li>
 
 
-
-                            <!--
-
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link text-start text-lg-center" id="notas-tab" data-bs-toggle="pill"
-                                    data-bs-target="#notas" type="button" role="tab">Carga de Notas</button>
+                                <button class="nav-link text-start text-lg-center w-100" id="notas-tab"
+                                    data-bs-toggle="pill" data-bs-target="#notas" type="button" role="tab">Carga de
+                                    Notas</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link text-start text-lg-center" id="trayectoria-tab"
-                                data-bs-toggle="pill" data-bs-target="#trayectoria" type="button"
-                                role="tab">Trayectoria Aspirantes</button>
+                                <button class="nav-link text-start text-lg-center w-100" id="trayectoria-tab"
+                                    data-bs-toggle="pill" data-bs-target="#trayectoria" type="button"
+                                    role="tab">Trayectoria Aspirantes</button>
                             </li>
-                            --->
+
 
                             <!-- Pestaña exclusiva para directivos -->
                             <li class="nav-item d-none" role="presentation" id="nav-item-dashboard">
@@ -306,7 +304,7 @@
                 <!-- ========================================== -->
                 <div class="tab-pane fade" id="tab-cronograma" role="tabpanel" tabindex="0">
                     <div class="container-fluid mt-3">
-                        <section class=" d-flex row mb-3 justify-content-between gap-3">
+                        <section class=" d-flex row mb-3 justify-content-between align-content-center">
 
                             <div class="col-12 col-md-4">
                                 <div class="dropdown shadow-sm">
@@ -344,9 +342,13 @@
                                     </ul>
                                 </div>
                             </div>
+                            <div class="col-md-4 mb-4 mt-3 mt-md-0">
+                                <label for="buscadorGeneral" class="form-label fw-bold d-none">🔍 </label>
+                                <input type="text" id="buscadorGeneral" class="form-control"
+                                    placeholder="Buscar Docente o Comisión...">
+                            </div>
 
-
-                            <div class="col-12 col-md-4 ">
+                            <div class="col-12 col-md-3 ">
                                 <div class="input-group shadow-sm">
                                     <!-- Etiqueta con el color institucional y el ícono -->
                                     <span class="input-group-text fondo_rojo_institucional text-white border-0">
@@ -356,9 +358,10 @@
                                     <!-- El select en blanco, sin bordes para mantener la limpieza del shadow-sm -->
                                     <select class="form-select border-0 bg-white" id="filtro-semana-cronograma"
                                         style="cursor: pointer;">
-                                        <option value="1">Semana 1</option>
+                                        <option value="todas" selected>Todas las semanas</option>
+                                        <option value="1 ">Semana 1</option>
                                         <option value="2">Semana 2</option>
-                                        <option value="3" selected>Semana 3</option>
+                                        <option value="3" >Semana 3</option>
                                         <option value="4">Semana 4</option>
                                         <option value="5">Semana 5</option>
                                         <option value="6">Semana 6</option>
@@ -407,14 +410,14 @@
                         <!-- Controles Superiores de Notas -->
                         <section class="row g-3 align-items-end mb-3">
                             <div class="col-md-3">
-                                <label class="form-label fw-bold text-primary">1. Comisión</label>
+                                <label class="form-label fw-bold texto_azul_institucional">1. Comisión</label>
                                 <select id="selectComisionNotas" class="form-select">
                                     <!-- Se llena con JS -->
                                 </select>
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label fw-bold text-primary">2. Asignatura</label>
+                                <label class="form-label fw-bold texto_azul_institucional">2. Asignatura</label>
                                 <select id="selectAsignaturaNotas" class="form-select" disabled>
                                     <option value="">Seleccione Asignatura...</option>
                                 </select>
@@ -424,7 +427,7 @@
                                 <button class="btn btn-outline-secondary" id="btnHabilitarEdicion">
                                     ✏️ Habilitar Planilla
                                 </button>
-                                <button class="btn btn-success" id="btnGuardarNotas" disabled>
+                                <button class="btn fondo_azul_institucional" id="btnGuardarNotas" disabled>
                                     ☁️ Enviar al Servidor
                                 </button>
                             </div>
@@ -436,9 +439,11 @@
                                 <button class="nav-link active" id="seguimiento-tab" type="button">1º
                                     Seguimiento</button>
                             </li>
+                            <!-- Sub-Pestañas de Instancias de Evaluación
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="ensayo-tab" type="button">Ensayo Examen</button>
                             </li>
+                             -->
                         </ul>
 
                         <!-- TÍTULO DINÁMICO DE CONTEXTO -->
@@ -478,81 +483,92 @@
 
 
 
-                <!-- Pestaña: Trayectoria Aspirantes -->
+                <!-- PESTAÑA 4:TRayectoria alumnos -->
+
                 <article class="tab-pane fade" id="trayectoria" role="tabpanel">
 
                     <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
-                        <h4 class="text-primary mb-0">📊 Trayectoria Histórica</h4>
+                        <h4 class="texto_azul_institucional mb-0 px-2">Trayectoria Histórica</h4>
                         <div class="badge bg-warning text-dark fs-6 d-none" id="badgeAdminTrayectoria">
                             Modo Auditoría (Admin)
                         </div>
                     </div>
 
-                    <div class="table-responsive shadow-sm rounded border">
-                        <table class="table table-hover table-bordered align-middle text-center bg-white mb-0">
+                    <div class="row g-2 mb-4 align-items-center border-2 border-secondary p-3 rounded shadow-sm"
+                        style="top: 15px; z-index: 1000;">
+
+                        <div class="col-md-4">
+                            <input type="text" id="searchInputTrayectoria" class="form-control"
+                                placeholder="Buscar por nombre, DNI o ID...">
+                        </div>
+
+                        <div class="col-md-4">
+                            <select id="filterComisionTrayectoria" class="form-select">
+                                <option value="">Todas las Comisiones</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <select id="sortSelectTrayectoria" class="form-select">
+                                <option value="nombre_asc">Nombre (A - Z)</option>
+                                <option value="nombre_desc">Nombre (Z - A)</option>
+                                <option value="inscripcion_asc">Nº Inscripción (Menor a Mayor)</option>
+                                <option value="inscripcion_desc">Nº Inscripción (Mayor a Menor)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive shadow-sm rounded border tabla-fixed-header"
+                        style="max-height: 70vh !important;">
+                        <table class="table table-hover table-bordered table-striped align-middle text-center bg-white mb-0">
                             <thead class="table-dark">
                                 <tr>
-                                    <th rowspan="2" class="align-middle">DNI</th>
+                                    <!-- Reemplazamos DNI por Orden y Nº de Inscripción -->
+                                    <th rowspan="2" class="align-middle text-muted" style="width: 50px;">#</th>
+                                    <th rowspan="2" class="align-middle">Nº Insc.</th>
                                     <th rowspan="2" class="align-middle text-start" style="min-width: 200px;">Apellido y
                                         Nombre</th>
-                                    <th rowspan="2" class="align-middle">Comision</th>
-                                    <th rowspan="2" class="align-middle">Turno</th>
+                                    <th rowspan="2" class="align-middle">Comisión</th>
 
-                                    <!-- Súper Encabezados de Instancias -->
-                                    <th colspan="3" class="bg-primary border-bottom-0">1° Evaluación</th>
-                                    <th colspan="3" class="bg-success border-bottom-0">Ensayo Examen</th>
+                                    <th colspan="3" class="fondo_azul_institucional border-bottom-0">1° Evaluación</th>
+                                    <th colspan="3" class="fondo_rojo_institucional border-bottom-0">Ensayo Examen</th>
 
-                                    <!-- Columna exclusiva para Administradores -->
                                     <th rowspan="2" class="align-middle bg-danger admin-col d-none">Auditar</th>
                                 </tr>
                                 <tr>
-                                    <!-- Sub-columnas de Materias (1° Eval) -->
-                                    <th class="bg-light text-dark" style="width: 5%;">Mat</th>
-                                    <th class="bg-light text-dark" style="width: 5%;">Len</th>
-                                    <th class="bg-light text-dark" style="width: 5%;">Dib</th>
+                                    <th class="bg-light text-dark" style="width: 6%;">Mat</th>
+                                    <th class="bg-light text-dark" style="width: 6%;">Len</th>
+                                    <th class="bg-light text-dark" style="width: 6%;">Dib</th>
 
-                                    <!-- Sub-columnas de Materias (Ensayo) -->
-                                    <th class="bg-light text-dark" style="width: 5%;">Mat</th>
-                                    <th class="bg-light text-dark" style="width: 5%;">Len</th>
-                                    <th class="bg-light text-dark" style="width: 5%;">Dib</th>
+                                    <th class="bg-light text-dark" style="width: 6%;">Mat</th>
+                                    <th class="bg-light text-dark" style="width: 6%;">Len</th>
+                                    <th class="bg-light text-dark" style="width: 6%;">Dib</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-trayectoria-body">
-                                <!-- Ejemplo de cómo se vería una fila (Esto luego lo inyectará JS) -->
-                                <tr>
-                                    <td>45.123.456</td>
-                                    <td class="text-start fw-bold">Pérez, Juan Ignacio</td>
-                                    <td>1</td>
-                                    <td>Mañana</td>
-
-                                    <!-- Notas 1° Eval -->
-                                    <td>8</td>
-                                    <td>7</td>
-                                    <td>9</td>
-
-                                    <!-- Notas Ensayo -->
-                                    <td>-</td>
-                                    <td>-</td>
-                                    <td>-</td>
-
-                                    <!-- Botón de Edición -->
-                                    <td class="admin-col d-none">
-                                        <button id="" class="btn btn-sm btn-outline-danger"
-                                            title="Modificar Calificación">
-                                            ✏️
-                                        </button>
-                                    </td>
-                                </tr>
+                                <!-- Renderizado por JS -->
                             </tbody>
+                            <tfoot class="table-light fw-bold border-top border-2 border-secondary" id="tabla-trayectoria-foot">
+                                <tr>
+                                    <td colspan="4" class="text-end pe-3 texto_azul_institucional">Promedios Generales:</td>
+                                    <td id="prom-1er-mat" class="">-</td>
+                                    <td id="prom-1er-len" class="texto_azul_institucional">-</td>
+                                    <td id="prom-1er-dib" class="texto_azul_institucional">-</td>
+                                    
+                                    <td id="prom-fin-mat" class="texto_azul_institucional">-</td>
+                                    <td id="prom-fin-len" class="texto_azul_institucional">-</td>
+                                    <td id="prom-fin-dib" class="texto_azul_institucional">-</td>
+                                    
+                                    <td class="admin-col d-none"></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </article>
 
 
-
                 <!-- PESTAÑA: Dashboard General -->
                 <article class="tab-pane fade" id="dashboard" role="tabpanel">
-                    <h4 class="text-dark mb-4 mt-2">📊 Reporte General de Inscripciones</h4>
+                    <h4 class="texto_azul_institucional mb-4 mt-2">📊 Reporte General de Inscripciones</h4>
 
                     <div class="row g-3">
                         <!-- Métrica Total -->

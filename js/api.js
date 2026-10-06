@@ -1,7 +1,7 @@
 import * as UI from './ui.js';
 
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyLEOeL6pKxxxYXTl9uWqwwAfLP67TsLuM44w4XWxCHAJWaRbZ17JAiztvXZhs5FXKtHQ/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyuYvx4AOqZoIjC2nRO8wtD0oOv5IPKjfj4m6jKRhEdNM8f1F2ZLSIlWuoJCIZaMR57_g/exec';
 
 export async function peticionLogin(usuario, clave) {
     const peticion = {
@@ -16,36 +16,75 @@ export async function peticionLogin(usuario, clave) {
         body: JSON.stringify(peticion)
     });
 
-    return await response.json();
+    let respuesta = await response.json();
+
+    return respuesta;
 }
 
-
 /**
- * Envía el lote de calificaciones al backend de GAS.
- * @param {Object} payloadDatos - El objeto JSON con la estructura definida.
+ * Envía el lote de calificaciones al backend de GAS y actualiza los permisos locales.
+ * @param {Object} payloadDatos - El objeto con comision, materia, instancia y notas.
  * @returns {Promise<Object>} La respuesta del servidor.
  */
 export async function enviarNotasAlServidor(payloadDatos) {
     try {
-        // Mostramos un spinner o bloqueamos la pantalla visualmente aquí si queremos
         console.log("Enviando notas al servidor...", payloadDatos);
 
-        const respuesta = await fetch(URL_WEB_APP, {
+        // 1. Recuperamos la sesión para obtener el token
+        const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
+        const sesion = dataGuardada ? JSON.parse(dataGuardada) : {};
+        const token = sesion.token || '';
+
+        // 2. Armamos el paquete final sumando la acción y la seguridad
+        const peticion = {
+            accion: 'guardar_notas',
+            token: token,
+            usuario: sesion.usuarioActual ? sesion.usuarioActual.email : '',
+            ...payloadDatos
+        };
+
+        // 3. Disparamos la petición al backend
+        // (Asegurate de que GAS_URL esté definida arriba en tu archivo api.js)
+        const respuesta = await fetch(GAS_URL, {
             method: 'POST',
-            // Fetch en GAS requiere que sea text/plain o form-urlencoded a veces para evitar el preflight OPTIONS, 
-            // pero si tu setup ya maneja JSON puro, esto va de diez.
             headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
+                'Content-Type': 'text/plain;charset=utf-8'
             },
-            body: JSON.stringify(payloadDatos)
+            redirect: 'follow', // 👇 Agrega esta línea
+            body: JSON.stringify(peticion)
         });
 
         if (!respuesta.ok) {
-            throw new Error(`HTTP error! status: ${respuesta.status}`);
+            throw new Error(`Error HTTP! status: ${respuesta.status}`);
         }
 
-        const datosCrudos = await respuesta.json();
-        return datosCrudos;
+        const respuestaJSON = await respuesta.json();
+
+        // 4. 🔹 LA MAGIA: Si el backend guardó con éxito, actualizamos la memoria local
+        if (respuestaJSON.exito && dataGuardada) {
+            const permisos = sesion.permisos_docente || [];
+
+            // Buscamos el permiso exacto que el profe acaba de usar
+            const permisoUsado = permisos.find(p =>
+                p.id_comision == payloadDatos.comision &&
+                p.materia === payloadDatos.materia
+            );
+
+            if (permisoUsado) {
+                // Le quitamos la llave para que no pueda volver a cargar esta instancia
+                if (payloadDatos.instancia === 'bloque_1er_ev') {
+                    permisoUsado.puede_cargar_1er = false;
+                } else if (payloadDatos.instancia === 'bloque_final') {
+                    permisoUsado.puede_cargar_fin = false;
+                }
+
+                // Guardamos el paquete actualizado en el navegador
+                localStorage.setItem('sesionInstitutoTecnico', JSON.stringify(sesion));
+                console.log("Permisos locales actualizados tras el envío.");
+            }
+        }
+
+        return respuestaJSON;
 
     } catch (error) {
         console.error("Fallo la petición fetch:", error);
@@ -72,7 +111,7 @@ export async function cargarDatosPlanificacion() {
 
         if (resultado.exito) {
             const eventosFetch = resultado.datos;
-            
+
             // VOLVEMOS AL ORIGEN: Guardamos en sessionStorage
             sessionStorage.setItem('eventosGlobales', JSON.stringify(eventosFetch || []));
 
@@ -87,5 +126,37 @@ export async function cargarDatosPlanificacion() {
     } catch (error) {
         console.error("Fallo crítico:", error);
         return [];
+    }
+}
+
+
+export async function obtenerDatosFrescos(email, token) {
+    try {
+        // Armamos el paquete siguiendo tu estándar
+        const paqueteDatos = { 
+            accion: 'obtenerDatosFrescos', 
+            email: email,
+            token: token
+        };
+        
+        const opciones = {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            redirect: 'follow', 
+            body: JSON.stringify(paqueteDatos)
+        };
+
+        const response = await fetch(GAS_URL, opciones);
+        if (!response.ok) throw new Error("Error de conexión al obtener datos frescos");
+
+        const resultado = await response.json();
+        
+
+        return resultado; 
+
+    } catch (error) {
+        console.error("Fallo crítico en obtenerDatosFrescos:", error);
+        // Devolvemos un objeto estructurado para que el catch de inicializarApp no explote
+        return { exito: false, mensaje: error.message }; 
     }
 }

@@ -1,10 +1,10 @@
 .texto_azul_institucional {
-    color: #073a86;
+    color: #073a86 !important;
 }
 
 .fondo_azul_institucional {
-    background-color: #062b63;
-    color:white;
+    background-color: #062b63 !important;
+    color:white !important;
 }
 
 .texto_rojo_institucional {
@@ -13,8 +13,8 @@
 }
 
 .fondo_rojo_institucional {
-    background-color: #c00505;
-    color:white;
+    background-color: #c00505 !important;
+    color:white !important;
 }
 .fondo_claro {
     background-color: #d3d3d3b9;
@@ -106,6 +106,30 @@ body {
     --fc-today-bg-color: rgba(220, 53, 70, 0.26) !important; 
 }
 
+
+
+
+
+
+/* Aseguramos que los TH sean pegajosos y estén por encima de las filas del tbody */
+    .tabla-fixed-header thead th {
+        position: sticky;
+        z-index: 5;
+    }
+    
+    /* La primera fila se pega al borde superior (0px) */
+    .tabla-fixed-header thead tr:nth-child(1) th {
+        top: 0;
+        /* Le agregamos una sombrita para que el borde inferior no desaparezca al scrollear */
+        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.2); 
+    }
+    
+    /* La segunda fila (Mat, Len, Dib) se pega debajo de la primera.
+       ⚠️ Dependiendo del tamaño de tu fuente, este valor suele ser 40px o 45px. */
+    .tabla-fixed-header thead tr:nth-child(2) th {
+        top: 41px; 
+        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.2);
+    }
 
 
 

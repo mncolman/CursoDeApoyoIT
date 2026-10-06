@@ -11,10 +11,11 @@ export function guardarSesion(data) {
         token: data.token || '',
         usuarioActual: data.perfil || {},
         aspirantesGlobales: data.datos || [],
-        permisos_docente: data.permisos_materias || [],
+        permisos_docente: data.permisos_docente || [],
+        eventosGlobales: data.calendario,
         expira: tiempoExpiracion
     };
-
+    
     localStorage.setItem('sesionInstitutoTecnico', JSON.stringify(paqueteSesion));
 }
 
@@ -40,7 +41,7 @@ export function verificarSesionPrevia() {
         usuario: sesion.usuarioActual,
         aspirantes: sesion.aspirantesGlobales,
         permisos_docente: sesion.permisos_docente,
-        eventos: sesion.eventosGlobales // <-- Lo leemos directamente de la misma caja
+        eventosGlobales: sesion.eventosGlobales 
     };
 }
 

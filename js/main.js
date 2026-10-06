@@ -45,64 +45,7 @@ function orquestarFiltros() {
 // =================================================================
 document.addEventListener('DOMContentLoaded', function () {
 
-
-
-    // --- 1. VERIFICACIÓN Y ORQUESTACIÓN DE SESIÓN ---
-    const sesion = Auth.verificarSesionPrevia();
-
-    if (sesion.activa) {
-        // Restaurar variables globales en main.js
-        usuarioActual = sesion.usuario;
-        aspirantesGlobales = sesion.aspirantes;
-        eventosGlobales = sesion.eventos;
-        permisosDocentes = sesion.permisos_docente;
-
-        // Configurar la vista según los permisos (UI.js)
-        UI.configurarInterfazPorRol(usuarioActual);
-
-        // Disparar las funciones de renderizado
-        if (usuarioActual.rol === 'ADMI' || usuarioActual.rol === 'COOR') {
-            // Asumo que esta función ya la moviste a UI o está global por ahora
-            UI.renderizarDashboardGeneral(aspirantesGlobales);
-        }
-
-        UI.inicializarFiltroComisiones(aspirantesGlobales);
-
-        orquestarFiltros();
-        UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
-
-        (async () => {
-            try {
-                eventosGlobales = await Api.cargarDatosPlanificacion();
-
-
-                // (Asegurate de que 'filtroSemana' sea el ID real de tu <select> de semanas en el HTML)
-                const selectSemana = document.getElementById('filtro-semana-cronograma');
-                if (selectSemana) {
-
-                    selectSemana.value = "3";
-
-                    selectSemana.dispatchEvent(new Event('change'));
-                }
-
-            } catch (error) {
-                console.error("Error en la ejecución encapsulada de la planificación:", error);
-            }
-        })();
-
-
-    } else {
-
-        // 1. Limpiamos cualquier basura que haya quedado en memoria
-        sessionStorage.clear();
-
-        // 2. Nos aseguramos de que el usuario vea SOLO el login
-        document.getElementById('login-container').classList.remove('d-none');
-        document.getElementById('app-container').classList.add('d-none');
-    }
-
-
-
+    inicializarApp();
 
     // 1. Buscamos el select usando el ID real que me acabas de mostrar
     const selectSemana = document.getElementById('filtro-semana-cronograma');
@@ -230,6 +173,30 @@ document.addEventListener('DOMContentLoaded', function () {
     // Listener del boton descargar listado como pdf
 
 
+    const elementosFiltroTrayectoria = [
+        'searchInputTrayectoria',
+        'filterComisionTrayectoria',
+        'sortSelectTrayectoria'
+    ];
+
+    elementosFiltroTrayectoria.forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.addEventListener('input', UI.renderizarTrayectoriaGlobal);
+            elemento.addEventListener('change', UI.renderizarTrayectoriaGlobal);
+        }
+    });
+
+    const tabTrayectoria = document.getElementById('trayectoria-tab');
+    if (tabTrayectoria) {
+        tabTrayectoria.addEventListener('click', () => {
+
+            setTimeout(() => {
+                UI.renderizarTrayectoriaGlobal();
+            }, 50);
+        });
+    }
+
 
 
     // Función centralizada para preparar los datos antes de imprimir
@@ -297,6 +264,60 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
+
+
+
+
+    // Escuchamos los cambios en ambos controles y disparamos la MISMA función
+    document.getElementById('buscadorGeneral').addEventListener('input', orquestarFiltrosCronograma);
+    document.getElementById('filtro-semana-cronograma').addEventListener('change', orquestarFiltrosCronograma);
+
+    function orquestarFiltrosCronograma() {
+        // 1. Recolectamos el estado actual de los dos filtros
+        const textoBuscado = normalizarTexto(document.getElementById('buscadorGeneral').value || "");
+        const filtroSemana = document.getElementById('filtro-semana-cronograma').value;
+
+        // Hacemos el clon profundo para no destruir la variable global original
+        let eventosFiltrados = JSON.parse(JSON.stringify(eventosGlobales || []));
+
+        // 2. FILTRO A: Por Semana (Si no eligió "todas")
+        if (filtroSemana !== "todas") {
+            eventosFiltrados = eventosFiltrados.filter(ev => {
+                const semanaEvento = ev.extendedProps ? ev.extendedProps.semana : undefined;
+                return String(semanaEvento) === String(filtroSemana);
+            });
+        }
+
+        // 3. FILTRO B: Por Buscador (Docente o Comisión)
+        if (textoBuscado !== "") {
+            eventosFiltrados = eventosFiltrados.map(evento => {
+                // Filtramos las comisiones internas
+                evento.extendedProps.detalleComisiones = evento.extendedProps.detalleComisiones.filter(detalle => {
+                    const nombreDocente = detalle.docente ? normalizarTexto(detalle.docente) : "";
+                    const numComision = detalle.comision !== undefined ? String(detalle.comision) : "";
+                    return nombreDocente.includes(textoBuscado) || numComision.includes(textoBuscado);
+                });
+                return evento;
+            }).filter(evento => {
+                // Descartamos los eventos que se quedaron sin comisiones tras el filtro
+                return evento.extendedProps.detalleComisiones.length > 0;
+            });
+        }
+
+        // 4. Enviamos el array final, masticado y listo, a la UI
+        UI.renderizarTablaCronograma(eventosFiltrados);
+
+    }
+
+    function normalizarTexto(texto) {
+        return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    }
+
+
+
+
+
+
     document.getElementById('btnCronogramaMatematicas').addEventListener('click', () => Utils.descargarPlanillaCronograma(eventosGlobales, 'Matematica'));
     document.getElementById('btnCronogramaDibujo').addEventListener('click', () => Utils.descargarPlanillaCronograma(eventosGlobales, 'Dibujo'));
     document.getElementById('btnCronogramaLengua').addEventListener('click', () => Utils.descargarPlanillaCronograma(eventosGlobales, 'Lengua'));
@@ -309,6 +330,8 @@ document.addEventListener('DOMContentLoaded', function () {
             Utils.descargarCronogramaSemanal(eventosGlobales);
         });
     }
+
+
 
 
 
@@ -402,90 +425,78 @@ document.addEventListener('DOMContentLoaded', function () {
     if (tbodySalud) tbodySalud.addEventListener('click', manejarClicFicha);
 
 
-
-
-
-
     document.getElementById('btnGuardarNotas').addEventListener('click', async () => {
 
-        const tokenActual = sessionStorage.getItem('sesion_activa');
-        const comisionActual = document.getElementById('inputComisionActual').value;
-        const materiaActual = document.getElementById('inputMateriaActual').value;
-        const instanciaActual = document.getElementById('selectInstanciaEvaluacion').value;
-
+        // 1. RECOLECTAR CONTEXTO
+        const comisionActual = document.getElementById('selectComisionNotas').value;
+        const materiaActual = document.getElementById('selectAsignaturaNotas').value;
+        const tabActiva = document.querySelector('#notasSubTabs .nav-link.active');
+        const instanciaActual = tabActiva.id === 'seguimiento-tab' ? 'bloque_1er_ev' : 'bloque_final';
         const inputsDeNotas = document.querySelectorAll('.input-nota');
-        const arrayNotas = [];
 
-        // Bandera para saber si el formulario pasó la prueba
-        let formularioValido = true;
-
-        // 1. Bucle de Validación Estricta
-        for (let input of inputsDeNotas) {
-            const valorCrudo = input.value.trim();
-            const idAlumno = input.dataset.id; // Asumimos que guardaste el DNI o ID acá
-            const nombreAlumno = input.dataset.nombre; // Opcional, para que el alert sea más amigable
-
-            // Regla A: No puede estar vacío (100% de completitud)
-            if (valorCrudo === "") {
-                alert(`❌ Error: Falta cargar la nota del alumno ${nombreAlumno || idAlumno}. Todos los campos son obligatorios.`);
-                input.focus(); // Llevamos el cursor directo al input que falló
-                input.classList.add('borde-error'); // Podrías agregarle una clase CSS roja
-                formularioValido = false;
-                break; // Cortamos el bucle, no seguimos revisando
-            }
-
-            const notaNumerica = parseFloat(valorCrudo);
-
-            // Regla B: Tiene que ser un número y estar entre 0 y 10
-            if (isNaN(notaNumerica) || notaNumerica < 0 || notaNumerica > 10) {
-                alert(`❌ Error: La nota del alumno ${nombreAlumno || idAlumno} es inválida. Debe ser un número entre 0 y 10.`);
-                input.focus();
-                input.classList.add('borde-error');
-                formularioValido = false;
-                break;
-            }
-
-            // Si pasó las pruebas, lo metemos al carrito limpiando cualquier clase de error anterior
-            input.classList.remove('borde-error');
-            arrayNotas.push({
-                id_inscripcion: idAlumno,
-                nota: notaNumerica
-            });
-        }
-
-        // Si la validación falló, abortamos misión y no enviamos nada al servidor
-        if (!formularioValido) {
-            return;
-        }
-
-        // 2. Si llegamos acá, el 100% de los datos están perfectos. Armamos el paquete.
-        const payload = {
-            accion: 'guardar_notas',
-            token: tokenActual,
-            id_comision: parseInt(comisionActual),
+        const payloadInfo = {
+            comision: comisionActual ? parseInt(comisionActual) : null,
             materia: materiaActual,
-            instancia: instanciaActual,
-            notas: arrayNotas
+            instancia: instanciaActual
         };
 
-        // 3. Disparamos el fetch al backend
+        // 2. VALIDAR
+        // (Asume que tenés acceso a 'permisosDocentes' y 'usuarioActual' globales)
+        const validacion = validarFormularioNotas(inputsDeNotas, payloadInfo, permisosDocentes, usuarioActual);
+
+        if (!validacion.esValido) return;
+
+        // 3. CONFIRMAR
+        const confirmacion = await Swal.fire({
+            title: '¿Confirmar envío?',
+            text: "Verificá bien las notas. Una vez enviadas se bloquearán y no podrás modificarlas.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, enviar notas'
+        });
+
+        if (!confirmacion.isConfirmed) return;
+
+        // 4. PREPARAR ENVÍO
+        const payloadCompleto = { ...payloadInfo, notas: validacion.arrayNotas };
         const btn = document.getElementById('btnGuardarNotas');
         btn.disabled = true;
         btn.innerHTML = '⏳ Guardando...';
 
-        const resultado = await API.enviarNotasAlServidor(payload);
+        // 5. EJECUTAR PETICIÓN
+        try {
+            const resultado = await Api.enviarNotasAlServidor(payloadCompleto);
 
-        // 4. Procesamos la respuesta
-        if (resultado.exito) {
-            alert("✅ ¡Notas guardadas y bloqueadas exitosamente!");
-            // Acá podrías recargar la vista o redirigir al dashboard
-        } else {
-            alert("⚠️ Error del servidor: " + resultado.mensaje);
+            if (resultado.exito) {
+                // Aplicamos los cambios localmente sin necesidad de recargar la página
+                aplicarMutacionLocal(payloadCompleto);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Planilla guardada!',
+                    text: 'Las notas fueron registradas exitosamente.',
+                    confirmButtonColor: '#198754'
+                }).then(() => {
+                    // Forzamos el recálculo de la vista (dibujará los candados)
+                    document.getElementById('selectComisionNotas').dispatchEvent(new Event('change'));
+                    // Actualizamos la trayectoria global "en las sombras" por si el usuario cambia de pestaña
+                    UI.renderizarTrayectoriaGlobal();
+                });
+
+            } else {
+                Swal.fire('Error del servidor', resultado.mensaje, 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error de conexión', 'Ocurrió un error de red al contactar al servidor.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '☁️ Enviar al Servidor';
         }
-
-        btn.disabled = false;
-        btn.innerHTML = 'Guardar Planilla';
     });
+
 
 });
 
@@ -502,21 +513,31 @@ async function iniciarSesion(e) {
 
     try {
         // 2. Hacer petición (Delega a API)
-        const data = await Api.peticionLogin(email, clave);
+        let data = await Api.peticionLogin(email, clave);
 
         if (data.exito) {
+            // Obtenemos los arrays crudos del servidor
+            const aspirantesCrudos = data.datos || [];
+            const notasCrudas = data.notas_crudas || [];
+
+            // Delegamos el procesamiento pesado a nuestra función privada
+            const aspirantesProcesados = cruzarDatosAspirantesNotas(aspirantesCrudos, notasCrudas);
+
+            data.datos = aspirantesProcesados;
+
             // 3. Guardar sesión (Delega a Auth)
             Auth.guardarSesion(data);
 
             // 4. Llenar tus variables globales locales del main
             usuarioActual = data.perfil;
             aspirantesGlobales = data.datos;
-            //eventosGlobales = data.calendario;
-            permisosDocentes = data.permisos_materias;    //permisos_materias viene del backend. en el frontend se traduce a permisosDocentes
+            eventosGlobales = data.calendario;
+            permisosDocentes = data.permisos_docente;    //permisos_materias viene del backend. en el frontend se traduce a permisosDocentes
 
             // 5. Configurar Interfaz (Delega a UI)
             UI.configurarInterfazPorRol(usuarioActual);
-            UI.inicializarFiltroComisiones(aspirantesGlobales);
+            UI.inicializarFiltroComisiones(aspirantesGlobales, 'filterComision');
+            UI.inicializarFiltroComisiones(aspirantesGlobales, 'filterComisionTrayectoria');
 
             if (usuarioActual.rol === 'ADMI' || usuarioActual.rol === 'COOR') {
                 UI.renderizarDashboardGeneral(aspirantesGlobales);
@@ -527,15 +548,16 @@ async function iniciarSesion(e) {
             orquestarFiltros();
             UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
 
-            eventosGlobales = await Api.cargarDatosPlanificacion();
 
-  // 7. Forzamos el dibujado inicial directo (Sin depender de eventos fantasma)
+            // 7. Forzamos el dibujado inicial directo (Sin depender de eventos fantasma)
             const selectSemana = document.getElementById('filtro-semana-cronograma');
             if (selectSemana) {
                 selectSemana.value = "3"; // Tu semana por defecto
-                
+
                 UI.renderizarTablaCronograma(eventosGlobales || [], selectSemana.value);
             }
+            UI.inicializarCalendario(eventosGlobales || []);
+
 
         } else {
             alert(data.mensaje); // Login incorrecto
@@ -550,4 +572,311 @@ async function iniciarSesion(e) {
     }
 }
 
+// =========================================================
+// 🛡️ MÓDULO DE VALIDACIÓN DE NOTAS Y PERMISOS
+// =========================================================
+function validarFormularioNotas(inputsDeNotas, payloadInfo, permisosDocentes, usuarioActual) {
+    // 1. Validar Permisos del Docente
+    if (usuarioActual.rol === 'DOCE') {
 
+        // Diccionario traductor: convierte el value del HTML al nombre de la Base de Datos
+        const diccionarioMaterias = {
+            'mat': 'matematica',
+            'len': 'lengua',
+            'dib': 'dibujo' // Ajustá este si en tu BD dice solo 'dibujo'
+        };
+
+        // Tomamos lo que viene del HTML ("len") y lo pasamos a minúsculas
+        let materiaCruda = payloadInfo.materia.toString().toLowerCase().trim();
+
+        // Si existe en nuestro diccionario, lo traducimos ("len" -> "lengua")
+        let materiaTraducida = diccionarioMaterias[materiaCruda] || materiaCruda;
+
+        // Función para quitar acentos (así "Matemática" es igual a "matematica")
+        const normalizar = (texto) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        materiaTraducida = normalizar(materiaTraducida);
+
+        // Buscamos el permiso usando la materia traducida y sin acentos
+        const permisoActivo = permisosDocentes.find(p => {
+            const comisionCoincide = String(p.id_comision) === String(payloadInfo.comision);
+            const materiaCoincide = normalizar(p.materia) === materiaTraducida;
+            return comisionCoincide && materiaCoincide;
+        });
+
+        if (!permisoActivo) {
+            Swal.fire('Acceso Denegado', `No tienes permisos asignados para la comisión ${payloadInfo.comision} y la materia ${payloadInfo.materia}.`, 'error');
+            return { esValido: false, arrayNotas: [] };
+        }
+
+        const puedeCargar = payloadInfo.instancia === 'bloque_1er_ev'
+            ? permisoActivo.puede_cargar_1er
+            : permisoActivo.puede_cargar_fin;
+
+        if (!puedeCargar) {
+            Swal.fire('Planilla Bloqueada', 'Las notas de esta instancia ya fueron enviadas y bloqueadas. Contacta a un administrador para modificaciones.', 'error');
+            return { esValido: false, arrayNotas: [] };
+        }
+    }
+
+    // 2. Validar Selección Básica
+    if (!payloadInfo.comision || !payloadInfo.materia) {
+        Swal.fire('Atención', 'Por favor seleccioná una Comisión y una Asignatura antes de guardar.', 'warning');
+        return { esValido: false, arrayNotas: [] };
+    }
+
+    if (inputsDeNotas.length === 0) {
+        Swal.fire('Sin alumnos', 'No hay alumnos listados en la tabla para cargar notas.', 'info');
+        return { esValido: false, arrayNotas: [] };
+    }
+
+    // 3. Validación Estricta de Inputs
+    const arrayNotas = [];
+    for (let input of inputsDeNotas) {
+        let valorCrudo = input.value.trim().replace(',', '.');
+        const idAlumno = input.dataset.dni || input.dataset.id;
+        const trPadre = input.closest('tr');
+        const nombreAlumno = trPadre ? trPadre.querySelector('td:nth-child(2)').textContent : idAlumno;
+
+        // Regla A: No puede estar vacío
+        if (valorCrudo === "") {
+            mostrarErrorInput(input, `Falta cargar la nota de ${nombreAlumno}. Todos los campos son obligatorios.`);
+            return { esValido: false, arrayNotas: [] };
+        }
+
+        const notaNumerica = parseFloat(valorCrudo);
+
+        // Regla B: Número válido entre 0 y 10
+        if (isNaN(notaNumerica) || notaNumerica < 0 || notaNumerica > 10) {
+            mostrarErrorInput(input, `La nota de ${nombreAlumno} debe ser un número entre 0 y 10 (Ingresaste: "${valorCrudo}").`);
+            return { esValido: false, arrayNotas: [] };
+        }
+
+        input.classList.remove('is-invalid');
+        arrayNotas.push({ id_inscripcion: idAlumno, nota: notaNumerica });
+    }
+
+    return { esValido: true, arrayNotas: arrayNotas };
+}
+
+function mostrarErrorInput(input, mensaje) {
+    input.classList.add('is-invalid');
+    Swal.fire({
+        icon: 'error',
+        title: 'Error de Validación',
+        text: mensaje,
+        confirmButtonColor: '#0d6efd'
+    }).then(() => input.focus());
+}
+
+
+// =========================================================
+// 🔄 ACTUALIZACIÓN LOCAL DE ESTADO (Caché del Frontend)
+// =========================================================
+function aplicarMutacionLocal(payload) {
+    // 1. INYECTAR NOTA (Usamos la abreviatura directa del payload: 'mat', 'len', 'dib')
+    let materiaAbreviada = payload.materia.toString().toLowerCase().trim();
+    const sufijoInstancia = payload.instancia === 'bloque_1er_ev' ? '1er_ev' : 'final';
+
+    // Generará exactamente la clave que espera la UI, ej: 'nota_1er_ev_dib'
+    const claveNota = `nota_${sufijoInstancia}_${materiaAbreviada}`;
+
+    payload.notas.forEach(notaNueva => {
+        // Buscamos al alumno
+        const alumno = aspirantesGlobales.find(a =>
+            String(a.id_inscripcion) === String(notaNueva.id_inscripcion) ||
+            String(a.dni) === String(notaNueva.id_inscripcion)
+        );
+
+        if (alumno) {
+            if (!alumno.datos_examen) alumno.datos_examen = {};
+            alumno.datos_examen[claveNota] = notaNueva.nota; // Inyecta en el lugar correcto
+        }
+    });
+
+    // 2. BLOQUEAR PERMISO (Acá SÍ necesitamos traducir para coincidir con la Base de Datos)
+    const diccionarioMaterias = {
+        'mat': 'matematica',
+        'len': 'lengua',
+        'dib': 'dibujo'
+    };
+
+    let materiaTraducida = diccionarioMaterias[materiaAbreviada] || materiaAbreviada;
+    const normalizar = (texto) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    materiaTraducida = normalizar(materiaTraducida);
+
+    const permisoLocal = permisosDocentes.find(p => {
+        const comisionCoincide = String(p.id_comision) === String(payload.comision);
+        const materiaCoincide = normalizar(p.materia) === materiaTraducida;
+        return comisionCoincide && materiaCoincide;
+    });
+
+    if (permisoLocal) {
+        if (payload.instancia === 'bloque_1er_ev') permisoLocal.puede_cargar_1er = false;
+        else permisoLocal.puede_cargar_fin = false;
+    }
+
+    // 3. GUARDAR SESIÓN
+    const sesionActual = JSON.parse(localStorage.getItem('sesionInstitutoTecnico'));
+    if (sesionActual) {
+        sesionActual.aspirantesGlobales = aspirantesGlobales;
+        sesionActual.permisos_docente = permisosDocentes;
+        localStorage.setItem('sesionInstitutoTecnico', JSON.stringify(sesionActual));
+    }
+}
+
+
+// =========================================================
+// FUNCIONES AUXILIARES PRIVADAS 
+// =========================================================
+function cruzarDatosAspirantesNotas(aspirantes, notasCrudas) {
+    if (!aspirantes || aspirantes.length === 0) return [];
+
+    // 1. Armamos un diccionario (Hash Map) ultra rápido con las notas
+    const mapaNotas = {};
+
+    // Empezamos de 1 para saltar los encabezados de la hoja
+    for (let i = 1; i < notasCrudas.length; i++) {
+        let id = String(notasCrudas[i][0]).trim();
+        if (!id) continue;
+
+        let materia = String(notasCrudas[i][1] || "").toLowerCase().trim();
+        let instancia = String(notasCrudas[i][2] || "").trim();
+        let nota = parseFloat(notasCrudas[i][3]);
+
+        if (!mapaNotas[id]) {
+            mapaNotas[id] = {};
+        }
+
+        let sufijo = instancia === 'bloque_1er_ev' ? '1er_ev' : 'final';
+        mapaNotas[id][`nota_${sufijo}_${materia}`] = nota;
+        mapaNotas[id][`estado_${materia}`] = 'Presente';
+    }
+
+    // 2. Inyectamos las notas en los aspirantes
+    aspirantes.forEach(asp => {
+        let idInscripcion = asp.id_inscripcion !== undefined ? String(asp.id_inscripcion).trim() : "";
+        asp.datos_examen = mapaNotas[idInscripcion] || {};
+    });
+
+    return aspirantes;
+}
+async function inicializarApp() {
+    const sesionGuardada = localStorage.getItem('sesionInstitutoTecnico');
+    if (!sesionGuardada) {
+        mandarALogin();
+        return;
+    }
+
+    let sesionCruda = JSON.parse(sesionGuardada);
+    
+    // 🛡️ ESCUDO: Aseguramos que existan las claves vitales
+    usuarioActual = sesionCruda.usuarioActual || sesionCruda.usuario;
+    const tokenSeguro = sesionCruda.token;
+
+    if (!usuarioActual || !usuarioActual.email || !tokenSeguro) {
+        console.warn("Falta token o usuario. Forzando relogin.");
+        mandarALogin();
+        return;
+    }
+
+    // Dibujado Rápido Local
+    aspirantesGlobales = sesionCruda.aspirantesGlobales || sesionCruda.aspirantes || [];
+    eventosGlobales = sesionCruda.eventosGlobales || [];
+    permisosDocentes = sesionCruda.permisos_docente || sesionCruda.permisos_materias || [];
+    
+    UI.configurarInterfazPorRol(usuarioActual);
+            arrancarInterfazBase();
+
+    Swal.fire({
+        title: 'Actualizando datos...',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        // 🚀 PETICIÓN AL SERVIDOR
+        const respuesta = await Api.obtenerDatosFrescos(usuarioActual.email, tokenSeguro);
+
+        if (respuesta.exito) {
+            // Actualizamos variables RAM
+            aspirantesGlobales = respuesta.datos || [];
+            permisosDocentes = respuesta.permisos_docente || [];
+            eventosGlobales = respuesta.calendario || [];
+
+            // Guardado Seguro
+            let sesionParaGuardar = JSON.parse(localStorage.getItem('sesionInstitutoTecnico'));
+            sesionParaGuardar.aspirantesGlobales = aspirantesGlobales;
+            sesionParaGuardar.permisos_docente = permisosDocentes;
+            sesionParaGuardar.eventosGlobales = eventosGlobales;
+            
+            localStorage.setItem('sesionInstitutoTecnico', JSON.stringify(sesionParaGuardar));
+
+            arrancarInterfazBase();
+            Swal.close(); // Todo salió perfecto, cerramos el cartel
+        } else {
+            // 🚨 EL SERVIDOR DEVOLVIÓ UN ERROR
+            // Si es error de red (Failed to fetch), lo mandamos al Catch para modo offline
+            if (respuesta.mensaje && respuesta.mensaje.toLowerCase().includes('fetch')) {
+                throw new Error("Error de red");
+            } else {
+                // Si Apps Script crasheó, mandamos al usuario al login MOSTRANDO el error
+                mandarALogin(`El servidor rechazó la conexión: ${respuesta.mensaje}`);
+            }
+        }
+
+    } catch (error) {
+        console.warn("Iniciando Modo Offline:", error);
+        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Modo Offline.', showConfirmButton: false, timer: 3000 });
+    }
+}
+
+
+// Función auxiliar para no repetir código
+function mandarALogin(mensajeError = null) {
+    Swal.close(); // 🛑 ESTO MATA EL BUCLE INFINITO DEL CARTEL
+
+    sessionStorage.clear();
+    // (Opcional: podés limpiar el localStorage acá si querés que borre la sesión corrupta)
+    // localStorage.removeItem('sesionInstitutoTecnico'); 
+
+    document.getElementById('login-container').classList.remove('d-none');
+    document.getElementById('app-container').classList.add('d-none');
+
+    // Si le pasamos un error, lo muestra en un cartel rojo para que sepamos qué pasó
+    if (mensajeError) {
+        Swal.fire('Error de carga', mensajeError, 'warning');
+    }
+}
+// =========================================================
+// 🎨 MOTOR DE RENDERIZADO UNIFICADO
+// =========================================================
+function arrancarInterfazBase() {
+    if (!usuarioActual) return;
+
+    // 1. Manejo de Contenedores Principales
+    document.getElementById('login-container').classList.add('d-none');
+    document.getElementById('app-container').classList.remove('d-none');
+
+    if (usuarioActual.rol === 'ADMI' || usuarioActual.rol === 'COOR') {
+        UI.renderizarDashboardGeneral(aspirantesGlobales);
+    }
+
+    UI.inicializarFiltroComisiones(aspirantesGlobales, 'filterComision');
+    UI.inicializarFiltroComisiones(aspirantesGlobales, 'filterComisionTrayectoria');
+
+    if (typeof orquestarFiltros === 'function') orquestarFiltros();
+
+    console.log("holaaa",permisosDocentes);
+    UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
+    UI.renderizarTablaCronograma(eventosGlobales || []);
+    UI.inicializarCalendario(eventosGlobales || []);
+
+    // 🚀 2. FORZAMOS A MOSTRAR LA PRIMERA PESTAÑA (Para que no quede en blanco al hacer F5)
+    // Cambiá '#tab-cronograma-btn' por el ID real del botón de tu primera pestaña
+    const primerTabBoton = document.querySelector('.nav-link.active') || document.querySelector('.nav-link');
+    if (primerTabBoton) {
+        primerTabBoton.click(); // Hace un clic virtual para activar el display correcto
+    }
+}

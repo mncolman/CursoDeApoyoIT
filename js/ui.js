@@ -239,18 +239,57 @@ export function inicializarModuloNotas(aspirantesGlobales, permisosDocente) {
     btnHabilitar.parentNode.replaceChild(nuevoBtnHabilitar, btnHabilitar);
 
     nuevoBtnHabilitar.addEventListener('click', function () {
-        if (!selectAsignatura.value) return alert("Seleccioná una comisión primero.");
-        modoEdicionNotas = !modoEdicionNotas; // Modifica la global
+        // 1. Validamos comisión usando tu ID real del HTML
+        const selectComision = document.getElementById('selectComisionNotas');
+        if (!selectComision || !selectComision.value) {
+            return alert("Seleccioná una comisión primero.");
+        }
+
+        // 2. 🛡️ BARRERA DE PERMISOS DESDE LOCALSTORAGE
+        const sesionLocal = JSON.parse(localStorage.getItem('sesionInstitutoTecnico')) || {};
+        const miUsuario = sesionLocal.usuarioActual;
+        const misPermisos = sesionLocal.permisos_docente || [];
+
+        if (miUsuario && miUsuario.rol === 'DOCE') {
+            const comision = selectComision.value; 
+            
+            // Leemos la asignatura con su ID exacto del HTML
+            const selectAsignatura = document.getElementById('selectAsignaturaNotas');
+            const materia = selectAsignatura ? selectAsignatura.value : '';
+            
+            if (!materia) {
+                return alert("Seleccioná una asignatura primero.");
+            }
+
+            // Buscamos el permiso exacto
+            const permiso = misPermisos.find(p => 
+                String(p.id_comision) === String(comision) && 
+                p.materia.toLowerCase() === materia.toLowerCase()
+            );
+
+            // Como por ahora solo tenés la pestaña de "1º Seguimiento", evaluamos esa
+            // (Si en el futuro agregás más pestañas, acá podés preguntar cuál está activa)
+            const tienePermiso = permiso ? permiso.puede_cargar_1er : false;
+
+            if (permiso && !tienePermiso) {
+                Swal.fire('Planilla Cerrada', 'Ya enviaste estas notas al servidor o no tenés permisos de carga.', 'warning');
+                return; // 🛑 Cortamos el paso en seco
+            }
+        }
+
+        // 3. 👇 SI TIENE PERMISO (O ES ADMIN), SE EJECUTA TU CÓDIGO ORIGINAL 👇
+        modoEdicionNotas = !modoEdicionNotas; 
         this.innerHTML = modoEdicionNotas ? '🔒 Bloquear Planilla' : '✏️ Habilitar Planilla';
         this.classList.toggle('btn-outline-secondary');
         this.classList.toggle('btn-warning');
         document.getElementById('btnGuardarNotas').disabled = !modoEdicionNotas;
         renderizarPlanillaNotas();
     });
-
+    
     // Listeners Instancias de Evaluación
     document.getElementById('seguimiento-tab').addEventListener('click', (e) => cambiarPestaña('seguimiento', e.target));
-    document.getElementById('ensayo-tab').addEventListener('click', (e) => cambiarPestaña('ensayo', e.target));
+    // PARA HABILITAR LUEGO
+    //document.getElementById('ensayo-tab').addEventListener('click', (e) => cambiarPestaña('ensayo', e.target));
 
 }
 
@@ -610,21 +649,28 @@ function activarNavegacionPorEnterYGuardado(comision) {
 
 
 
-export function inicializarFiltroComisiones(aspirantesGlobales) {
+export function inicializarFiltroComisiones(aspirantesGlobales, filtro) {
 
-    const selectFiltro = document.getElementById('filterComision');
-    const usuarioString = sessionStorage.getItem('usuarioActual');
-    let rolUsuario = "";
+    const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
 
-    if (usuarioString) {
-        // 2. Lo convertimos de nuevo a un objeto real de JS
-        const usuario = JSON.parse(usuarioString);
-
-        rolUsuario = usuario.rol;
-
+    if (!dataGuardada) {
+        return { activa: false };
     }
+
+    // 1. Parseamos el paquete completo UNA SOLA VEZ
+    const sesion = JSON.parse(dataGuardada);
+
+    const selectFiltro = document.getElementById(filtro);
+
+    // 2. sesion.usuarioActual ¡YA ES UN OBJETO! No hay que parsearlo.
+    const usuario = sesion.usuarioActual;
+    let rolUsuario = usuario ? usuario.rol : "";
+
+
     // Limpiamos el select por si se vuelve a llamar la función
-    selectFiltro.innerHTML = '<option value="">Todas las Comisiones</option>';
+    if (selectFiltro) {
+        selectFiltro.innerHTML = '<option value="">Todas las Comisiones</option>';
+    }
 
     let comisionesAMostrar = [];
 
@@ -632,147 +678,105 @@ export function inicializarFiltroComisiones(aspirantesGlobales) {
 
         // Extraemos TODAS las comisiones únicas directamente de la base de datos de alumnos
         comisionesAMostrar = [...new Set(aspirantesGlobales.map(a => a.comision))]
-            .filter(Boolean) // Filtramos celdas vacías por si algún alumno no tiene comisión
+            .filter(Boolean) // Filtramos celdas vacías
             .sort((a, b) => a - b);
+
 
     } else if (rolUsuario === 'DOCE') {
 
+        // 3. 🔹 CORRECCIÓN: Leemos los permisos directamente de 'sesion', ya no del sessionStorage
+        const permisosGuardados = sesion.permisos_docente || [];
 
-        // Extraemos SOLO las comisiones permitidas desde los permisos del Storage
-        const permisosGuardados = JSON.parse(sessionStorage.getItem('permisos_docente')) || [];
         comisionesAMostrar = [...new Set(permisosGuardados.map(p => p.id_comision))]
             .filter(Boolean)
             .sort((a, b) => a - b);
+
+
     } else {
     }
+
     // Iteramos el arreglo resultante y armamos las opciones del HTML
     comisionesAMostrar.forEach(com => {
         selectFiltro.innerHTML += `<option value="${com}">Comisión ${com}</option>`;
     });
 
-    // Mejora de UX (Opcional): Si el docente solo tiene UNA comisión asignada, 
-    // la pre-seleccionamos y disparamos el evento para que la tabla ya se filtre sola.
+    // Mejora de UX: Si el docente solo tiene UNA comisión asignada, la pre-seleccionamos
     if (rolUsuario === 'DOCE' && comisionesAMostrar.length === 1) {
         selectFiltro.value = comisionesAMostrar[0];
-
         // Disparamos el evento 'change' manualmente para que se aplique el filtro en la tabla
         selectFiltro.dispatchEvent(new Event('change'));
     }
-
 }
-
 
 // =================================================================
 // RENDERIZAR TABLA DE CRONOGRAMA DETALLADO
 // =================================================================
-export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
+export function renderizarTablaCronograma(eventosListosParaDibujar) {
     const tbody = document.getElementById('tabla-cronograma-body');
     if (!tbody) return;
 
-    // 1. Limpiamos el mensaje de "Cargando..."
+    // 1. Limpiamos la tabla
     tbody.innerHTML = '';
 
-    // 2. FILTRAMOS POR SEMANA ANTES DE ORDENAR
-    let eventosFiltrados = eventosGlobales;
+    // 2. Ordenamos cronológicamente
+    const eventosOrdenados = [...eventosListosParaDibujar].sort((a, b) => new Date(a.start) - new Date(b.start));
 
-
-    eventosFiltrados = eventosGlobales.filter(ev => {
-
-        const semanaEvento = ev.extendedProps ? ev.extendedProps.semana : undefined;
-        const coincide = String(semanaEvento) === String(filtroSemana);
-
-        return coincide;
-    });
-
-
-    // 3. Ordenamos cronológicamente (vital para formato lista)
-    const eventosOrdenados = [...eventosFiltrados].sort((a, b) => new Date(a.start) - new Date(b.start));
-
-    // 4. Verificamos si hay datos
+    // 3. Verificamos si hay datos tras los filtros
     if (eventosOrdenados.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <!-- Colspan actualizado a 6 -->
                 <td colspan="5" class="text-center text-muted py-4">
-                    No hay clases programadas para esta semana.
+                    No hay clases programadas para esta combinación de filtros.
                 </td>
             </tr>`;
         return;
     }
 
-    // 5. Generamos las filas dinámicamente
+    // 4. Generamos las filas dinámicamente (Tu misma lógica de dibujado intacta)
     eventosOrdenados.forEach(ev => {
         const props = ev.extendedProps;
-
-        // Formateamos las fechas y horas para que queden prolijas
         const fechaObj = new Date(ev.start + "T12:00:00");
 
         const dia = String(fechaObj.getDate()).padStart(2, '0');
-        const mes = String(fechaObj.getMonth() + 1).padStart(2, '0'); // Se suma 1 porque los meses arrancan en 0
+        const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
+        const fechaStr = `${dia}/${mes}`;
 
-        const fechaStr = `${dia}/${mes}`; // Ej: 05/08
+        const diaStr = fechaObj.toLocaleDateString('es-AR', { weekday: 'long' });
 
-        const diaStr = fechaObj.toLocaleDateString('es-AR', {
-            weekday: 'long',
-
-        }); // Ej: miércoles
-
-        //const horaInicio = fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
-        //const horaFin = new Date(ev.end).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-        // Extraemos el título del tema
         let temaClase = ev.title;
         if (temaClase.includes(' - ')) {
             temaClase = temaClase.split(' - ')[1];
         }
 
-
-        // 1. Entramos a la mochila de comisiones
         const comisiones = props.detalleComisiones || [];
-
-
-        // 2. Extraemos y agrupamos docentes, aulas y comisiones
         let listadoDocentesGabinete = "Sin asignar";
 
         if (comisiones.length > 0) {
-            // 2.1 Agrupamos con reduce()
             const agrupados = comisiones.reduce((acumulador, c) => {
-                // Armamos el texto base que servirá como identificador único
                 const clave = `👤 ${c.docente}  (${c.aula || 'Sin aula'})`;
-
-                // Si este docente+aula todavía no existe en el acumulador, lo creamos
                 if (!acumulador[clave]) {
                     acumulador[clave] = [];
                 }
-
-                // Le guardamos la comisión adentro de su lista
                 acumulador[clave].push(c.comision);
-
                 return acumulador;
-            }, {}); // {} es el acumulador inicial vacío
+            }, {});
 
-            // 2.2 Transformamos ese objeto agrupado en el texto final
-            // Object.entries convierte el objeto en un array para poder recorrerlo
             const lineas = Object.entries(agrupados).map(([datosDocente, arrayComisiones]) => {
-                // arrayComisiones tiene ej: [1, 2, 3]. Lo unimos con comas.
-                return `Com. ${arrayComisiones.join(', ')} - ${datosDocente}`;
+                return `Com. ${arrayComisiones.join(', ')} -${datosDocente}`;
             });
 
-            // 2.3 Unimos cada grupo con un salto de línea
-            listadoDocentesGabinete = lineas.join('<br>');
+            listadoDocentesGabinete = lineas.join('<br>'); // Agregué un salto extra para separar profes
         }
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <!-- Le clavamos text-nowrap para que los horarios no se partan -->
             <td class="text-nowrap">
-                <strong class="text-capitalize">${diaStr.toLocaleUpperCase()} - ${fechaStr}</strong><br>
+                <strong class="text-capitalize">${diaStr.toLocaleUpperCase()}<br>${fechaStr}</strong><br>
                 <small class="text-muted">1º - 17:00 a 18:20</small><br>
                 <small class="text-muted">2º - 18:50 a 20:10</small>
             </td>
             
-            <!-- text-nowrap para que el profe y el aula queden en una sola línea -->
-            <td class="text-nowrap">${listadoDocentesGabinete}</td>
+            <td class="text-nowrap fs-6">${listadoDocentesGabinete}</td>
             
             <td class="text-nowrap">
                 <strong>${props.materia || '-'}</strong>
@@ -783,6 +787,310 @@ export function renderizarTablaCronograma(eventosGlobales, filtroSemana) {
 
         tbody.appendChild(tr);
     });
+
+}
+/**
+ * Lee la tabla, sanitiza y valida las notas ingresadas.
+ * @returns {Object} { exito: boolean, payload: Array, mensajeError: string }
+ */
+export function extraerYValidarNotas() {
+    const inputsNotas = document.querySelectorAll('.input-nota:not(:disabled)');
+    const payload = [];
+    let hayError = false;
+    let mensajeError = "";
+
+    // 1. Verificamos si no hay nada para guardar
+    if (inputsNotas.length === 0) {
+        return { exito: false, mensajeError: "No hay campos habilitados para guardar." };
+    }
+
+    for (let input of inputsNotas) {
+        let valorCrudo = input.value.trim();
+
+        // Si el input está vacío, lo ignoramos (el profe no quiso cargar esta nota todavía)
+        if (valorCrudo === "") {
+            continue;
+        }
+
+        // 2. Sanitización (El "truco" del punto y coma)
+        // Cambiamos cualquier coma por punto para que parseFloat no falle
+        valorCrudo = valorCrudo.replace(',', '.');
+        const notaNumerica = parseFloat(valorCrudo);
+
+        // 3. Validación de Reglas de Negocio
+        if (isNaN(notaNumerica)) {
+            hayError = true;
+            mensajeError = `Se detectó un valor que no es un número válido en la fila del DNI: ${input.dataset.dni}`;
+            input.classList.add('is-invalid'); // Podés agregar esta clase en CSS para ponerle un borde rojo
+            break;
+        }
+
+        if (notaNumerica < 0 || notaNumerica > 10) {
+            hayError = true;
+            mensajeError = `Las notas deben estar entre 0 y 10. Valor inválido (${notaNumerica}) en DNI: ${input.dataset.dni}`;
+            input.classList.add('is-invalid');
+            break;
+        }
+
+        // Si pasó todas las pruebas, le quitamos la clase de error por si la tenía
+        input.classList.remove('is-invalid');
+
+        // 4. Armamos el objeto para enviar al backend
+        payload.push({
+            dni_alumno: input.dataset.dni,
+            nota: notaNumerica
+        });
+    }
+
+    if (hayError) {
+        return { exito: false, mensajeError: mensajeError };
+    }
+
+    return { exito: true, payload: payload };
+}
+
+export function renderizarTrayectoriaGlobal() {
+
+    // Apuntamos al ID exacto de tu HTML
+    const tbody = document.getElementById('tabla-trayectoria-body');
+
+    // Capturamos los valores de tu barra de herramientas
+    const inputBuscador = document.getElementById('searchInputTrayectoria').value.toLowerCase().trim();
+    const selectComision = document.getElementById('filterComisionTrayectoria').value;
+    const selectOrden = document.getElementById('sortSelectTrayectoria').value;
+
+    // 1. Recuperamos los datos de la memoria local
+    const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
+    if (!dataGuardada) return;
+
+    const sesion = JSON.parse(dataGuardada);
+    const todosLosAspirantes = sesion.aspirantesGlobales || [];
+
+    // 2. FILTRADO MULTIPLE (Buscador + Comisión )
+    let alumnosFiltrados = todosLosAspirantes.filter(alumno => {
+        const id = String(alumno.id_inscripcion || '');
+        const dni = String(alumno.dni || '');
+        const apellidoNombre = `${alumno.apellido || ''} ${alumno.nombre || ''}`.toLowerCase();
+        const comisionAlumno = String(alumno.comision || '');
+
+        const pasaBuscador = id.includes(inputBuscador) || dni.includes(inputBuscador) || apellidoNombre.includes(inputBuscador);
+        const pasaComision = selectComision === "" || comisionAlumno === selectComision;
+
+        return pasaBuscador && pasaComision;
+    });
+
+    // 3. ORDENAMIENTO DINÁMICO
+    alumnosFiltrados.sort((a, b) => {
+        let valorA, valorB;
+        switch (selectOrden) {
+            case 'nombre_asc':
+                valorA = `${a.apellido || ''} ${a.nombre || ''}`.toLowerCase();
+                valorB = `${b.apellido || ''} ${b.nombre || ''}`.toLowerCase();
+                return valorA.localeCompare(valorB);
+            case 'nombre_desc':
+                valorA = `${a.apellido || ''} ${a.nombre || ''}`.toLowerCase();
+                valorB = `${b.apellido || ''} ${b.nombre || ''}`.toLowerCase();
+                return valorB.localeCompare(valorA);
+            case 'inscripcion_asc':
+                return (parseInt(a.id_inscripcion) || 0) - (parseInt(b.id_inscripcion) || 0);
+            case 'inscripcion_desc':
+                return (parseInt(b.id_inscripcion) || 0) - (parseInt(a.id_inscripcion) || 0);
+            case 'depto_asc':
+                valorA = String(a.departamento || '').toLowerCase();
+                valorB = String(b.departamento || '').toLowerCase();
+                return valorA.localeCompare(valorB);
+            default:
+                return 0;
+        }
+    });
+
+    actualizarPromediosTrayectoria(alumnosFiltrados);
+
+
+    // 4. RENDERIZADO EN TABLA
+    if (alumnosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">No se encontraron aspirantes.</td></tr>`;
+        return;
+    }
+
+    // Helper para pintar la nota de color (verde >= 6, rojo < 6)
+    const colorNota = (nota) => {
+        if (nota === '-' || nota === '') return 'text-muted';
+        return parseFloat(nota) >= 6 ? 'text-success fw-bold' : 'text-danger fw-bold';
+    };
+
+    let filasHTML = '';
+    // Agregamos el parámetro "index" al forEach
+    alumnosFiltrados.forEach((alumno, index) => {
+        const orden = index + 1; // Número incremental 1, 2, 3...
+        const nroInsc = alumno.id_inscripcion || '-';
+        const nombreCompleto = `${alumno.apellido || ''}, ${alumno.nombre || ''}`;
+        const comision = alumno.comision || '-';
+
+        // Notas 1° Evaluación
+        const mat1 = alumno.datos_examen?.nota_1er_ev_mat ?? '-';
+        const len1 = alumno.datos_examen?.nota_1er_ev_len ?? '-';
+        const dib1 = alumno.datos_examen?.nota_1er_ev_dib ?? '-';
+
+        // Notas Ensayo Examen (Final)
+        const matFin = alumno.datos_examen?.nota_final_mat ?? '-';
+        const lenFin = alumno.datos_examen?.nota_final_len ?? '-';
+        const dibFin = alumno.datos_examen?.nota_final_dib ?? '-';
+
+        filasHTML += `
+            <tr>
+                <!-- Orden (Incremental) -->
+                <td class="align-middle text-muted fw-bold">${orden}</td>
+                
+                <!-- Nº Inscripción -->
+                <td class="align-middle texto_azul_institucional fw-bold">${nroInsc}</td>
+                
+                <!-- Nombre y Apellido -->
+                <td class="text-start fw-bold align-middle">${nombreCompleto}</td>
+                
+                <td class="align-middle">${comision}</td>
+
+                <!-- Notas 1° Eval -->
+                <td class="align-middle ${colorNota(mat1)}">${mat1}</td>
+                <td class="align-middle ${colorNota(len1)}">${len1}</td>
+                <td class="align-middle ${colorNota(dib1)}">${dib1}</td>
+
+                <!-- Notas Ensayo -->
+                <td class="align-middle ${colorNota(matFin)}">${matFin}</td>
+                <td class="align-middle ${colorNota(lenFin)}">${lenFin}</td>
+                <td class="align-middle ${colorNota(dibFin)}">${dibFin}</td>
+
+                <!-- Botón de Edición -->
+                <td class="admin-col d-none align-middle">
+                    <button class="btn btn-sm btn-outline-danger btn-auditar" 
+                            data-id="${nroInsc}" 
+                            title="Modificar Calificación">
+                        ✏
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = filasHTML;
+
 }
 
 
+// =================================================================
+// CÁLCULO DE PROMEDIOS DINÁMICOS PARA LA TABLA TRAYECTORIA
+// =================================================================
+export function actualizarPromediosTrayectoria(alumnosFiltrados) {
+    // 1. Preparamos acumuladores (total suma, y cantidad de notas válidas)
+    const sumas = {
+        'mat_1': { total: 0, cantidad: 0 },
+        'len_1': { total: 0, cantidad: 0 },
+        'dib_1': { total: 0, cantidad: 0 },
+        'mat_f': { total: 0, cantidad: 0 },
+        'len_f': { total: 0, cantidad: 0 },
+        'dib_f': { total: 0, cantidad: 0 }
+    };
+
+    // 2. Recorremos los alumnos visibles
+    alumnosFiltrados.forEach(alumno => {
+        if (!alumno.datos_examen) return; // Si no tiene notas, pasamos al siguiente
+
+        // Mapeo de las claves de tu BD a nuestros acumuladores locales
+        const mapaNotas = [
+            { claveBD: 'nota_1er_ev_mat', claveAcum: 'mat_1' },
+            { claveBD: 'nota_1er_ev_len', claveAcum: 'len_1' },
+            { claveBD: 'nota_1er_ev_dib', claveAcum: 'dib_1' },
+            { claveBD: 'nota_final_mat', claveAcum: 'mat_f' }, // Asumo este nombre para el ensayo
+            { claveBD: 'nota_final_len', claveAcum: 'len_f' }, // Asumo este nombre para el ensayo
+            { claveBD: 'nota_final_dib', claveAcum: 'dib_f' }  // Asumo este nombre para el ensayo
+        ];
+
+        // 3. Revisamos cada nota del alumno
+        mapaNotas.forEach(mapa => {
+            let valorOriginal = alumno.datos_examen[mapa.claveBD];
+
+            // Si existe y no está vacío
+            if (valorOriginal !== undefined && valorOriginal !== null && valorOriginal !== "") {
+                let notaNumerica = parseFloat(valorOriginal);
+
+                // CONDICIÓN CLAVE: Solo suma y cuenta si es mayor a 0 
+                // (Ignora ausentes, aplazos con 0 o errores de carga)
+                if (!isNaN(notaNumerica) && notaNumerica > 0) {
+                    sumas[mapa.claveAcum].total += notaNumerica;
+                    sumas[mapa.claveAcum].cantidad++;
+                }
+            }
+        });
+    });
+
+    // 4. Función auxiliar para dividir y redondear (o poner un guion si no hay datos)
+    const calcularPromedio = (datos) => {
+        if (datos.cantidad === 0) return '-';
+        return (datos.total / datos.cantidad).toFixed(2); // Retorna ej: "7.50"
+    };
+
+    // 5. Inyectamos los resultados en el TFOOT
+    document.getElementById('prom-1er-mat').textContent = calcularPromedio(sumas['mat_1']);
+    document.getElementById('prom-1er-len').textContent = calcularPromedio(sumas['len_1']);
+    document.getElementById('prom-1er-dib').textContent = calcularPromedio(sumas['dib_1']);
+
+    document.getElementById('prom-fin-mat').textContent = calcularPromedio(sumas['mat_f']);
+    document.getElementById('prom-fin-len').textContent = calcularPromedio(sumas['len_f']);
+    document.getElementById('prom-fin-dib').textContent = calcularPromedio(sumas['dib_f']);
+}
+
+
+// =========================================================
+// 🔒 CONTROL DE ACCESO A BOTONES DE EDICIÓN
+// =========================================================
+export function evaluarPermisosBotones(comisionSeleccionada, materiaSeleccionada, instanciaSeleccionada) {
+    const btnHabilitar = document.getElementById('btnHabilitarEdicion');
+    const btnGuardar = document.getElementById('btnGuardarNotas');
+
+    if (!btnHabilitar || !btnGuardar) return;
+
+    // 1. Por defecto, el botón de Guardar SIEMPRE arranca bloqueado 
+    // (Solo se habilita si hacen clic en "Habilitar Planilla")
+    btnGuardar.disabled = true;
+
+    // 2. Si es Directivo (ADMI/COOR), le damos acceso total (Modo Auditoría)
+    if (usuarioActual.rol === 'ADMI' || usuarioActual.rol === 'COOR') {
+        btnHabilitar.disabled = false;
+        btnHabilitar.innerHTML = '✏️ Habilitar Planilla (Auditoría)';
+        btnHabilitar.classList.remove('btn-outline-danger');
+        btnHabilitar.classList.add('btn-outline-secondary');
+        return;
+    }
+
+    // 3. Lógica para DOCENTES
+    let tienePermiso = false;
+
+    // Buscamos si existe la llave en permisos_docente
+    const permiso = permisosDocentes.find(p =>
+        String(p.id_comision) === String(comisionSeleccionada) &&
+        p.materia.toLowerCase() === materiaSeleccionada.toLowerCase()
+    );
+
+    if (permiso) {
+        // Chequeamos según la instancia que seleccionó en el combo box (ajustá los nombres según tus <select>)
+        if (instanciaSeleccionada === 'bloque_1er_ev' || instanciaSeleccionada === '1') {
+            tienePermiso = permiso.puede_cargar_1er;
+        }
+        else if (instanciaSeleccionada === 'bloque_final' || instanciaSeleccionada === '2') {
+            tienePermiso = permiso.puede_cargar_fin;
+        }
+    }
+
+    // 4. Aplicamos el Candado Visual
+    if (tienePermiso) {
+        btnHabilitar.disabled = false;
+        btnHabilitar.innerHTML = '✏️ Habilitar Planilla';
+        btnHabilitar.classList.remove('btn-outline-danger');
+        btnHabilitar.classList.add('btn-outline-secondary');
+    } else {
+        btnHabilitar.disabled = true;
+        btnHabilitar.innerHTML = '🔒 Carga Cerrada / Sin Permiso';
+        btnHabilitar.classList.remove('btn-outline-secondary');
+        btnHabilitar.classList.add('btn-outline-danger'); // Lo ponemos rojito para que quede claro
+    }
+}
