@@ -285,7 +285,7 @@ export function inicializarModuloNotas(aspirantesGlobales, permisosDocente) {
         document.getElementById('btnGuardarNotas').disabled = !modoEdicionNotas;
         renderizarPlanillaNotas();
     });
-    
+
     // Listeners Instancias de Evaluación
     document.getElementById('seguimiento-tab').addEventListener('click', (e) => cambiarPestaña('seguimiento', e.target));
     // PARA HABILITAR LUEGO
@@ -614,8 +614,7 @@ export function renderModalSalud(listaFiltrada) {
     });
 }
 
-
-// --- LA MAGIA DEL ENTER Y EL LOCALSTORAGE ---
+// --- LA MAGIA DEL ENTER, FLECHAS Y EL LOCALSTORAGE ---
 function activarNavegacionPorEnterYGuardado(comision) {
     const inputs = document.querySelectorAll('.input-nota');
 
@@ -634,12 +633,33 @@ function activarNavegacionPorEnterYGuardado(comision) {
         });
 
         input.addEventListener('keydown', (e) => {
+            // 1. NAVEGACIÓN POR ENTER (Salta al siguiente alumno hacia abajo)
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const nextInput = inputs[index + 1];
                 if (nextInput) {
                     nextInput.focus();
                     nextInput.select();
+                }
+            }
+            
+            // 2. NAVEGACIÓN POR FLECHA ABAJO (Simula Excel vertical)
+            else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const nextInput = inputs[index + 1];
+                if (nextInput) {
+                    nextInput.focus();
+                    nextInput.select();
+                }
+            }
+            
+            // 3. NAVEGACIÓN POR FLECHA ARRIBA (Simula Excel vertical hacia arriba)
+            else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prevInput = inputs[index - 1];
+                if (prevInput) {
+                    prevInput.focus();
+                    prevInput.select();
                 }
             }
         });
