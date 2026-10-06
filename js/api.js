@@ -6,15 +6,9 @@ export const EstadoDashboard = {
     examenes: {}
 };
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxrF4ppbNMvG0gFGUrcEeSuWKYaTVtvnWjUQbsrLImFBXZAZLxxHvN-prWb7Z8REcCp4w/exec';
-
-/**
- * 🔹 ENRUTADOR CENTRALIZADO PARA TODAS LAS PETICIONES AL SERVIDOR
- * Inyecta automáticamente el token de sesión y maneja los errores HTTP.
- */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzEwTsLQ4UzrHzPDw5Ppu8Bb7eNMoAM8rmnOCrxPVKEpeNuvtP-VMTUy05r-PsZp3aRBw/exec';
 async function peticionAutenticada(accion, datosExtra = {}) {
-    // Obtenemos el token guardado en la sesión (si no hay, envía string vacío)
-    const token = sessionStorage.getItem('token_sesion') || '';
+    let token = sessionStorage.getItem('token_sesion') || '';
 
     const payload = {
         accion: accion,
@@ -22,8 +16,11 @@ async function peticionAutenticada(accion, datosExtra = {}) {
         ...datosExtra
     };
 
+    // 🛡️ TRUCO MAESTRO: Mandamos la acción por URL (?accion=...) y por POST
+    const urlConAccion = `${GAS_URL}?accion=${encodeURIComponent(accion)}`;
+
     try {
-        const respuesta = await fetch(GAS_URL, {
+        const respuesta = await fetch(urlConAccion, {
             method: 'POST',
             redirect: 'follow',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -39,7 +36,6 @@ async function peticionAutenticada(accion, datosExtra = {}) {
         
     } catch (error) {
         console.error(`❌ Fallo en petición [${accion}]:`, error);
-        // Retornamos un objeto de error estándar para que las funciones lo manejen fácil
         return { exito: false, error: true, mensaje: error.message };
     }
 }
