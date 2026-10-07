@@ -936,7 +936,7 @@ export function renderizarTrayectoriaGlobal() {
     // Helper para pintar la nota de color (verde >= 6, rojo < 6)
     const colorNota = (nota) => {
         if (nota === '-' || nota === '') return 'text-muted';
-        return parseFloat(nota) >= 6 ? 'text-success fw-bold' : 'text-danger fw-bold';
+        return parseFloat(nota) >= 4 ? 'text-success fw-bold' : 'text-danger fw-bold';
     };
 
     let filasHTML = '';
