@@ -111,25 +111,30 @@ body {
 
 
 
-/* Aseguramos que los TH sean pegajosos y estén por encima de las filas del tbody */
-    .tabla-fixed-header thead th {
-        position: sticky;
-        z-index: 5;
-    }
-    
-    /* La primera fila se pega al borde superior (0px) */
-    .tabla-fixed-header thead tr:nth-child(1) th {
-        top: 0;
-        /* Le agregamos una sombrita para que el borde inferior no desaparezca al scrollear */
-        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.2); 
-    }
-    
-    /* La segunda fila (Mat, Len, Dib) se pega debajo de la primera.
-       ⚠️ Dependiendo del tamaño de tu fuente, este valor suele ser 40px o 45px. */
-    .tabla-fixed-header thead tr:nth-child(2) th {
-        top: 41px; 
-        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.2);
-    }
+/* Aseguramos que el contenedor haga scroll */
+.tabla-fixed-header {
+    overflow-y: auto;
+}
+
+/* Todas las celdas del encabezado son sticky */
+.tabla-fixed-header thead th {
+    position: sticky;
+    z-index: 10; /* Las mantiene por encima del cuerpo de la tabla */
+    background-clip: padding-box; /* Evita que los bordes se vean dobles o transparentes */
+}
+
+/* 1° Fila del thead: Se pega bien arriba */
+.tabla-fixed-header thead tr:nth-child(1) th {
+    top: 0;
+}
+
+/* 2° Fila del thead (Mat, Len, Dib): Se pega JUSTO DEBAJO de la primera fila */
+.tabla-fixed-header thead tr:nth-child(2) th {
+    /* ⚠️ IMPORTANTE: Ajustá este valor a la altura real de tu primera fila. 
+       Generalmente en Bootstrap es entre 40px y 45px */
+    top: 41px; 
+    z-index: 11; /* Opcional: un punto más para que no choque con celdas combinadas */
+}
 
 
 
