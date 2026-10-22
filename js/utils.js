@@ -15,7 +15,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
 
         // 2. Identificar qué comisiones vamos a procesar
         let comisionesAProcesar = [];
-        
+
         if (esListadoCompleto) {
             // Si es listado completo, forzamos un array de un solo elemento para que el bucle dé una sola vuelta
             comisionesAProcesar = ["COMPLETO"];
@@ -41,10 +41,10 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         // BUCLE DE HOJAS
         // =========================================================
         comisionesAProcesar.forEach((comisionActual, index) => {
-            
+
             // Si es listado completo, metemos a TODOS. Si no, filtramos por la comisión de esta vuelta
-            let alumnosDeEstaComision = esListadoCompleto 
-                ? aspirantesFiltrados 
+            let alumnosDeEstaComision = esListadoCompleto
+                ? aspirantesFiltrados
                 : aspirantesFiltrados.filter(a => String(a.comision) === comisionActual);
 
             let tituloPrincipal = "";
@@ -56,7 +56,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
             switch (tipoDescarga) {
                 case 'alumnos':
                     tituloPrincipal = "PLANILLA DE ALUMNOS";
-                    
+
                     // Si es listado completo, mostramos la columna de "Comisión" extra
                     if (esListadoCompleto) {
                         cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre', 'Comisión']];
@@ -65,7 +65,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
                         cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre']];
                         filas = alumnosDeEstaComision.map((a, i) => [i + 1, a.dni, a.apellido, a.nombre]);
                     }
-                    
+
                     configExtraTabla = {
                         styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] },
                         columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
@@ -90,7 +90,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
 
                 case 'observaciones':
                     tituloPrincipal = "PLANILLA DE OBSERVACIONES";
-                    subtitulo = esListadoCompleto 
+                    subtitulo = esListadoCompleto
                         ? `Comisión: TODAS   -   Docente: ....................................................`
                         : `Comisión: ........ ${comisionActual} ........   -   Docente: ....................................................`;
                     cabeceras = [['Nº', 'Apellido y Nombre', 'Documento', 'Fecha', 'Observación']];
@@ -153,7 +153,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         if (esListadoCompleto) nombreArchivo += `_General_Sabana.pdf`;
         else if (comisionSeleccionada) nombreArchivo += `_Comision_${comisionSeleccionada}.pdf`;
         else nombreArchivo += `_Separadas_Por_Comision.pdf`;
-        
+
         pdf.save(nombreArchivo);
         setTimeout(() => { Swal.close(); }, 1000);
 
@@ -334,7 +334,7 @@ export async function descargarPlanillaCronograma(eventosGlobales, areaSeleccion
         const tituloPrincipal = `CRONOGRAMA DE ACTIVIDADES - ${areaSeleccionada.toUpperCase()}`;
         pdf.text(tituloPrincipal, centroX, 33, { align: "center" });
 
-// 1. Dibujamos la línea separadora ARRIBA del subtítulo (Y = 37)
+        // 1. Dibujamos la línea separadora ARRIBA del subtítulo (Y = 37)
         pdf.setDrawColor(180, 180, 180);
         pdf.setLineWidth(0.5);
         pdf.line(14, 37, anchoHoja - 14, 37);
@@ -350,7 +350,7 @@ export async function descargarPlanillaCronograma(eventosGlobales, areaSeleccion
         // AUTO-TABLE
         // =========================================================
         pdf.autoTable({
-            head: [['Nº', 'Fecha', 'Detalle de la Actividad', 'Finalizado','Parcial','Pendiente']],
+            head: [['Nº', 'Fecha', 'Detalle de la Actividad', 'Finalizado', 'Parcial', 'Pendiente']],
             body: filas,
             startY: 47,
             theme: 'grid',
@@ -385,7 +385,7 @@ export async function descargarPlanillaCronograma(eventosGlobales, areaSeleccion
 // RENDERIZAR PDF DEL CRONOGRAMA DE LA SEMANA SELECCIONADA
 // =================================================================
 export async function descargarCronogramaSemanal(eventosGlobales) {
-    
+
     // 1. Capturamos qué semana está viendo el usuario ahora mismo
     const selectSemana = document.getElementById('filtro-semana-cronograma');
     if (!selectSemana) return;
@@ -416,7 +416,7 @@ export async function descargarCronogramaSemanal(eventosGlobales) {
             const fechaObj = new Date(ev.start + "T12:00:00");
             let fechaStr = fechaObj.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit' });
             fechaStr = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1).replace(',', '');
-            
+
             // (Replicamos los horarios fijos que tenés en la UI)
             const fechaYHora = `${fechaStr}\n1º - 17:00 a 18:20\n2º - 18:50 a 20:10`;
 
@@ -444,7 +444,7 @@ export async function descargarCronogramaSemanal(eventosGlobales) {
                     return `Com. ${arrayComisiones.join(', ')} - ${datosDocente}`;
                 });
                 // ATENCIÓN ACÁ: Usamos \n en lugar de <br> para el salto de línea en el PDF
-                listadoDocentesGabinete = lineas.join('\n'); 
+                listadoDocentesGabinete = lineas.join('\n');
             }
 
             return [
@@ -456,7 +456,7 @@ export async function descargarCronogramaSemanal(eventosGlobales) {
 
         // 5. ARMADO DEL PDF (Usamos 'l' para Landscape/Horizontal)
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('l', 'mm', 'a4'); 
+        const pdf = new jsPDF('l', 'mm', 'a4');
         const anchoHoja = pdf.internal.pageSize.getWidth();
         const centroX = anchoHoja / 2;
 
@@ -489,7 +489,7 @@ export async function descargarCronogramaSemanal(eventosGlobales) {
             headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center', valign: 'middle', lineWidth: 0.3 },
             styles: { fontSize: 9, cellPadding: 3, valign: 'middle', lineColor: [0, 0, 0] },
             alternateRowStyles: { fillColor: [245, 245, 245] },
-            
+
             // Ajustamos anchos para aprovechar la hoja apaisada
             columnStyles: {
                 0: { cellWidth: 35, halign: 'center' }, // Fecha y Hora
@@ -505,4 +505,327 @@ export async function descargarCronogramaSemanal(eventosGlobales) {
         console.error(error);
         Swal.fire('Error', 'Hubo un problema al crear el PDF.', 'error');
     }
+}
+
+
+
+
+
+
+// =================================================================
+// 1. OBTENER ASPIRANTES FILTRADOS Y COMISIÓN ACTIVA EN TRAYECTORIA
+// =================================================================
+export function obtenerContextoTrayectoria() {
+    const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
+    if (!dataGuardada) return { aspirantesFiltrados: [], comisionSeleccionada: '', comisionesPermitidas: [] };
+
+    const sesion = JSON.parse(dataGuardada);
+    const todosLosAspirantes = sesion.aspirantesGlobales || [];
+
+    const inputBuscador = (document.getElementById('searchInputTrayectoria')?.value || '').toLowerCase().trim();
+    const selectEl = document.getElementById('filterComisionTrayectoria');
+    const selectComision = selectEl?.value || '';
+    const selectOrden = document.getElementById('sortSelectTrayectoria')?.value || 'nombre_asc';
+
+    // Extraemos qué comisiones tiene cargadas el docente/autoridad en su select
+    const comisionesEnSelect = selectEl
+        ? Array.from(selectEl.options).map(opt => opt.value).filter(val => val !== "")
+        : [];
+
+    // 1. Filtrado por buscador, comisión seleccionada y permisos del select
+    let aspirantesFiltrados = todosLosAspirantes.filter(alumno => {
+        const id = String(alumno.id_inscripcion || '');
+        const dni = String(alumno.dni || '');
+        const apellidoNombre = `${alumno.apellido || ''} ${alumno.nombre || ''}`.toLowerCase();
+        const comisionAlumno = String(alumno.comision || '');
+
+        const pasaBuscador = id.includes(inputBuscador) || dni.includes(inputBuscador) || apellidoNombre.includes(inputBuscador);
+
+        // Si eligió una comisión puntual, filtra por esa. Si eligió "Todas", filtra por las que tiene disponibles en su select
+        const pasaComision = selectComision !== ""
+            ? comisionAlumno === selectComision
+            : (comisionesEnSelect.length === 0 || comisionesEnSelect.includes(comisionAlumno));
+
+        return pasaBuscador && pasaComision;
+    });
+
+    // 2. Ordenamiento idéntico a la tabla en pantalla
+    aspirantesFiltrados.sort((a, b) => {
+        let valorA, valorB;
+        switch (selectOrden) {
+            case 'nombre_asc':
+                valorA = `${a.apellido || ''} ${a.nombre || ''}`.toLowerCase();
+                valorB = `${b.apellido || ''} ${b.nombre || ''}`.toLowerCase();
+                return valorA.localeCompare(valorB);
+            case 'nombre_desc':
+                valorA = `${a.apellido || ''} ${a.nombre || ''}`.toLowerCase();
+                valorB = `${b.apellido || ''} ${b.nombre || ''}`.toLowerCase();
+                return valorB.localeCompare(valorA);
+            case 'inscripcion_asc':
+                return (parseInt(a.id_inscripcion) || 0) - (parseInt(b.id_inscripcion) || 0);
+            case 'inscripcion_desc':
+                return (parseInt(b.id_inscripcion) || 0) - (parseInt(a.id_inscripcion) || 0);
+            default:
+                return 0;
+        }
+    });
+
+    return {
+        aspirantesFiltrados,
+        comisionSeleccionada: selectComision
+    };
+}
+
+// =================================================================
+// 2. DESCARGAR NOTAS DE TRAYECTORIA (PDF por Comisión o Excel)
+// tipoEtapa: '1er_ev' | 'ensayo' | 'consolidado'
+// formato: 'pdf' | 'excel'
+// =================================================================
+export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
+    const { aspirantesFiltrados, comisionSeleccionada } = obtenerContextoTrayectoria();
+
+    if (aspirantesFiltrados.length === 0) {
+        Swal.fire('Atención', 'No hay aspirantes para generar el documento con el filtro actual.', 'warning');
+        return;
+    }
+
+    // Cerramos el modal antes de disparar la descarga
+    const modalEl = document.getElementById('modalDescargaNotas');
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) modalInstance.hide();
+
+    // Determinar las comisiones a procesar
+    let comisionesAProcesar = [];
+    if (comisionSeleccionada !== "") {
+        comisionesAProcesar = [String(comisionSeleccionada)];
+    } else {
+        const unicas = new Set(aspirantesFiltrados.map(a => String(a.comision)));
+        comisionesAProcesar = [...unicas]
+            .filter(c => c && c.trim() !== 'undefined' && c.trim() !== '')
+            .sort((a, b) => parseInt(a) - parseInt(b));
+    }
+
+    // --- OPCIÓN A: EXPORTACIÓN A EXCEL (CSV) ---
+    if (formato === 'excel') {
+        descargarNotasCSV(aspirantesFiltrados, comisionSeleccionada, tipoEtapa);
+        return;
+    }
+
+    // --- OPCIÓN B: EXPORTACIÓN A PDF CON DISEÑO INSTITUCIONAL ---
+    Swal.fire({ title: 'Generando PDF...', didOpen: () => { Swal.showLoading(); } });
+
+    try {
+        const { jsPDF } = window.jspdf;
+        // Si es consolidado usamos horizontal ('l') para que entren cómodas las 6 columnas de notas, si no vertical ('p')
+        const orientacion = tipoEtapa === 'consolidado' ? 'l' : 'p';
+        const pdf = new jsPDF(orientacion, 'mm', 'a4');
+        const anchoHoja = pdf.internal.pageSize.getWidth();
+        const centroX = anchoHoja / 2;
+
+        comisionesAProcesar.forEach((comisionActual, index) => {
+            const alumnosDeEstaComision = aspirantesFiltrados.filter(a => String(a.comision) === comisionActual);
+
+            let tituloPrincipal = "";
+            let cabeceras = [];
+            let filas = [];
+            let configExtraTabla = {};
+
+            switch (tipoEtapa) {
+                case '1er_ev':
+                    tituloPrincipal = "CALIFICACIONES - 1º EVALUACIÓN";
+                    cabeceras = [['Nº', 'Apellido y Nombre', 'Matemática', 'Lengua', 'Dibujo']];
+                    filas = alumnosDeEstaComision.map((a, i) => [
+                        i + 1,
+                        `${a.apellido || ''}, ${a.nombre || ''}`,
+                        formatearNota(a.datos_examen?.nota_1er_ev_mat),
+                        formatearNota(a.datos_examen?.nota_1er_ev_len),
+                        formatearNota(a.datos_examen?.nota_1er_ev_dib)
+                    ]);
+                    configExtraTabla = {
+                        columnStyles: {
+                            0: { cellWidth: 12, halign: 'center' },
+                            1: { cellWidth: 'auto' },
+                            2: { cellWidth: 28, halign: 'center' },
+                            3: { cellWidth: 28, halign: 'center' },
+                            4: { cellWidth: 28, halign: 'center' }
+                        }
+                    };
+                    break;
+
+                case 'ensayo':
+                    tituloPrincipal = "CALIFICACIONES - ENSAYO DE EXAMEN";
+                    cabeceras = [['Nº', 'Apellido y Nombre', 'Matemática', 'Lengua', 'Dibujo']];
+                    filas = alumnosDeEstaComision.map((a, i) => [
+                        i + 1,
+                        `${a.apellido || ''}, ${a.nombre || ''}`,
+                        formatearNota(a.datos_examen?.nota_final_mat),
+                        formatearNota(a.datos_examen?.nota_final_len),
+                        formatearNota(a.datos_examen?.nota_final_dib)
+                    ]);
+                    configExtraTabla = {
+                        columnStyles: {
+                            0: { cellWidth: 12, halign: 'center' },
+                            1: { cellWidth: 'auto' },
+                            2: { cellWidth: 28, halign: 'center' },
+                            3: { cellWidth: 28, halign: 'center' },
+                            4: { cellWidth: 28, halign: 'center' }
+                        }
+                    };
+                    break;
+
+                case 'consolidado':
+                    tituloPrincipal = "PLANILLA CONSOLIDADA DE CALIFICACIONES";
+                    cabeceras = [
+                        [
+                            { content: 'Nº', rowSpan: 2, styles: { valign: 'middle' } },
+                            { content: 'Apellido y Nombre', rowSpan: 2, styles: { valign: 'middle' } },
+                            { content: '1º Evaluación de Seguimiento', colSpan: 3, styles: { halign: 'center', fillColor: [172, 26, 33] } },
+                            { content: 'Ensayo de Examen', colSpan: 3, styles: { halign: 'center', fillColor: [27, 57, 106] } }
+                        ],
+                        ['Matemática', 'Lengua', 'Dibujo', 'Matemática', 'Lengua', 'Dibujo']
+                    ];
+                    filas = alumnosDeEstaComision.map((a, i) => [
+                        i + 1,
+                        `${a.apellido || ''}, ${a.nombre || ''}`,
+                        formatearNota(a.datos_examen?.nota_1er_ev_mat),
+                        formatearNota(a.datos_examen?.nota_1er_ev_len),
+                        formatearNota(a.datos_examen?.nota_1er_ev_dib),
+                        formatearNota(a.datos_examen?.nota_final_mat),
+                        formatearNota(a.datos_examen?.nota_final_len),
+                        formatearNota(a.datos_examen?.nota_final_dib)
+                    ]);
+                    configExtraTabla = {
+                        columnStyles: {
+                            0: { cellWidth: 12, halign: 'center' },
+                            1: { cellWidth: 'auto' },
+                            2: { cellWidth: 25, halign: 'center' },
+                            3: { cellWidth: 25, halign: 'center' },
+                            4: { cellWidth: 25, halign: 'center' },
+                            5: { cellWidth: 25, halign: 'center' },
+                            6: { cellWidth: 25, halign: 'center' },
+                            7: { cellWidth: 25, halign: 'center' }
+                        }
+                    };
+                    break;
+            }
+
+            // Encabezado Institucional (idéntico a tu diseño original)
+            if (typeof logoIT !== 'undefined') pdf.addImage(logoIT, 'PNG', 14, 10, 25, 25);
+            if (typeof logoUNT !== 'undefined') pdf.addImage(logoUNT, 'PNG', anchoHoja - 34, 10, 20, 25);
+
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(25);
+            pdf.text("INSTITUTO TÉCNICO", centroX, 16, { align: "center" });
+
+            pdf.setFont("times", "italic");
+            pdf.setFontSize(14);
+            pdf.text("Universidad Nacional de Tucumán", centroX, 23, { align: "center" });
+
+            pdf.setFont("helvetica", "semibold");
+            pdf.setFontSize(13);
+            pdf.text(`${tituloPrincipal} - Comisión ${comisionActual}`, centroX, 33, { align: "center" });
+
+            pdf.setDrawColor(180, 180, 180);
+            pdf.setLineWidth(0.5);
+            pdf.line(14, 38, anchoHoja - 14, 38);
+
+            // Dibujar Tabla con autoTable
+            pdf.autoTable({
+                head: cabeceras,
+                body: filas,
+                startY: 42,
+                theme: 'grid',
+                headStyles: { fillColor: [0, 48, 93], textColor: [255, 255, 255], halign: 'center', lineWidth: 0.3 },
+                styles: { fontSize: 9, cellPadding: 2, valign: 'middle', lineColor: [0, 0, 0] },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+                ...configExtraTabla,
+
+                didParseCell: function (data) {
+                    if (data.section === 'body' && data.cell.raw === 'A') {
+                        data.cell.styles.textColor = [220, 53, 69]; // Color rojo institucional / Bootstrap danger
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            });
+
+
+            if (index < comisionesAProcesar.length - 1) {
+                pdf.addPage();
+            }
+        });
+
+        let sufijo = comisionSeleccionada ? `Comision_${comisionSeleccionada}` : `Por_Comision`;
+        pdf.save(`Notas_${tipoEtapa}_${sufijo}.pdf`);
+        setTimeout(() => { Swal.close(); }, 800);
+
+    } catch (error) {
+        console.error("Error al generar PDF de notas:", error);
+        Swal.fire('Error', 'Hubo un problema al crear el PDF de calificaciones.', 'error');
+    }
+}
+
+// =================================================================
+// 3. AUXILIAR PARA DESCARGAR EN EXCEL (CSV)
+// =================================================================
+function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
+    let cabeceras = [];
+    let filas = [];
+
+    if (tipoEtapa === '1er_ev') {
+        cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática 1º Ev', 'Lengua 1º Ev', 'Dibujo 1º Ev'];
+        filas = aspirantes.map((a, i) => [
+            i + 1,
+            `${a.apellido || ''}, ${a.nombre || ''}`,
+            a.comision || '-',
+            a.datos_examen?.nota_1er_ev_mat ?? '-',
+            a.datos_examen?.nota_1er_ev_len ?? '-',
+            a.datos_examen?.nota_1er_ev_dib ?? '-'
+        ]);
+    } else if (tipoEtapa === 'ensayo') {
+        cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática Ensayo', 'Lengua Ensayo', 'Dibujo Ensayo'];
+        filas = aspirantes.map((a, i) => [
+            i + 1,
+            `${a.apellido || ''}, ${a.nombre || ''}`,
+            a.comision || '-',
+            a.datos_examen?.nota_final_mat ?? '-',
+            a.datos_examen?.nota_final_len ?? '-',
+            a.datos_examen?.nota_final_dib ?? '-'
+        ]);
+    } else {
+        cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Mat. 1º Ev', 'Len. 1º Ev', 'Dib. 1º Ev', 'Mat. Ensayo', 'Len. Ensayo', 'Dib. Ensayo'];
+        filas = aspirantes.map((a, i) => [
+            i + 1,
+            `${a.apellido || ''}, ${a.nombre || ''}`,
+            a.comision || '-',
+            a.datos_examen?.nota_1er_ev_mat ?? '-',
+            a.datos_examen?.nota_1er_ev_len ?? '-',
+            a.datos_examen?.nota_1er_ev_dib ?? '-',
+            a.datos_examen?.nota_final_mat ?? '-',
+            a.datos_examen?.nota_final_len ?? '-',
+            a.datos_examen?.nota_final_dib ?? '-'
+        ]);
+    }
+
+    let csvContent = "\uFEFF" + cabeceras.join(";") + "\n";
+    filas.forEach(fila => {
+        const linea = fila.map(val => `"${String(val).replace(/"/g, '""')}"`).join(";");
+        csvContent += linea + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const sufijo = comisionSeleccionada ? `Comision_${comisionSeleccionada}` : `General`;
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Notas_${tipoEtapa}_${sufijo}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function formatearNota(nota) {
+    if (nota === 0 || nota === '0' || nota === null || nota === undefined || nota === '-') {
+        return 'A';
+    }
+    return nota;
 }

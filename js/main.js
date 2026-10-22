@@ -6,7 +6,6 @@ import * as Utils from './utils.js';
 
 
 
-
 // --- 1. ESTADO GLOBAL Y CACHÉ ---
 
 let aspirantesGlobales = [];
@@ -196,6 +195,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 50);
         });
     }
+
+
+
+
+const obtenerFormatoElegido = () => {
+        return document.getElementById('formatoPdf')?.checked ? 'pdf' : 'excel';
+    };
+
+    // 1. Descargar 1º Evaluación de Seguimiento
+    document.getElementById('btn-descargar-es')?.addEventListener('click', () => {
+        Utils.descargarNotasTrayectoria('1er_ev', obtenerFormatoElegido());
+    });
+
+    // 2. Descargar Ensayo de Examen
+    document.getElementById('btn-descargar-ee')?.addEventListener('click', () => {
+        Utils.descargarNotasTrayectoria('ensayo', obtenerFormatoElegido());
+    });
+
+    // 3. Descargar Consolidado Completo
+    document.getElementById('btn-descargar-todo')?.addEventListener('click', () => {
+        Utils.descargarNotasTrayectoria('consolidado', obtenerFormatoElegido());
+    });
+
+
 
 
 
