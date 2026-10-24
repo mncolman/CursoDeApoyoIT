@@ -754,6 +754,12 @@ function aplicarMutacionLocal(payload) {
 function cruzarDatosAspirantesNotas(aspirantes, notasCrudas) {
     if (!aspirantes || aspirantes.length === 0) return [];
 
+    // Si el backend ya ensambló las notas o no vienen notas crudas sueltas, preservamos los aspirantes intactos
+    if (!notasCrudas || !Array.isArray(notasCrudas) || notasCrudas.length <= 1) {
+        console.log("ℹ️ [MAIN] Las notas ya vienen ensambladas desde el backend, preservando datos_examen.");
+        return aspirantes;
+    }
+
     // 1. Armamos un diccionario (Hash Map) ultra rápido con las notas
     const mapaNotas = {};
 
