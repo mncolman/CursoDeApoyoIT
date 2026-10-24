@@ -5,7 +5,8 @@ import * as UI from './ui.js';
 export const EstadoDashboard = {
     alumnos: [],
     cursillo: [],
-    examenes: {}
+    examenes: {},
+    docentes: { mapaComisionMateria: {}, docentes: {} }
 };
 
 if (typeof window !== 'undefined') {
