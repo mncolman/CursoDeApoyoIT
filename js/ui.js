@@ -551,10 +551,13 @@ export function configurarInterfazPorRol(usuario) {
 
     // Lógica de Permisos de Interfaz
     const tabDashboard = document.getElementById('nav-item-dashboard');
+    const anclaMetricas = document.getElementById('item-redireccion-metricas');
     if (usuario.rol === 'ADMI' || usuario.rol === 'COOR') {
-        tabDashboard.classList.remove('d-none');
+        if (tabDashboard) tabDashboard.classList.remove('d-none');
+        if (anclaMetricas) anclaMetricas.classList.remove('d-none');
     } else {
-        tabDashboard.classList.add('d-none');
+        if (tabDashboard) tabDashboard.classList.add('d-none');
+        if (anclaMetricas) anclaMetricas.classList.add('d-none');
     }
 }
 

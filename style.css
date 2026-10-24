@@ -349,3 +349,54 @@ body {
         text-align: center;
     }
 }
+
+/* ==========================================================================
+   ESTÉTICA DE SUB-PESTAÑAS DEL DASHBOARD (AZUL INSTITUCIONAL)
+   ========================================================================== */
+.custom-tabs {
+    border-bottom: 2px solid #dee2e6;
+    gap: 6px;
+}
+
+.custom-tabs .nav-link {
+    color: #495057;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 0.6rem 1.15rem;
+    transition: all 0.2s ease-in-out;
+    background-color: #f8f9fa;
+}
+
+.custom-tabs .nav-link:hover:not(.active) {
+    color: #081e42;
+    background-color: rgba(7, 58, 134, 0.08);
+    border-color: rgba(7, 58, 134, 0.15) rgba(7, 58, 134, 0.15) transparent;
+}
+
+.custom-tabs .nav-link.active,
+.custom-tabs .nav-item.show .nav-link {
+    color: #ffffff !important;
+    background-color: #073a86 !important;
+    border-color: #073a86 #073a86 transparent !important;
+    box-shadow: 0 -2px 8px rgba(7, 58, 134, 0.18);
+}
+
+
+/* ==========================================================================
+   ENCABEZADOS HOMOGÉNEOS DE TABLAS DEL DASHBOARD (AZUL INSTITUCIONAL)
+   ========================================================================== */
+.table-azul-institucional {
+    background-color: #0c2855 !important;
+    color: #ffffff !important;
+}
+
+.table-azul-institucional th {
+    background-color: #0c2855 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    vertical-align: middle;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    letter-spacing: 0.3px;
+}
