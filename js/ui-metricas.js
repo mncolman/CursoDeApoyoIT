@@ -1058,8 +1058,11 @@ export function renderizarTablaComisiones(alumnosFiltrados) {
 }
 
 
-// Función auxiliar interna en ui.js
+// Función auxiliar para obtener el banco de docentes
 function obtenerBancoDocentesSesion() {
+    if (window.EstadoDashboard?.docentes?.docentes && Object.keys(window.EstadoDashboard.docentes.docentes).length > 0) {
+        return window.EstadoDashboard.docentes;
+    }
     try {
         return JSON.parse(sessionStorage.getItem('bancoDocentes') || '{"mapaComisionMateria":{},"docentes":{}}');
     } catch {
@@ -1067,17 +1070,35 @@ function obtenerBancoDocentesSesion() {
     }
 }
 
+function normalizarMateriaClave(materia) {
+    const m = String(materia || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (m.includes('mat')) return 'matematica';
+    if (m.includes('len')) return 'lengua';
+    if (m.includes('dib')) return 'dibujo';
+    return m;
+}
+
 // =================================================================
 // 1. CÁLCULO DE PROMEDIOS INDIVIDUALES Y POR COMISIÓN
 // =================================================================
 export function procesarMetricasDocentesCompletas(alumnosFiltrados) {
-    const { docentes, mapaComisionMateria } = obtenerBancoDocentesSesion();
+    const banco = obtenerBancoDocentesSesion();
+    const docentes = banco?.docentes || {};
+    const mapaComisionMateria = banco?.mapaComisionMateria || {};
+
+    console.log("👨‍🏫 [DOCENTES DEBUG] Banco obtenido en ui-metricas:", {
+        cantidadDocentes: Object.keys(docentes).length,
+        docentes: docentes,
+        mapaComisionMateria: mapaComisionMateria,
+        alumnosRecibidos: (alumnosFiltrados || []).length
+    });
+
     const listado = [];
 
     Object.entries(docentes).forEach(([nombreDocente, info]) => {
         const area = info.area || '';
-        const areaKey = area.toLowerCase();
-        const comisionesDocente = info.comisiones || [];
+        const areaKey = normalizarMateriaClave(area);
+        const comisionesDocente = (info.comisiones || []).map(Number);
 
         const detalleComisiones = {};
         let sumaNotasDocente = 0;
@@ -1087,18 +1108,23 @@ export function procesarMetricasDocentesCompletas(alumnosFiltrados) {
             detalleComisiones[comNum] = { suma: 0, cant: 0, promedio: 0 };
         });
 
-        alumnosFiltrados.forEach(alumno => {
-            const comAlumno = Number(alumno['Comisión'] ?? alumno['Comision']);
-            if (!comisionesDocente.includes(comAlumno)) return;
+        (alumnosFiltrados || []).forEach(alumno => {
+            const comAlumnoRaw = alumno['Comisión'] ?? alumno['Comision'] ?? alumno.comision;
+            const comAlumno = Number(comAlumnoRaw);
+            if (isNaN(comAlumno) || !comisionesDocente.includes(comAlumno)) return;
 
-            // Verificamos si este docente estaba asignado a la comisión y materia
-            const clave = `${comAlumno}_${areaKey}`;
-            const asignados = mapaComisionMateria[clave] || [];
-            if (!asignados.includes(nombreDocente)) return;
+            // Claves de comision + materia (soporta con o sin tildes)
+            const claveNorm = `${comAlumno}_${areaKey}`;
+            const claveRaw = `${comAlumno}_${area.toLowerCase()}`;
+            const asignados = mapaComisionMateria[claveNorm] || mapaComisionMateria[claveRaw] || [];
+
+            // Si hay lista de asignados y no está este docente, no le corresponde
+            if (asignados.length > 0 && !asignados.includes(nombreDocente)) return;
 
             const ex = alumno.datos_examen || {};
-            const estado = ex[`estado_${areaKey}`];
-            const nota = parseFloat(ex[`nota_final_${areaKey}`]);
+            const estado = ex[`estado_${areaKey}`] || ex[`estado_${area.toLowerCase()}`];
+            const notaRaw = ex[`nota_final_${areaKey}`] ?? ex[`nota_final_${area.toLowerCase()}`];
+            const nota = parseFloat(notaRaw);
 
             if (estado === 'Presente' && !isNaN(nota)) {
                 detalleComisiones[comAlumno].suma += nota;
@@ -1129,6 +1155,7 @@ export function procesarMetricasDocentesCompletas(alumnosFiltrados) {
         });
     });
 
+    console.log("👨‍🏫 [DOCENTES DEBUG] Listado final procesado (" + listado.length + " docentes):", listado);
     return listado;
 }
 

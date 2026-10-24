@@ -13,7 +13,7 @@ if (typeof window !== 'undefined') {
     window.EstadoDashboard = EstadoDashboard;
 }
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbygz4pfq_4aLfegS8bO_P_tKK1694R7J0TlvURGENX88leZeOYTWF0hXoK4bq3_vsHxew/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPrYeAQCPFAZtfjUCzACgzYJtSHv3hjzAZUSG8GhQa-OSxga6qlppWn8S4uiuChYde/exec';
 
 export async function peticionLogin(usuario, clave) {
     const peticion = {
@@ -216,6 +216,9 @@ export async function cargarDatosEstadisticos() {
             EstadoDashboard.alumnos = json.datos.alumnos || [];
             EstadoDashboard.examenes = json.datos.estructura_examenes || {};
             EstadoDashboard.cursillo = json.datos.cursillo || [];
+            EstadoDashboard.docentes = json.datos?.docentes || { mapaComisionMateria: {}, docentes: {} };
+            sessionStorage.setItem('bancoDocentes', JSON.stringify(EstadoDashboard.docentes));
+            console.log("👨‍🏫 [API DOCENTES] Objeto docentes recibido en JSON:", json.datos?.docentes);
 
             return true;
         } else {
