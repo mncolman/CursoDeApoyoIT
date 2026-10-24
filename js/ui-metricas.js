@@ -1,24 +1,35 @@
 import { EstadoDashboard } from './api.js';
-// Función auxiliar local para calcular el promedio del alumno sobre la marcha
-function obtenerPromedioAlumno(a) {
-    if (typeof a.promedioGeneral === 'number') return a.promedioGeneral;
 
-    const ex = a.datos_examen || {};
-    const notas = [];
+// Función unificada para calcular y normalizar el promedio del alumno
+function obtenerPromedioAlumno(alumno) {
+    if (!alumno) return 0;
 
-    if (ex.estado_matematica === 'Presente' && !isNaN(parseFloat(ex.nota_final_matematica))) {
-        notas.push(parseFloat(ex.nota_final_matematica));
-    }
-    if (ex.estado_lengua === 'Presente' && !isNaN(parseFloat(ex.nota_final_lengua))) {
-        notas.push(parseFloat(ex.nota_final_lengua));
-    }
-    if (ex.estado_dibujo === 'Presente' && !isNaN(parseFloat(ex.nota_final_dibujo))) {
-        notas.push(parseFloat(ex.nota_final_dibujo));
-    }
+    // 1. Si ya viene precalculado por la proyección de etapa (filters.js) o el backend
+    if (typeof alumno.promedioGeneral === 'number') return +alumno.promedioGeneral.toFixed(2);
+    if (alumno.promedio_general !== undefined) return +(parseFloat(alumno.promedio_general) || 0).toFixed(2);
+    if (alumno.datos_examen?.promedio_general !== undefined) return +(parseFloat(alumno.datos_examen.promedio_general) || 0).toFixed(2);
 
-    return notas.length > 0 ? (notas.reduce((acc, n) => acc + n, 0) / notas.length) : 0;
+    // 2. Si no viene precalculado, promediamos las materias donde estuvo Presente (incluyendo nota 0)
+    const ex = alumno.datos_examen;
+    if (!ex) return 0;
+
+    const materias = [
+        { nota: ex.nota_final_matematica, estado: ex.estado_matematica },
+        { nota: ex.nota_final_lengua, estado: ex.estado_lengua },
+        { nota: ex.nota_final_dibujo, estado: ex.estado_dibujo }
+    ];
+
+    let suma = 0, cant = 0;
+    materias.forEach(m => {
+        const val = parseFloat(m.nota);
+        if (!isNaN(val) && m.estado === 'Presente') {
+            suma += val;
+            cant++;
+        }
+    });
+
+    return cant > 0 ? +(suma / cant).toFixed(2) : 0;
 }
-
 
 
 // =================================================================
@@ -376,7 +387,9 @@ export function renderizarTablaMerito(alumnos) {
             : `<span class="badge bg-light text-dark border">#${alumno.ordenMerito}</span>`;
 
         // Datos del alumno y comisión
-        const nombreCompleto = alumno['Apellido/s del alumno'] + ', ' + alumno['Nombre/s del alumno'] || alumno['Nombre y Apellido'] || alumno['Alumno'] || 'Sin Nombre';
+        const apellido = alumno['Apellido/s del alumno'] || alumno.apellido || '';
+        const nombre = alumno['Nombre/s del alumno'] || alumno.nombre || '';
+        const nombreCompleto = (apellido && nombre) ? `${apellido}, ${nombre}` : (alumno['Nombre y Apellido'] || alumno['Alumno'] || 'Sin Nombre');
 
         const comision = alumno['Comisión'] || alumno['Comision'] || alumno['comision'] || '-';
 
@@ -720,8 +733,9 @@ export function inicializarSelectorComisiones(alumnos) {
     // Extraemos las comisiones únicas y las ordenamos
     const comisionesSet = new Set();
     alumnos.forEach(a => {
-        if (a['Comision'] !== undefined && a['Comision'] !== null && a['Comision'] !== '') {
-            comisionesSet.add(String(a['Comision']));
+        const comVal = a['Comisión'] ?? a['Comision'] ?? a.comision;
+        if (comVal !== undefined && comVal !== null && comVal !== '' && String(comVal).trim() !== '-') {
+            comisionesSet.add(String(comVal).trim());
         }
     });
 
@@ -758,7 +772,7 @@ export function renderizarGraficoComisiones(alumnos, comisionSeleccionada = 'tod
         const mapaComisiones = {}; // { "1": { matSum: 0, matCount: 0, ... } }
 
         alumnos.forEach(a => {
-            const com = String(a['Comision'] ?? 'Sin Comisión');
+            const com = String(a['Comisión'] ?? a['Comision'] ?? a.comision ?? 'Sin Comisión').trim();
             if (!mapaComisiones[com]) {
                 mapaComisiones[com] = {
                     matSuma: 0, matCant: 0,
@@ -851,7 +865,7 @@ export function renderizarGraficoComisiones(alumnos, comisionSeleccionada = 'tod
     }
 
     // 🔹 MODO 2: DETALLE DE UNA COMISIÓN VS MEDIA GENERAL
-    const alumnosComision = alumnos.filter(a => String(a['Comision']) === comisionSeleccionada);
+    const alumnosComision = alumnos.filter(a => String(a['Comisión'] ?? a['Comision'] ?? a.comision).trim() === comisionSeleccionada);
 
     // Calculamos promedio de la comisión elegida
     let matCom = 0, lenCom = 0, dibCom = 0;
@@ -941,7 +955,7 @@ export function renderizarTablaComisiones(alumnosFiltrados) {
     const mapa = {};
 
     alumnosFiltrados.forEach(a => {
-        const com = String(a['Comisión'] ?? a['Comision'] ?? 'Sin Comisión');
+        const com = String(a['Comisión'] ?? a['Comision'] ?? a.comision ?? 'Sin Comisión').trim();
         if (!mapa[com]) {
             mapa[com] = {
                 totalAlumnos: 0,
@@ -1315,30 +1329,7 @@ function normalizarDepartamento(deptoRaw) {
     return limpio;
 }
 
-function obtenerPromedioAlumno(alumno) {
-    if (alumno.promedio_general !== undefined) return parseFloat(alumno.promedio_general) || 0;
-    if (alumno.datos_examen?.promedio_general !== undefined) return parseFloat(alumno.datos_examen.promedio_general) || 0;
 
-    const ex = alumno.datos_examen;
-    if (!ex) return 0;
-
-    const materias = [
-        { nota: ex.nota_final_matematica, estado: ex.estado_matematica },
-        { nota: ex.nota_final_lengua, estado: ex.estado_lengua },
-        { nota: ex.nota_final_dibujo, estado: ex.estado_dibujo }
-    ];
-
-    let suma = 0, cant = 0;
-    materias.forEach(m => {
-        const val = parseFloat(m.nota);
-        if (!isNaN(val) && val > 0 && m.estado !== 'Ausente') {
-            suma += val;
-            cant++;
-        }
-    });
-
-    return cant > 0 ? +(suma / cant).toFixed(2) : 0;
-}
 
 /**
  * Llamá a esta función cada vez que carguen los datos o cambie tu filtro global de Orden de Mérito.
@@ -1372,11 +1363,11 @@ export function actualizarPestanaAlumnos(alumnosFiltradosPorCorte, padronTotalGl
 }
 
 function normalizarAlumno(al) {
-    const apellido = (al["Apellido/s del alumno"] || '').trim();
-    const nombre = (al["Nombre/s del alumno"] || '').trim();
-    const dni = String(al["Nº de documento del alumno (sin puntos)"] || '').trim();
-    const escuela = (al["Establecimiento escolar de donde proviene"] || 'Sin especificar').trim();
-    const depto = normalizarDepartamento(al["Departamento"]);
+    const apellido = String(al["Apellido/s del alumno"] || al.apellido || '').trim();
+    const nombre = String(al["Nombre/s del alumno"] || al.nombre || '').trim();
+    const dni = String(al["Nº de documento del alumno (sin puntos)"] || al.dni || '').trim();
+    const escuela = String(al["Establecimiento escolar de donde proviene"] || al.colegio || 'Sin especificar').trim();
+    const depto = normalizarDepartamento(al["Departamento"] || al.departamento);
 
     return {
         ...al,
@@ -1733,9 +1724,10 @@ export function actualizarPestanaExamenVsCursillo(alumnosFiltrados, datosCursill
         const nroInsc = Number(
             alumno['Nº de inscripción'] ||
             alumno['N° de inscripción'] ||
+            alumno.nro_inscripcion ||
+            alumno.id_inscripcion ||
             alumno['N° de orden'] ||
             alumno['Nº de orden'] ||
-            alumno.nro_inscripcion ||
             0
         );
 

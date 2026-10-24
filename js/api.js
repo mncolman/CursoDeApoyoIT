@@ -12,7 +12,7 @@ if (typeof window !== 'undefined') {
     window.EstadoDashboard = EstadoDashboard;
 }
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyuYvx4AOqZoIjC2nRO8wtD0oOv5IPKjfj4m6jKRhEdNM8f1F2ZLSIlWuoJCIZaMR57_g/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbygz4pfq_4aLfegS8bO_P_tKK1694R7J0TlvURGENX88leZeOYTWF0hXoK4bq3_vsHxew/exec';
 
 export async function peticionLogin(usuario, clave) {
     const peticion = {
@@ -23,6 +23,7 @@ export async function peticionLogin(usuario, clave) {
 
     const response = await fetch(GAS_URL, {
         method: 'POST',
+        redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(peticion)
     });
@@ -204,7 +205,11 @@ export async function cargarDatosEstadisticos() {
         if (btnActualizar) btnActualizar.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Actualizar Datos';
 
         if (json.exito) {
-            console.log("✅ Datos estadísticos recibidos del servidor.");
+            console.log("✅ [API] Datos estadísticos recibidos del servidor:", json);
+            console.log("👥 [API] Total alumnos recibidos:", (json.datos?.alumnos || []).length);
+            console.log("🔍 [API] Muestra del primer alumno:", json.datos?.alumnos?.[0]);
+            console.log("📊 [API] Estructura de exámenes:", json.datos?.estructura_examenes);
+            console.log("📝 [API] Cursillo recibido (total " + (json.datos?.cursillo || []).length + " registros). Muestra:", json.datos?.cursillo?.[0]);
 
             // Guardamos los datos en nuestro Estado Global
             EstadoDashboard.alumnos = json.datos.alumnos || [];

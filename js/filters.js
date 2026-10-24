@@ -95,9 +95,10 @@ export function proyectarAlumnosPorEtapa(alumnosBase, datosCursillo = [], etapa 
         const nroInsc = Number(
             alumno['Nº de inscripción'] ||
             alumno['N° de inscripción'] ||
+            alumno.nro_inscripcion ||
+            alumno.id_inscripcion ||
             alumno['N° de orden'] ||
             alumno['Nº de orden'] ||
-            alumno.nro_inscripcion ||
             0
         );
 
@@ -171,12 +172,12 @@ export function obtenerAlumnosFiltradosPorMerito(alumnosBase, datosCursillo = nu
         if (!dentroDeRango) return false;
         if (!textoBusqueda) return true;
 
-        const apellido = quitarAcentos((alumno['Apellido/s del alumno'] || '').toLowerCase());
-        const nombre = quitarAcentos((alumno['Nombre/s del alumno'] || '').toLowerCase());
+        const apellido = quitarAcentos((alumno['Apellido/s del alumno'] || alumno.apellido || '').toLowerCase());
+        const nombre = quitarAcentos((alumno['Nombre/s del alumno'] || alumno.nombre || '').toLowerCase());
         const nombreCompleto = `${apellido}, ${nombre}`;
-        const escuela = quitarAcentos((alumno['Establecimiento escolar de donde proviene'] || '').toLowerCase());
-        const depto = quitarAcentos((alumno['Departamento'] || '').toLowerCase());
-        const orden = String(alumno['N° de orden'] || alumno['Nº de orden'] || '').toLowerCase();
+        const escuela = quitarAcentos((alumno['Establecimiento escolar de donde proviene'] || alumno.colegio || '').toLowerCase());
+        const depto = quitarAcentos((alumno['Departamento'] || alumno.departamento || '').toLowerCase());
+        const orden = String(alumno['N° de orden'] || alumno['Nº de orden'] || alumno.id_inscripcion || '').toLowerCase();
 
         return (
             nombreCompleto.includes(textoBusqueda) ||
