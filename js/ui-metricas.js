@@ -35,49 +35,107 @@ function obtenerPromedioAlumno(alumno) {
 // =================================================================
 // 1. CÁLCULO DE PROMEDIOS, MÁXIMOS Y DESCRIPCIONES POR INCISO
 // =================================================================
-export function calcularRendimientoIncisos(materia, alumnos) {
-    if (!alumnos || alumnos.length === 0) {
-        return { etiquetas: [], promedios: [], maximos: [], descripciones: {} };
+
+/**
+ * Obtiene el mapa unificado de incisos para una materia dada (descripción y puntaje máximo teórico).
+ * 1. Cruza con EstadoDashboard.examenes (soportando arrays, objetos, mayúsculas, tildes).
+ * 2. Si no hay puntaje máximo teórico definido o viene en 0, toma como respaldo el puntaje
+ *    máximo global histórico observado en TODO el padrón de alumnos (EstadoDashboard.alumnos).
+ * De esta manera, el puntaje máximo teórico NUNCA se degrada a la nota de un alumno individual
+ * cuando se filtra a un solo alumno o a un grupo reducido.
+ */
+function obtenerMapaEstructuraMateria(materia) {
+    const areaKey = normalizarMateriaClave(materia);
+    const examenes = window.EstadoDashboard?.examenes || EstadoDashboard?.examenes || cacheEstructuraExamenes || {};
+
+    let estructuraMateria = null;
+    if (examenes && typeof examenes === "object") {
+        for (const [k, v] of Object.entries(examenes)) {
+            if (normalizarMateriaClave(k) === areaKey) {
+                estructuraMateria = v;
+                break;
+            }
+        }
     }
 
-    const presentes = alumnos.filter(a => a.datos_examen?.[`estado_${materia}`] === "Presente");
-    if (presentes.length === 0) {
-        return { etiquetas: [], promedios: [], maximos: [], descripciones: {} };
-    }
+    const mapa = {};
 
-    // Normalizamos la estructura de exámenes (soporta Array u Objeto)
-    const estructuraCruda = EstadoDashboard.examenes?.[materia] || {};
-    const mapaEstructura = {};
-
-    if (Array.isArray(estructuraCruda)) {
-        estructuraCruda.forEach(item => {
-            const clave = String(item.inciso ?? item.id ?? item.numero ?? '');
-            mapaEstructura[clave] = {
-                maximo: parseFloat(item.puntaje_maximo ?? item.puntos ?? item.maximo) || 10,
-                descripcion: item.descripcion ?? item.enunciado ?? item.tema ?? ''
+    // 1. Si existe estructura oficial en examenes, la extraemos
+    if (Array.isArray(estructuraMateria)) {
+        estructuraMateria.forEach(item => {
+            const clave = String(item.inciso ?? item.id ?? item.numero ?? "").trim();
+            if (!clave) return;
+            const maxVal = parseFloat(item.puntaje_maximo ?? item.puntos ?? item.maximo ?? item.max ?? item.puntaje ?? item.valor ?? 0);
+            const desc = String(item.descripcion ?? item.enunciado ?? item.tema ?? item.contenido ?? "").trim();
+            mapa[clave] = {
+                maximo: !isNaN(maxVal) && maxVal > 0 ? maxVal : 0,
+                descripcion: desc || `Inciso ${clave}`
             };
         });
-    } else {
-        Object.entries(estructuraCruda).forEach(([clave, val]) => {
-            if (typeof val === 'object' && val !== null) {
-                mapaEstructura[clave] = {
-                    maximo: parseFloat(val.puntaje_maximo ?? val.puntos ?? val.maximo) || 10,
-                    descripcion: val.descripcion ?? val.enunciado ?? val.tema ?? ''
+    } else if (typeof estructuraMateria === "object" && estructuraMateria !== null) {
+        Object.entries(estructuraMateria).forEach(([claveRaw, val]) => {
+            const clave = String(claveRaw).trim();
+            if (typeof val === "object" && val !== null) {
+                const maxVal = parseFloat(val.puntaje_maximo ?? val.puntos ?? val.maximo ?? val.max ?? val.puntaje ?? val.valor ?? 0);
+                const desc = String(val.descripcion ?? val.enunciado ?? val.tema ?? val.contenido ?? "").trim();
+                mapa[clave] = {
+                    maximo: !isNaN(maxVal) && maxVal > 0 ? maxVal : 0,
+                    descripcion: desc || `Inciso ${clave}`
                 };
             } else {
-                mapaEstructura[clave] = {
-                    maximo: parseFloat(val) || 10,
-                    descripcion: ''
+                const maxVal = parseFloat(val);
+                mapa[clave] = {
+                    maximo: !isNaN(maxVal) && maxVal > 0 ? maxVal : 0,
+                    descripcion: `Inciso ${clave}`
                 };
             }
         });
     }
 
-    // Acumulamos puntajes obtenidos por cada inciso
+    // 2. Respaldo por padrón completo: calculamos el techo máximo observado en todo el universo de alumnos
+    const padronTotal = window.EstadoDashboard?.alumnos || EstadoDashboard?.alumnos || [];
+    padronTotal.forEach(al => {
+        const ex = al.datos_examen_oficial || al.datos_examen;
+        const incisos = ex?.[`incisos_${areaKey}`];
+        if (incisos && typeof incisos === "object") {
+            Object.entries(incisos).forEach(([idInciso, valor]) => {
+                const pts = parseFloat(valor);
+                if (isNaN(pts) || pts <= 0) return;
+
+                if (!mapa[idInciso]) {
+                    mapa[idInciso] = { maximo: pts, descripcion: `Inciso ${idInciso}` };
+                } else if (mapa[idInciso].maximo === 0 || (!estructuraMateria && pts > mapa[idInciso].maximo)) {
+                    mapa[idInciso].maximo = Math.max(mapa[idInciso].maximo, pts);
+                }
+            });
+        }
+    });
+
+    return mapa;
+}
+
+export function calcularRendimientoIncisos(materia, alumnos) {
+    if (!alumnos || alumnos.length === 0) {
+        return { etiquetas: [], promedios: [], maximos: [], descripciones: {} };
+    }
+
+    const areaKey = normalizarMateriaClave(materia);
+    const presentes = alumnos.filter(a => {
+        const ex = a.datos_examen || {};
+        const est = String(ex[`estado_${areaKey}`] || ex[`estado_${materia}`] || "").toLowerCase();
+        return est === "presente";
+    });
+    if (presentes.length === 0) {
+        return { etiquetas: [], promedios: [], maximos: [], descripciones: {} };
+    }
+
+    const mapaEstructura = obtenerMapaEstructuraMateria(materia);
+
+    // Acumulamos puntajes obtenidos por cada inciso en los alumnos presentes
     const acumulador = {};
 
     presentes.forEach(alumno => {
-        const incisosAlumno = alumno.datos_examen?.[`incisos_${materia}`] || {};
+        const incisosAlumno = alumno.datos_examen?.[`incisos_${areaKey}`] || alumno.datos_examen?.[`incisos_${materia}`] || {};
         Object.entries(incisosAlumno).forEach(([inciso, valor]) => {
             const puntaje = parseFloat(valor) || 0;
             if (!acumulador[inciso]) {
@@ -99,12 +157,12 @@ export function calcularRendimientoIncisos(materia, alumnos) {
     const descripciones = {};
 
     etiquetas.forEach(inciso => {
-        const info = mapaEstructura[inciso] || { maximo: 10, descripcion: 'Sin descripción' };
+        const info = mapaEstructura[inciso] || { maximo: 10, descripcion: `Inciso ${inciso}` };
         const data = acumulador[inciso];
 
         const prom = data.count > 0 ? data.suma / data.count : 0;
         promedios.push(parseFloat(prom.toFixed(2)));
-        maximos.push(info.maximo);
+        maximos.push(info.maximo > 0 ? info.maximo : 10);
         descripciones[inciso] = info.descripcion;
     });
 
@@ -381,10 +439,8 @@ export function renderizarTablaMerito(alumnos) {
         const notaLen = examen.estado_lengua === 'Presente' ? examen.nota_final_lengua.toFixed(2) : '-';
         const notaDib = examen.estado_dibujo === 'Presente' ? examen.nota_final_dibujo.toFixed(2) : '-';
 
-        // Badge para el puesto en orden de mérito
-        const puestoBadge = alumno.ordenMerito <= 10
-            ? `<span class="badge bg-warning text-dark fw-bold">#${alumno.ordenMerito}</span>`
-            : `<span class="badge bg-light text-dark border">#${alumno.ordenMerito}</span>`;
+        // Badge para el puesto en orden de mérito (estilo uniforme)
+        const puestoBadge = `<span class="badge bg-light text-dark border">#${alumno.ordenMerito}</span>`;
 
         // Datos del alumno y comisión
         const apellido = alumno['Apellido/s del alumno'] || alumno.apellido || '';
@@ -551,106 +607,72 @@ export function actualizarRankingContenidos(alumnosFiltrados, estructuraExamenes
     renderizarTablaContenidos();
 }
 
-// Auxiliar para leer de forma flexible la descripción y el puntaje máximo según cómo venga en EstadoDashboard.examenes
-function obtenerMetaInciso(estructuraMateria, idInciso) {
-    if (!estructuraMateria) return { descripcion: `Inciso ${idInciso}`, puntajeMax: 0 };
-
-    // Caso 1: Viene como Array de objetos -> [{ inciso: "1", descripcion: "...", puntaje_maximo: 2 }, ...]
-    if (Array.isArray(estructuraMateria)) {
-        const encontrado = estructuraMateria.find(item =>
-            String(item.inciso ?? item.id ?? item.numero) === String(idInciso)
-        );
-        if (encontrado) {
-            return {
-                descripcion: encontrado.descripcion || encontrado.contenido || encontrado.tema || `Inciso ${idInciso}`,
-                puntajeMax: parseFloat(encontrado.puntaje_maximo ?? encontrado.puntaje ?? encontrado.max ?? encontrado.valor ?? 0) || 0
-            };
-        }
-    }
-
-    // Caso 2: Viene como Objeto indexado -> { "1": { descripcion: "...", puntaje_maximo: 2 } }
-    if (typeof estructuraMateria === 'object' && estructuraMateria[idInciso] !== undefined) {
-        const item = estructuraMateria[idInciso];
-        if (typeof item === 'object' && item !== null) {
-            return {
-                descripcion: item.descripcion || item.contenido || item.tema || `Inciso ${idInciso}`,
-                puntajeMax: parseFloat(item.puntaje_maximo ?? item.puntaje ?? item.max ?? item.valor ?? 0) || 0
-            };
-        }
-    }
-
-    return { descripcion: `Ejercicio / Inciso ${idInciso}`, puntajeMax: 0 };
-}
-
-
 function renderizarTablaContenidos() {
-    const tbody = document.getElementById('tbody-ranking-contenidos');
+    const tbody = document.getElementById("tbody-ranking-contenidos");
     if (!tbody) return;
 
-    const criterioOrden = document.getElementById('orden-tabla-contenidos')?.value || 'alcanzada_desc';
-    const filtroMateria = document.getElementById('filtro-materia-contenidos')?.value || 'TODAS';
+    const criterioOrden = document.getElementById("orden-tabla-contenidos")?.value || "exito_desc";
+    const filtroMateria = document.getElementById("filtro-materia-contenidos")?.value || "TODAS";
 
     const configuracionMaterias = [
         {
-            clave: 'matematica',
-            nombre: 'Matemática',
-            style: 'background-color: #ac1a21; color: #ffffff;', // Bordó institucional
-            campoIncisos: 'incisos_matematica',
-            campoEstado: 'estado_matematica'
+            clave: "matematica",
+            nombre: "Matemática",
+            style: "background-color: #ac1a21; color: #ffffff;",
+            campoIncisos: "incisos_matematica",
+            campoEstado: "estado_matematica"
         },
         {
-            clave: 'lengua',
-            nombre: 'Lengua',
-            style: 'background-color: #081e42; color: #ffffff;', // Azul institucional
-            campoIncisos: 'incisos_lengua',
-            campoEstado: 'estado_lengua'
+            clave: "lengua",
+            nombre: "Lengua",
+            style: "background-color: #081e42; color: #ffffff;",
+            campoIncisos: "incisos_lengua",
+            campoEstado: "estado_lengua"
         },
         {
-            clave: 'dibujo',
-            nombre: 'Dibujo',
-            style: 'background-color: #495057; color: #ffffff;', // Gris oscuro personalizado
-            campoIncisos: 'incisos_dibujo',
-            campoEstado: 'estado_dibujo'
+            clave: "dibujo",
+            nombre: "Dibujo",
+            style: "background-color: #495057; color: #ffffff;",
+            campoIncisos: "incisos_dibujo",
+            campoEstado: "estado_dibujo"
         }
     ];
 
     const listaContenidos = [];
 
     configuracionMaterias.forEach(mat => {
-        if (filtroMateria !== 'TODAS' && filtroMateria !== mat.clave) return;
+        if (filtroMateria !== "TODAS" && filtroMateria !== mat.clave) return;
 
-        const acumuladorIncisos = {}; // { "1": { suma: 0, presentes: 0, maxObservado: 0 } }
+        const mapaEstructura = obtenerMapaEstructuraMateria(mat.clave);
+        const acumuladorIncisos = {}; // { [idInciso]: { suma: 0, presentes: 0 } }
 
         // Recorremos los alumnos del corte actual
         cacheAlumnosContenidos.forEach(al => {
             const ex = al.datos_examen;
-            if (!ex || ex[mat.campoEstado] === 'Ausente') return;
+            if (!ex) return;
+            const estado = String(ex[mat.campoEstado] || "").toLowerCase();
+            if (estado === "ausente") return;
 
             const incisosAlumno = ex[mat.campoIncisos];
-            if (!incisosAlumno || typeof incisosAlumno !== 'object') return;
+            if (!incisosAlumno || typeof incisosAlumno !== "object") return;
 
             Object.entries(incisosAlumno).forEach(([idInciso, valorNota]) => {
                 const puntos = parseFloat(valorNota);
                 if (isNaN(puntos)) return;
 
                 if (!acumuladorIncisos[idInciso]) {
-                    acumuladorIncisos[idInciso] = { suma: 0, presentes: 0, maxObservado: 0 };
+                    acumuladorIncisos[idInciso] = { suma: 0, presentes: 0 };
                 }
                 acumuladorIncisos[idInciso].suma += puntos;
                 acumuladorIncisos[idInciso].presentes++;
-                if (puntos > acumuladorIncisos[idInciso].maxObservado) {
-                    acumuladorIncisos[idInciso].maxObservado = puntos;
-                }
             });
         });
 
-        const estructuraMat = cacheEstructuraExamenes[mat.clave] || cacheEstructuraExamenes[mat.nombre.toLowerCase()];
-
         Object.entries(acumuladorIncisos).forEach(([idInciso, datos]) => {
-            const meta = obtenerMetaInciso(estructuraMat, idInciso);
-            const puntajeMaximo = meta.puntajeMax > 0 ? meta.puntajeMax : datos.maxObservado;
+            const meta = mapaEstructura[idInciso] || { maximo: 10, descripcion: `Inciso ${idInciso}` };
+            const puntajeMaximo = meta.maximo > 0 ? meta.maximo : 10;
             const puntuacionAlcanzada = datos.presentes > 0 ? +(datos.suma / datos.presentes).toFixed(2) : 0;
-            const porcentajeExito = puntajeMaximo > 0 ? Math.round((puntuacionAlcanzada / puntajeMaximo) * 100) : 0;
+            const porcentajeExito = puntajeMaximo > 0 ? +((puntuacionAlcanzada / puntajeMaximo) * 100).toFixed(1) : 0;
 
             listaContenidos.push({
                 materiaNombre: mat.nombre,
@@ -667,13 +689,13 @@ function renderizarTablaContenidos() {
     // Ordenamos según el selector elegido por el usuario
     listaContenidos.sort((a, b) => {
         switch (criterioOrden) {
-            case 'exito_desc':
+            case "exito_desc":
                 return b.porcentajeExito - a.porcentajeExito;
-            case 'exito_asc':
+            case "exito_asc":
                 return a.porcentajeExito - b.porcentajeExito;
-            case 'maxima_desc':
+            case "maxima_desc":
                 return b.puntajeMaximo - a.puntajeMaximo;
-            case 'maxima_asc':
+            case "maxima_asc":
                 return a.puntajeMaximo - b.puntajeMaximo;
             default:
                 return b.porcentajeExito - a.porcentajeExito;
@@ -681,17 +703,17 @@ function renderizarTablaContenidos() {
     });
 
     if (listaContenidos.length === 0) {
-        const etapaActiva = document.getElementById('filtro-etapa-evaluacion')?.value || 'oficial';
-        const msg = etapaActiva !== 'oficial'
-            ? 'El ranking por incisos es exclusivo del Examen Oficial de Ingreso (las etapas del cursillo evalúan nota global por área).'
-            : 'No hay datos de incisos disponibles para el filtro actual.';
+        const etapaActiva = document.getElementById("filtro-etapa-evaluacion")?.value || "oficial";
+        const msg = etapaActiva !== "oficial"
+            ? "El ranking por incisos es exclusivo del Examen Oficial de Ingreso (las etapas del cursillo evalúan nota global por área)."
+            : "No hay datos de incisos disponibles para el filtro actual.";
         tbody.innerHTML = `<tr><td colspan="5" class="text-muted py-4">${msg}</td></tr>`;
         return;
     }
+
     tbody.innerHTML = listaContenidos.map((item, idx) => {
-        // 1. Calculamos el porcentaje y el color para este ítem específico
         const porc = item.porcentajeExito || 0;
-        const badgeColor = porc >= 60 ? 'bg-success' : (porc >= 40 ? 'bg-warning text-dark' : 'bg-danger');
+        const badgeColor = porc >= 60 ? "bg-success" : (porc >= 40 ? "bg-warning text-dark" : "bg-danger");
 
         return `
         <tr>
@@ -704,7 +726,7 @@ function renderizarTablaContenidos() {
                     <span class="fw-semibold text-dark">${item.descripcion}</span>
                 </div>
             </td>
-            <td class="fw-semibold text-secondary">${item.puntajeMaximo > 0 ? item.puntajeMaximo.toFixed(2) : '-'}</td>
+            <td class="fw-semibold text-secondary">${item.puntajeMaximo > 0 ? item.puntajeMaximo.toFixed(2) : "-"}</td>
             <td class="fw-semibold">${item.puntuacionAlcanzada.toFixed(2)}</td>
             <td>
                 <span class="badge ${badgeColor}" style="min-width: 58px;">
@@ -712,16 +734,9 @@ function renderizarTablaContenidos() {
                 </span>
             </td>
         </tr>
-    `;
-    }).join('');
+        `;
+    }).join("");
 }
-
-
-
-
-
-
-
 
 // =================================================================
 // 1. LLENAR EL SELECTOR DE COMISIONES AUTOMÁTICAMENTE
@@ -1598,11 +1613,11 @@ function renderizarTablaAlumnosProcedencia(alumnos) {
         return;
     }
 
-    tbody.innerHTML = alumnos.map((al, index) => {
-        const ordenamiento = (index + 1);
+    tbody.innerHTML = alumnos.map((al) => {
+        const puestoBadge = `<span class="badge bg-light text-dark border">#${al.ordenMerito || "-"}</span>`;
         return `
         <tr>
-            <td class="fw-bold text-secondary">#${ordenamiento}</td>
+            <td class="text-center">${puestoBadge}</td>
             <td class="text-start fw-semibold">${al.nombreCompleto}</td>
 <!-- Sin columna DNI -->
             <td class="text-start">${al.escuelaLimpia}</td>
@@ -2009,7 +2024,7 @@ function renderizarTablaEvolucion(alumnosCruzados) {
 
         return `
             <tr>
-                <td class="fw-bold text-secondary">${a.ordenMerito || '-'}</td>
+                <td class="text-center"><span class="badge bg-light text-dark border">#${a.ordenMerito || '-'}</span></td>
                 <td class="text-start">
                     <div class="fw-semibold text-dark">${apellido}, ${nombre}</div>
                     <small class="text-muted" style="font-size: 0.7rem;">Insc. #${a.nroInsc || '-'}</small>
