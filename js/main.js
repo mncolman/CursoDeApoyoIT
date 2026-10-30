@@ -124,6 +124,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
+    // Toggle visibilidad de contraseña en el login
+    const btnVerClave = document.getElementById('btnVerClave');
+    if (btnVerClave) {
+        btnVerClave.addEventListener('click', (e) => {
+            e.preventDefault();
+            const inputClave = document.getElementById('loginClave');
+            const iconoOjo = document.getElementById('iconoOjo');
+            if (!inputClave || !iconoOjo) return;
+
+            const esPassword = inputClave.type === 'password';
+            inputClave.type = esPassword ? 'text' : 'password';
+            iconoOjo.classList.toggle('bi-eye', !esPassword);
+            iconoOjo.classList.toggle('bi-eye-slash', esPassword);
+        });
+    }
+
     // inicio y cierre de sesion
     document.getElementById('loginForm').addEventListener('submit', iniciarSesion); // (O Auth.iniciarSesion si la moviste)
     document.getElementById('btnCerrarSesion').addEventListener('click', Auth.cerrarSesion);

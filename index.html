@@ -30,8 +30,13 @@
                         <div class="container-fluid d-flex justify-content-center my-5">
                             <img src="logoIT.png" alt="Logo" style="height: 6em; width: auto;">
                         </div>
-                        <h4 class="card-title text-center mb-4 fw-bold " style="color: #073a86;"> Sistema Curso de Apoyo
+                        <h4 class="card-title text-center mb-2 fw-bold " style="color: #073a86;"> Sistema Curso de Apoyo
                         </h4>
+                        <div class="text-center mb-4">
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 rounded-pill fw-semibold" style="font-size: 0.85rem;">
+                                <i class="bi bi-cone-striped me-1"></i> Entorno de Desarrollo - Curso de Apoyo 2025
+                            </span>
+                        </div>
                         <form id="loginForm">
                             <section class="mb-3">
                                 <label class="form-label">Usuario</label>
@@ -39,7 +44,12 @@
                             </section>
                             <section class="mb-4">
                                 <label class="form-label">Contraseña</label>
-                                <input type="password" id="loginClave" class="form-control" required value="">
+                                <div class="input-group">
+                                    <input type="password" id="loginClave" class="form-control" required value="">
+                                    <button class="btn btn-outline-secondary" type="button" id="btnVerClave" title="Mostrar u ocultar contraseña">
+                                        <i class="bi bi-eye" id="iconoOjo"></i>
+                                    </button>
+                                </div>
                             </section>
                             <button type="submit" class="btn w-100 py-2 text-white" id="btnLogin"
                                 style="background-color: #073a86;">
@@ -102,33 +112,6 @@
                                     Aspirantes</button>
                             </li>
 
-                            <!-- DROPDOWN: PLANIFICACIÓN -->
-                            <!-- ========================================================= -->
-                            <!-- 🖥️ VERSIÓN ESCRITORIO: Menú Dropdown (Se oculta en celus) 
-                             
-                            <li class="nav-item dropdown d-none d-lg-block">
-                                <a class="nav-link dropdown-toggle" href="#" id="navbarPlanificacion" role="button"
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                                Planificación
-                            </a>
-                                <ul class="dropdown-menu shadow" aria-labelledby="navbarPlanificacion">
-                                    <li>
-                                        <button class="dropdown-item" id="nav-calendario-tab-desktop"
-                                        data-bs-toggle="tab" data-bs-target="#tab-calendario" type="button"
-                                        role="tab">
-                                        📆 Calendario
-                                    </button>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item" id="nav-cronograma-tab-desktop"
-                                    data-bs-toggle="tab" data-bs-target="#tab-cronograma" type="button"
-                                    role="tab">
-                                    📋 Cronograma Detallado
-                                </button>
-                            </li>
-                        </ul>
-                    </li>
-                    -->
 
                             <!-- ========================================================= -->
                             <!-- 📱 VERSIÓN MÓVIL: Pestañas directas (Se oculta en compus) -->
