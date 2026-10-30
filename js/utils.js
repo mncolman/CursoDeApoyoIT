@@ -777,9 +777,9 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            a.datos_examen?.nota_1er_ev_mat ?? '-',
-            a.datos_examen?.nota_1er_ev_len ?? '-',
-            a.datos_examen?.nota_1er_ev_dib ?? '-'
+            formatearNotaCSV(a.datos_examen?.nota_1er_ev_mat),
+            formatearNotaCSV(a.datos_examen?.nota_1er_ev_len),
+            formatearNotaCSV(a.datos_examen?.nota_1er_ev_dib)
         ]);
     } else if (tipoEtapa === 'ensayo') {
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática Ensayo', 'Lengua Ensayo', 'Dibujo Ensayo'];
@@ -787,9 +787,9 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            a.datos_examen?.nota_final_mat ?? '-',
-            a.datos_examen?.nota_final_len ?? '-',
-            a.datos_examen?.nota_final_dib ?? '-'
+            formatearNotaCSV(a.datos_examen?.nota_final_mat),
+            formatearNotaCSV(a.datos_examen?.nota_final_len),
+            formatearNotaCSV(a.datos_examen?.nota_final_dib)
         ]);
     } else {
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Mat. 1º Ev', 'Len. 1º Ev', 'Dib. 1º Ev', 'Mat. Ensayo', 'Len. Ensayo', 'Dib. Ensayo'];
@@ -797,12 +797,12 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            a.datos_examen?.nota_1er_ev_mat ?? '-',
-            a.datos_examen?.nota_1er_ev_len ?? '-',
-            a.datos_examen?.nota_1er_ev_dib ?? '-',
-            a.datos_examen?.nota_final_mat ?? '-',
-            a.datos_examen?.nota_final_len ?? '-',
-            a.datos_examen?.nota_final_dib ?? '-'
+            formatearNotaCSV(a.datos_examen?.nota_1er_ev_mat),
+            formatearNotaCSV(a.datos_examen?.nota_1er_ev_len),
+            formatearNotaCSV(a.datos_examen?.nota_1er_ev_dib),
+            formatearNotaCSV(a.datos_examen?.nota_final_mat),
+            formatearNotaCSV(a.datos_examen?.nota_final_len),
+            formatearNotaCSV(a.datos_examen?.nota_final_dib)
         ]);
     }
 
@@ -823,9 +823,24 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
     document.body.removeChild(link);
 }
 
+function formatearNotaCSV(nota) {
+    if (nota === null || nota === undefined || nota === '' || nota === '-') {
+        return '';
+    }
+    const notaStr = String(nota).trim();
+    if (nota === 0 || notaStr === '0' || notaStr.toUpperCase() === 'A') {
+        return '0';
+    }
+    return notaStr.replace(/\./g, ',');
+}
+
 function formatearNota(nota) {
-    if (nota === 0 || nota === '0' || nota === null || nota === undefined || nota === '-') {
+    if (nota === null || nota === undefined || nota === '' || nota === '-') {
+        return '-';
+    }
+    const notaStr = String(nota).trim();
+    if (nota === 0 || notaStr === '0' || notaStr.toUpperCase() === 'A') {
         return 'A';
     }
-    return nota;
+    return String(nota).trim().replace(/\./g, ',');
 }

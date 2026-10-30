@@ -441,23 +441,32 @@
 
                         <!-- Sub-Pestañas de Instancias de Evaluación -->
                         <ul class="nav nav-tabs mb-3" id="notasSubTabs" role="tablist">
+
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="seguimiento-tab" type="button">1º
                                     Seguimiento</button>
-                            </li>
-                            <!-- Sub-Pestañas de Instancias de Evaluación
+                            </li>  
+                            <!-- Sub-Pestañas de Instancias de Evaluación  -->
+                            
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="ensayo-tab" type="button">Ensayo Examen</button>
                             </li>
-                             -->
+                            
                         </ul>
 
                         <!-- TÍTULO DINÁMICO DE CONTEXTO -->
-                        <h5 id="tituloContextoNotas" class="text-center text-dark mb-3 fw-bold d-none">
+                        <h5 id="tituloContextoNotas" class="text-center text-dark mb-2 fw-bold d-none">
                             <!-- Se llena con JS -->
                         </h5>
 
                         <!-- Contenedor de la Planilla -->
+                        <div id="contenedorAdvertenciaPermiso" class="text-center mb-3 d-none">
+                            <span id="badgeAdvertenciaPermiso" class="d-inline-block bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-2 fw-semibold shadow-sm" style="font-size: 0.9rem;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                Esta instancia ya fue cargada o el administrador no le asignó permisos para cargar esta instancia.
+                            </span>
+                        </div>
+
                         <section class="alert alert-warning d-none" id="alertaBorradorNotas">
                             ⚠️ Tenés notas sin guardar en el servidor. Están seguras en tu navegador, pero recordá
                             presionar "Enviar al Servidor".
@@ -852,13 +861,13 @@
                     </button>
                     
                     <!-- Opción 2 -->
-                    <button type="button" class="btn btn-outline-dark text-start py-2 px-3 d-flex justify-content-between align-items-center shadow-sm" id="btn-descargar-ee" disabled>
+                    <button type="button" class="btn btn-outline-dark text-start py-2 px-3 d-flex justify-content-between align-items-center shadow-sm" id="btn-descargar-ee">
                         <span><i class="bi bi-file-earmark-text text-primary me-2"></i> Ensayo de Examen</span>
                         <i class="bi bi-download small text-muted"></i>
                     </button>
                     
                     <!-- Opción 3 (Consolidado) -->
-                    <button type="button" class="btn text-white text-start py-2 px-3 d-flex justify-content-between align-items-center shadow-sm" disabled id="btn-descargar-todo" style="background-color: #1b396a; border-color: #1b396a;">
+                    <button type="button" class="btn text-white text-start py-2 px-3 d-flex justify-content-between align-items-center shadow-sm" id="btn-descargar-todo" style="background-color: #1b396a; border-color: #1b396a;">
                         <span><i class="bi bi-file-earmark-spreadsheet-fill text-warning me-2"></i> Descargar Todo (Consolidado)</span>
                         <i class="bi bi-download small text-white-50"></i>
                     </button>
