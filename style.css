@@ -342,6 +342,39 @@ body {
 }
 
 /* Responsive */
+/* ==========================================================================
+   SUB-PESTAÑAS DE INSTANCIAS DE EVALUACIÓN (#notasSubTabs)
+   ========================================================================== */
+#notasSubTabs {
+    border-bottom: 2px solid #073a86;
+    gap: 6px;
+}
+
+#notasSubTabs .nav-link {
+    color: #495057;
+    background-color: #e9ecef;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    font-weight: 500;
+    padding: 0.55rem 1.25rem;
+    border-top-left-radius: 0.45rem;
+    border-top-right-radius: 0.45rem;
+    transition: all 0.2s ease-in-out;
+}
+
+#notasSubTabs .nav-link:not(.active):hover {
+    color: #073a86;
+    background-color: #dee2e6;
+}
+
+#notasSubTabs .nav-link.active {
+    background-color: #073a86 !important;
+    color: #ffffff !important;
+    border-color: #073a86 !important;
+    font-weight: 700;
+    box-shadow: 0 -2px 8px rgba(7, 58, 134, 0.22);
+}
+
 @media (max-width: 600px) {
     .footer-principal {
         flex-direction: column;

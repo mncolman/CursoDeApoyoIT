@@ -269,9 +269,9 @@ export function inicializarModuloNotas(aspirantesGlobales, permisosDocente) {
 
             // Como por ahora solo tenés la pestaña de "1º Seguimiento", evaluamos esa
             // (Si en el futuro agregás más pestañas, acá podés preguntar cuál está activa)
-            const tienePermiso = permiso ? permiso.puede_cargar_1er : false;
+            const tienePermiso = verificarPermisoDocenteActual(comision, materia, instanciaActual);
 
-            if (permiso && !tienePermiso) {
+            if (!tienePermiso) {
                 Swal.fire('Planilla Cerrada', 'Ya enviaste estas notas al servidor o no tenés permisos de carga.', 'warning');
                 return; // 🛑 Cortamos el paso en seco
             }
@@ -289,7 +289,7 @@ export function inicializarModuloNotas(aspirantesGlobales, permisosDocente) {
     // Listeners Instancias de Evaluación
     document.getElementById('seguimiento-tab').addEventListener('click', (e) => cambiarPestaña('seguimiento', e.target));
     // PARA HABILITAR LUEGO
-    //document.getElementById('ensayo-tab').addEventListener('click', (e) => cambiarPestaña('ensayo', e.target));
+    document.getElementById('ensayo-tab').addEventListener('click', (e) => cambiarPestaña('ensayo', e.target));
 
 }
 
@@ -319,6 +319,37 @@ export function cambiarAsignatura(asignatura, boton) {
 // =================================================================
 // 3. RENDERIZADO (Adaptado)
 // =================================================================
+function verificarPermisoDocenteActual(comision, materiaClave, instancia) {
+    const sesionLocal = JSON.parse(localStorage.getItem('sesionInstitutoTecnico')) || {};
+    const miUsuario = sesionLocal.usuarioActual;
+    const misPermisos = sesionLocal.permisos_docente || permisosDocenteState || [];
+
+    if (!miUsuario || miUsuario.rol === 'ADMI' || miUsuario.rol === 'COOR' || miUsuario.rol === 'ADMIN' || miUsuario.rol === 'DIRECTIVO') {
+        return true;
+    }
+
+    const diccionarioMaterias = {
+        'mat': 'matematica',
+        'len': 'lengua',
+        'dib': 'dibujo'
+    };
+    const normalizar = (texto) => String(texto || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const materiaBuscada = normalizar(diccionarioMaterias[normalizar(materiaClave)] || materiaClave);
+
+    const permiso = misPermisos.find(p => {
+        const comisionCoincide = String(p.id_comision) === String(comision);
+        const matPermiso = normalizar(diccionarioMaterias[normalizar(p.materia)] || p.materia);
+        return comisionCoincide && matPermiso === materiaBuscada;
+    });
+
+    if (!permiso) return false;
+
+    if (instancia === 'seguimiento' || instancia === 'bloque_1er_ev') {
+        return Boolean(permiso.puede_cargar_1er);
+    }
+    return Boolean(permiso.puede_cargar_fin);
+}
+
 export function renderizarPlanillaNotas() {
     const comision = document.getElementById('selectComisionNotas').value;
     const tbody = document.getElementById('tabla-notas-body');
@@ -329,6 +360,7 @@ export function renderizarPlanillaNotas() {
     if (!comision || !asignaturaActual) {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Seleccioná una comisión y una asignatura para empezar.</td></tr>';
         tituloContexto.classList.add('d-none');
+        document.getElementById('contenedorAdvertenciaPermiso')?.classList.add('d-none');
         return;
     }
 
@@ -338,6 +370,24 @@ export function renderizarPlanillaNotas() {
     tituloContexto.textContent = `Comisión ${comision} - ${nombresInstancias[instanciaActual]} - ${nombresAsignaturasInverso[asignaturaActual]}`;
     tituloContexto.classList.remove('d-none');
     headerAsignatura.textContent = nombresAsignaturasInverso[asignaturaActual];
+
+    const tienePermiso = verificarPermisoDocenteActual(comision, asignaturaActual, instanciaActual);
+    const contenedorAdvertencia = document.getElementById('contenedorAdvertenciaPermiso');
+    if (contenedorAdvertencia) {
+        contenedorAdvertencia.classList.toggle('d-none', tienePermiso);
+    }
+
+    if (!tienePermiso && modoEdicionNotas) {
+        modoEdicionNotas = false;
+        const btnHabilitar = document.getElementById('btnHabilitarEdicion');
+        if (btnHabilitar) {
+            btnHabilitar.innerHTML = '✏️ Habilitar Planilla';
+            btnHabilitar.classList.remove('btn-warning');
+            btnHabilitar.classList.add('btn-outline-secondary');
+        }
+        const btnGuardar = document.getElementById('btnGuardarNotas');
+        if (btnGuardar) btnGuardar.disabled = true;
+    }
 
     const alumnos = aspirantesGlobalesState
         .filter(a => String(a.comision) === String(comision))
