@@ -2063,6 +2063,187 @@ function obtenerFiltroAreaActivo() {
 }
 
 // Inicializador de los botones de filtro del gráfico (llamar 1 sola vez al cargar el DOM)
+// =================================================================
+// TABLA DE PARTICIPACIÓN Y PRESENTISMO POR ETAPA (PADRÓN TOTAL)
+// =================================================================
+function formatearCeldaAsistencia(presentes, total, presentesEtapaPrevia = null) {
+    if (!total || total <= 0) {
+        return `<span class="text-muted">-</span>`;
+    }
+
+    const porcentaje = (presentes / total) * 100;
+    const ausentes = Math.max(0, total - presentes);
+    const porcAusentes = 100 - porcentaje;
+
+    let colorBarra = 'bg-success';
+    let claseBadge = 'bg-success-subtle text-success border-success-subtle';
+    if (porcentaje < 55) {
+        colorBarra = 'bg-danger';
+        claseBadge = 'bg-danger-subtle text-danger border-danger-subtle';
+    } else if (porcentaje < 75) {
+        colorBarra = 'bg-warning';
+        claseBadge = 'bg-warning-subtle text-warning-emphasis border-warning-subtle';
+    } else if (porcentaje < 88) {
+        colorBarra = 'bg-primary';
+        claseBadge = 'bg-primary-subtle text-primary border-primary-subtle';
+    }
+
+    let badgePaso = '';
+    if (presentesEtapaPrevia !== null && presentesEtapaPrevia > 0) {
+        const delta = presentes - presentesEtapaPrevia;
+        if (delta < 0) {
+            badgePaso = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" title="Variación respecto a la etapa anterior">▼ ${delta}</span>`;
+        } else if (delta > 0) {
+            badgePaso = `<span class="badge bg-success-subtle text-success border border-success-subtle ms-1" title="Variación respecto a la etapa anterior">▲ +${delta}</span>`;
+        } else {
+            badgePaso = `<span class="badge bg-light text-secondary border ms-1" title="Sin cambios respecto a la etapa anterior">= 0</span>`;
+        }
+    }
+
+    return `
+        <div class="px-2 py-1">
+            <div class="d-flex justify-content-between align-items-baseline mb-1">
+                <div>
+                    <span class="fs-6 fw-bold text-dark">${presentes}</span>
+                    <span class="text-muted small">/ ${total}</span>
+                </div>
+                ${badgePaso}
+            </div>
+            <div class="progress mb-1" style="height: 6px; background-color: #e9ecef;">
+                <div class="progress-bar ${colorBarra}" role="progressbar" style="width: ${porcentaje.toFixed(1)}%"></div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center" style="font-size: 0.76rem;">
+                <span class="badge border ${claseBadge} fw-bold">${porcentaje.toFixed(1)}% rindieron</span>
+                <span class="text-muted" title="Alumnos ausentes o con nota 0">${ausentes} aus. (${porcAusentes.toFixed(1)}%)</span>
+            </div>
+        </div>
+    `;
+}
+
+export function renderizarTablaAsistenciaEtapas(alumnosTotales = [], datosCursillo = []) {
+    const tbody = document.getElementById('tbody-asistencia-etapas');
+    const badgeTotal = document.getElementById('badge-total-inscriptos-asistencia');
+    if (!tbody) return;
+
+    const totalInscriptos = Array.isArray(alumnosTotales) ? alumnosTotales.length : 0;
+    if (badgeTotal) badgeTotal.textContent = totalInscriptos;
+
+    if (totalInscriptos === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No hay datos de inscriptos disponibles.</td></tr>`;
+        return;
+    }
+
+    const mapaCursillo = new Map();
+    if (Array.isArray(datosCursillo)) {
+        datosCursillo.forEach(item => {
+            const id = Number(item.nro_inscripcion);
+            if (id > 0) mapaCursillo.set(id, item.cursillo);
+        });
+    }
+
+    const conteo = {
+        matematica: { es: 0, ee: 0, of: 0 },
+        lengua: { es: 0, ee: 0, of: 0 },
+        dibujo: { es: 0, ee: 0, of: 0 },
+        completos: { es: 0, ee: 0, of: 0 }
+    };
+
+    alumnosTotales.forEach(alumno => {
+        const nroInsc = Number(
+            alumno['Nº de inscripción'] ||
+            alumno['N° de inscripción'] ||
+            alumno.nro_inscripcion ||
+            alumno.id_inscripcion ||
+            alumno['N° de orden'] ||
+            alumno['Nº de orden'] ||
+            0
+        );
+
+        const cursilloAlumno = mapaCursillo.get(nroInsc) || {};
+        const es = cursilloAlumno.evaluacion_seguimiento || {};
+        const ee = cursilloAlumno.ensayo_examen || {};
+        const ex = alumno.datos_examen_oficial || alumno.datos_examen || {};
+
+        // 1º Evaluación de Seguimiento (nota > 0)
+        const esMat = parseFloat(es.matematica) > 0;
+        const esLen = parseFloat(es.lengua) > 0;
+        const esDib = parseFloat(es.dibujo) > 0;
+        if (esMat) conteo.matematica.es++;
+        if (esLen) conteo.lengua.es++;
+        if (esDib) conteo.dibujo.es++;
+        if (esMat && esLen && esDib) conteo.completos.es++;
+
+        // 2º Ensayo de Examen (nota > 0)
+        const eeMat = parseFloat(ee.matematica) > 0;
+        const eeLen = parseFloat(ee.lengua) > 0;
+        const eeDib = parseFloat(ee.dibujo) > 0;
+        if (eeMat) conteo.matematica.ee++;
+        if (eeLen) conteo.lengua.ee++;
+        if (eeDib) conteo.dibujo.ee++;
+        if (eeMat && eeLen && eeDib) conteo.completos.ee++;
+
+        // 3º Examen Ingreso Oficial (nota > 0)
+        const ofMat = parseFloat(ex.nota_final_matematica) > 0;
+        const ofLen = parseFloat(ex.nota_final_lengua) > 0;
+        const ofDib = parseFloat(ex.nota_final_dibujo) > 0;
+        if (ofMat) conteo.matematica.of++;
+        if (ofLen) conteo.lengua.of++;
+        if (ofDib) conteo.dibujo.of++;
+        if (ofMat && ofLen && ofDib) conteo.completos.of++;
+    });
+
+    const filasConfig = [
+        {
+            clave: 'matematica',
+            nombre: 'Matemática',
+            colorPunto: '#ac1a21',
+            icono: 'bi-calculator',
+            esResumen: false
+        },
+        {
+            clave: 'lengua',
+            nombre: 'Lengua',
+            colorPunto: '#1b396a',
+            icono: 'bi-book',
+            esResumen: false
+        },
+        {
+            clave: 'dibujo',
+            nombre: 'Dibujo',
+            colorPunto: '#495057',
+            icono: 'bi-pencil-square',
+            esResumen: false
+        },
+        {
+            clave: 'completos',
+            nombre: 'Asistencia Completa (3 Áreas)',
+            colorPunto: '#198754',
+            icono: 'bi-check2-all',
+            esResumen: true
+        }
+    ];
+
+    tbody.innerHTML = filasConfig.map(cfg => {
+        const c = conteo[cfg.clave];
+        const claseFila = cfg.esResumen ? 'table-light border-top border-2' : '';
+
+        return `
+            <tr class="${claseFila}">
+                <td class="text-start ps-3 fw-bold">
+                    <span class="d-inline-flex align-items-center gap-2">
+                        <span class="rounded-circle d-inline-block" style="width: 10px; height: 10px; background-color: ${cfg.colorPunto};"></span>
+                        <i class="bi ${cfg.icono} text-secondary"></i>
+                        <span style="color: ${cfg.esResumen ? '#1b396a' : '#212529'};">${cfg.nombre}</span>
+                    </span>
+                </td>
+                <td>${formatearCeldaAsistencia(c.es, totalInscriptos, null)}</td>
+                <td>${formatearCeldaAsistencia(c.ee, totalInscriptos, c.es)}</td>
+                <td>${formatearCeldaAsistencia(c.of, totalInscriptos, c.ee)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
 export function inicializarEventosExamenVsCursillo() {
     const contenedorBotones = document.getElementById('grupo-filtros-grafico-evo');
     if (!contenedorBotones) return;

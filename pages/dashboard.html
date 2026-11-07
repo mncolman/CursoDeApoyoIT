@@ -710,7 +710,7 @@
                         <i class="bi bi-info-circle-fill fs-5 me-3"></i>
                         <div>
                             <strong>Desglose de contenidos exclusivo para Examen Ingreso:</strong>
-                            Los gráficos de radar por inciso y el ranking de contenidos evalúan la estructura del Examen Oficial de Ingreso. Para las etapas del cursillo podés analizar el histograma de <strong>Distribución de Calificaciones</strong> debajo.
+                            Los gráficos de radar por inciso y el ranking de contenidos evalúan la estructura del Examen Oficial de Ingreso. Para las etapas del cursillo podés analizar el histograma de <strong>Distribución de Calificaciones</strong> y la tabla de <strong>Participación y Presentismo por Etapa</strong> debajo.
                         </div>
                     </div>
 
@@ -764,6 +764,7 @@
 
                     </div>
 
+                    <div class="contenedor-filas-inferiores-examenes">
                     <!-- Fila 2: Distribución de Calificaciones (Izquierda) + Ranking por Contenidos (Derecha) -->
                     <div class="row g-4 mt-1 align-items-stretch">
 
@@ -874,6 +875,44 @@
                 <!-- ==========================================
      6. SUB-PESTAÑA: EXAMEN VS CURSILLO (EVOLUCIÓN)
      ========================================== -->
+                    <!-- Fila 3: Tabla de Participación y Presentismo por Etapa (Independiente del Filtro) -->
+                    <div class="row g-4 mt-1 mb-4">
+                        <div class="col-12">
+                            <div class="card shadow-sm border-0">
+                                <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+                                    <div>
+                                        <h6 class="mb-0 fw-bold text-secondary text-uppercase small">
+                                            <i class="bi bi-person-check-fill me-1" style="color: #1b396a;"></i> Participación y Presentismo por Etapa de Evaluación
+                                        </h6>
+                                        <small class="text-muted">Evolución de alumnos que rindieron (nota &gt; 0) frente al total de inscriptos del curso</small>
+                                    </div>
+                                    <span class="badge bg-light text-secondary border px-3 py-2">
+                                        <i class="bi bi-lock-fill me-1"></i>Métrica sobre Padrón Total (<strong id="badge-total-inscriptos-asistencia" class="text-dark">-</strong> inscriptos, no afectada por filtros)
+                                    </span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-hover align-middle mb-0 text-center bg-white">
+                                            <thead class="table-azul-institucional">
+                                                <tr>
+                                                    <th class="text-start ps-3" style="min-width: 180px;">Asignatura</th>
+                                                    <th style="min-width: 220px;">1º Eval. Seguimiento (E.S.)</th>
+                                                    <th style="min-width: 220px;">2º Ensayo de Examen (E.E.)</th>
+                                                    <th style="min-width: 220px;">3º Examen Ingreso</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbody-asistencia-etapas">
+                                                <tr>
+                                                    <td colspan="4" class="text-center text-muted py-4">Calculando participación por etapa...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="tab-pane fade" id="examen-vs-cursillo" role="tabpanel"
                     aria-labelledby="examen-vs-cursillo-tab">
 

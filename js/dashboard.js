@@ -146,6 +146,7 @@ function actualizarDashboardFiltrado() {
     // Histograma de distribución de notas (funciona en las 3 etapas)
     UImetrics.renderizarGraficoDistribucion(alumnosFiltrados);
     UImetrics.actualizarRankingContenidos(alumnosFiltrados, EstadoDashboard.examenes);
+    UImetrics.renderizarTablaAsistenciaEtapas(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
 
     // 5. Sub-pestaña Comisiones
     const comisionSeleccionada = document.getElementById('select-filtro-comision')?.value || 'todas';
