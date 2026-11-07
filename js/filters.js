@@ -69,12 +69,18 @@ export function proyectarAlumnosPorEtapa(alumnosBase, datosCursillo = [], etapa 
             if (ex.estado_dibujo === "Presente" && !isNaN(parseFloat(ex.nota_final_dibujo))) {
                 notas.push(parseFloat(ex.nota_final_dibujo));
             }
-            const promedio = notas.length > 0 ? notas.reduce((a, b) => a + b, 0) / notas.length : 0;
+            const promOficial = parseFloat(String(ex.promedio_general ?? alumno.promedio_general ?? alumno['Promedio'] ?? '').replace(',', '.'));
+            const ordenOficial = parseInt(ex.orden_merito ?? alumno.orden_merito ?? alumno['Orden_De_Merito'], 10);
+            const promedio = !isNaN(promOficial)
+                ? promOficial
+                : (notas.length > 0 ? notas.reduce((a, b) => a + b, 0) / notas.length : 0);
+            const ordenMeritoOficial = (!isNaN(ordenOficial) && ordenOficial > 0) ? ordenOficial : null;
             return {
                 ...alumno,
                 datos_examen_oficial: ex,
                 datos_examen: ex,
-                promedioGeneral: promedio
+                promedioGeneral: promedio,
+                ordenMeritoOficial: ordenMeritoOficial
             };
         });
     }
@@ -93,6 +99,8 @@ export function proyectarAlumnosPorEtapa(alumnosBase, datosCursillo = [], etapa 
     return alumnosBase.map(alumno => {
         const exOficial = alumno.datos_examen_oficial || alumno.datos_examen || {};
         const nroInsc = Number(
+            alumno['Nº de inscripcion'] ||
+            alumno['N° de inscripcion'] ||
             alumno['Nº de inscripción'] ||
             alumno['N° de inscripción'] ||
             alumno.nro_inscripcion ||
@@ -151,16 +159,33 @@ export function obtenerAlumnosFiltradosPorMerito(alumnosBase, datosCursillo = nu
     const alumnosConPromedio = proyectarAlumnosPorEtapa(alumnosBase, cursilloRef);
 
     // Orden descendente por nota de la etapa seleccionada
-    alumnosConPromedio.sort((a, b) => b.promedioGeneral - a.promedioGeneral);
+    const etapaActiva = obtenerEtapaSeleccionada();
+    if (etapaActiva === 'oficial') {
+        alumnosConPromedio.sort((a, b) => {
+            if (a.ordenMeritoOficial !== null && b.ordenMeritoOficial !== null) {
+                return a.ordenMeritoOficial - b.ordenMeritoOficial;
+            }
+            if (a.ordenMeritoOficial !== null) return -1;
+            if (b.ordenMeritoOficial !== null) return 1;
+            return b.promedioGeneral - a.promedioGeneral;
+        });
+    } else {
+        alumnosConPromedio.sort((a, b) => b.promedioGeneral - a.promedioGeneral);
+    }
 
     // 2. Asignamos posición de mérito según la etapa seleccionada
     const alumnosConMerito = alumnosConPromedio.map((alumno, index) => ({
         ...alumno,
-        ordenMerito: index + 1
+        ordenMerito: (etapaActiva === 'oficial' && alumno.ordenMeritoOficial !== null)
+            ? alumno.ordenMeritoOficial
+            : (index + 1)
     }));
 
     // 3. Leemos los filtros activos de la pantalla y normalizamos la búsqueda (sin DNI)
-    const textoBusquedaCrudo = (document.getElementById('buscador-escuela-alumno')?.value || '').toLowerCase().trim();
+    const textoNombre = quitarAcentos((document.getElementById('buscador-nombre-alumno')?.value || '').toLowerCase().trim());
+    const textoEscuela = quitarAcentos((document.getElementById('buscador-escuela-alumno')?.value || '').toLowerCase().trim());
+    const comisionFiltro = (document.getElementById('filtro-global-comision')?.value || 'todas').trim();
+    const textoBusquedaCrudo = '';
     const textoBusqueda = quitarAcentos(textoBusquedaCrudo);
 
     const minInput = parseInt(document.getElementById('filtro-merito-min')?.value) || 1;
@@ -170,6 +195,31 @@ export function obtenerAlumnosFiltradosPorMerito(alumnosBase, datosCursillo = nu
     return alumnosConMerito.filter(alumno => {
         const dentroDeRango = alumno.ordenMerito >= minInput && alumno.ordenMerito <= maxInput;
         if (!dentroDeRango) return false;
+        if (comisionFiltro !== 'todas' && comisionFiltro !== '') {
+            const comAlumno = String(alumno['Comisión'] ?? alumno['Comision'] ?? alumno.comision ?? '').trim();
+            if (comAlumno !== comisionFiltro) return false;
+        }
+        if (!textoNombre && !textoEscuela) return true;
+
+        const apellidoNorm = quitarAcentos((alumno['Apellido/s del alumno'] || alumno.apellido || '').toLowerCase());
+        const nombreNorm = quitarAcentos((alumno['Nombre/s del alumno'] || alumno.nombre || '').toLowerCase());
+        const nombreCompletoNorm = `${apellidoNorm}, ${nombreNorm}`;
+        const nombreInvertidoNorm = `${nombreNorm} ${apellidoNorm}`;
+        const escuelaNorm = quitarAcentos((alumno['Establecimiento escolar de donde proviene'] || alumno.colegio || '').toLowerCase());
+
+        if (textoNombre) {
+            const coincideNombre = nombreCompletoNorm.includes(textoNombre) ||
+                nombreInvertidoNorm.includes(textoNombre) ||
+                apellidoNorm.includes(textoNombre) ||
+                nombreNorm.includes(textoNombre);
+            if (!coincideNombre) return false;
+        }
+
+        if (textoEscuela) {
+            if (!escuelaNorm.includes(textoEscuela)) return false;
+        }
+
+        return true;
         if (!textoBusqueda) return true;
 
         const apellido = quitarAcentos((alumno['Apellido/s del alumno'] || alumno.apellido || '').toLowerCase());
@@ -180,7 +230,7 @@ export function obtenerAlumnosFiltradosPorMerito(alumnosBase, datosCursillo = nu
         const orden = String(alumno['N° de orden'] || alumno['Nº de orden'] || alumno.id_inscripcion || '').toLowerCase();
 
         return (
-            nombreCompleto.includes(textoBusqueda) ||
+            true ||
             apellido.includes(textoBusqueda) ||
             nombre.includes(textoBusqueda) ||
             escuela.includes(textoBusqueda) ||

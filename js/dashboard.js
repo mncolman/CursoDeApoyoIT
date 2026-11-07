@@ -37,7 +37,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         actualizarDashboardFiltrado();
     });
 
-    // Escuchamos el buscador de texto en tiempo real
+    // Escuchamos el selector global de comisión y los dos buscadores específicos en tiempo real
+    document.getElementById('filtro-global-comision')?.addEventListener('change', () => {
+        actualizarDashboardFiltrado();
+    });
+
+    document.getElementById('buscador-nombre-alumno')?.addEventListener('input', () => {
+        actualizarDashboardFiltrado();
+    });
     document.getElementById('buscador-escuela-alumno')?.addEventListener('input', () => {
         actualizarDashboardFiltrado();
     });
@@ -73,6 +80,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // Escuchamos el cambio en el selector de orden de abandono por comisión (pestaña Exámenes)
+    document.getElementById('select-orden-abandono-comision')?.addEventListener('change', () => {
+        UImetrics.renderizarTablaAbandonoComisiones(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
+    });
+
     // Escuchamos el cambio en el selector de orden de comisiones
     document.getElementById('select-ordenar-comisiones')?.addEventListener('change', () => {
         const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
@@ -102,6 +114,12 @@ function inicializarYRenderizarDashboard() {
 // Actualización integral reactiva a Etapa + Rango de Mérito + Buscador
 function actualizarDashboardFiltrado() {
     const etapaActiva = Filtros.obtenerEtapaSeleccionada();
+
+    // Actualizamos dinámicamente el encabezado de la primera columna ("Orden de Mérito" en Examen Ingreso, "Nº" en Cursillo)
+    const textoColumnaPosicion = etapaActiva === 'oficial' ? 'Orden de Mérito' : 'Nº';
+    document.querySelectorAll('.th-columna-merito-dinamica').forEach(th => {
+        th.textContent = textoColumnaPosicion;
+    });
 
     // 1. Proyectamos todo el padrón a la etapa seleccionada para KPIs Globales y padrón de Alumnos
     const padronProyectadoEtapa = Filtros.proyectarAlumnosPorEtapa(
@@ -194,6 +212,7 @@ function verificarAccesoDirectivo() {
     if (btnCerrarSesion) {
         btnCerrarSesion.addEventListener('click', () => {
             sessionStorage.clear();
+            Auth.cerrarSesion(false);
             localStorage.removeItem('token_sesion');
             window.location.href = '../index.html';
         });

@@ -743,7 +743,8 @@ function renderizarTablaContenidos() {
 // =================================================================
 export function inicializarSelectorComisiones(alumnos) {
     const select = document.getElementById('select-filtro-comision');
-    if (!select) return;
+    const selectGlobal = document.getElementById('filtro-global-comision');
+    if (!select && !selectGlobal) return;
 
     // Extraemos las comisiones únicas y las ordenamos
     const comisionesSet = new Set();
@@ -762,7 +763,20 @@ export function inicializarSelectorComisiones(alumnos) {
         optionsHtml += `<option value="${com}">Comisión ${com}</option>`;
     });
 
-    select.innerHTML = optionsHtml;
+    if (select) {
+        select.innerHTML = optionsHtml;
+    }
+    if (selectGlobal) {
+        const valorPrevio = selectGlobal.value || 'todas';
+        let optionsGlobalHtml = '<option value="todas">🌐 Todas las comisiones</option>';
+        comisionesOrdenadas.forEach(com => {
+            optionsGlobalHtml += `<option value="${com}">Comisión ${com}</option>`;
+        });
+        selectGlobal.innerHTML = optionsGlobalHtml;
+        if (valorPrevio === 'todas' || comisionesOrdenadas.includes(String(valorPrevio))) {
+            selectGlobal.value = valorPrevio;
+        }
+    }
 }
 
 
@@ -1422,6 +1436,24 @@ function normalizarAlumno(al) {
 }
 
 function coincideBusqueda(alNormalizado, textoBusqueda) {
+    const quitarTildes = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const textoNombre = quitarTildes(document.getElementById('buscador-nombre-alumno')?.value || '').trim();
+    const textoEscuela = quitarTildes(document.getElementById('buscador-escuela-alumno')?.value || '').trim();
+    const comisionFiltro = (document.getElementById('filtro-global-comision')?.value || 'todas').trim();
+
+    if (comisionFiltro !== 'todas' && comisionFiltro !== '') {
+        const comAl = String(alNormalizado['Comisión'] ?? alNormalizado['Comision'] ?? alNormalizado.comision ?? '').trim();
+        if (comAl !== comisionFiltro) return false;
+    }
+    if (textoNombre) {
+        const nomNorm = quitarTildes(alNormalizado.nombreCompleto);
+        if (!nomNorm.includes(textoNombre)) return false;
+    }
+    if (textoEscuela) {
+        const escNorm = quitarTildes(alNormalizado.escuelaLimpia);
+        if (!escNorm.includes(textoEscuela)) return false;
+    }
+    return true;
     if (!textoBusqueda) return true;
     return (
         alNormalizado.nombreCompleto.toLowerCase().includes(textoBusqueda) ||
@@ -1764,6 +1796,8 @@ export function actualizarPestanaExamenVsCursillo(alumnosFiltrados, datosCursill
     const alumnosCruzados = (alumnosFiltrados || []).map(alumno => {
         // Buscamos el Nº de inscripción/orden en las propiedades posibles de tu objeto alumno
         const nroInsc = Number(
+            alumno['Nº de inscripcion'] ||
+            alumno['N° de inscripcion'] ||
             alumno['Nº de inscripción'] ||
             alumno['N° de inscripción'] ||
             alumno.nro_inscripcion ||
@@ -1794,7 +1828,10 @@ export function actualizarPestanaExamenVsCursillo(alumnosFiltrados, datosCursill
         const ofMat = ((alumno.datos_examen_oficial || ex).estado_matematica === "Presente" && parseFloat((alumno.datos_examen_oficial || ex).nota_final_matematica) > 0) ? parseFloat((alumno.datos_examen_oficial || ex).nota_final_matematica) : null;
         const ofLen = ((alumno.datos_examen_oficial || ex).estado_lengua === "Presente" && parseFloat((alumno.datos_examen_oficial || ex).nota_final_lengua) > 0) ? parseFloat((alumno.datos_examen_oficial || ex).nota_final_lengua) : null;
         const ofDib = ((alumno.datos_examen_oficial || ex).estado_dibujo === "Presente" && parseFloat((alumno.datos_examen_oficial || ex).nota_final_dibujo) > 0) ? parseFloat((alumno.datos_examen_oficial || ex).nota_final_dibujo) : null;
-        const promOF = calcularPromedioValido([ofMat, ofLen, ofDib]);
+        const promOficialPlanilla = parseFloat(String((alumno.datos_examen_oficial || ex).promedio_general ?? '').replace(',', '.'));
+        const promOF = (!isNaN(promOficialPlanilla) && promOficialPlanilla > 0)
+            ? promOficialPlanilla
+            : calcularPromedioValido([ofMat, ofLen, ofDib]);
 
         // Alimentamos acumuladores globales del recorte
         if (esMat) acum.es.mat.push(esMat);
@@ -2075,17 +2112,18 @@ function formatearCeldaAsistencia(presentes, total, presentesEtapaPrevia = null)
     const ausentes = Math.max(0, total - presentes);
     const porcAusentes = 100 - porcentaje;
 
+    // Semáforo unificado de presentismo:
+    // >= 85% presentes (< 15% ausentes) -> Verde
+    // 70% a 84.9% presentes (15% a 30% ausentes) -> Amarillo (alerta moderada)
+    // < 70% presentes (> 30% ausentes) -> Rojo (alerta alta de abandono)
     let colorBarra = 'bg-success';
     let claseBadge = 'bg-success-subtle text-success border-success-subtle';
-    if (porcentaje < 55) {
+    if (porcentaje < 70) {
         colorBarra = 'bg-danger';
         claseBadge = 'bg-danger-subtle text-danger border-danger-subtle';
-    } else if (porcentaje < 75) {
+    } else if (porcentaje < 85) {
         colorBarra = 'bg-warning';
         claseBadge = 'bg-warning-subtle text-warning-emphasis border-warning-subtle';
-    } else if (porcentaje < 88) {
-        colorBarra = 'bg-primary';
-        claseBadge = 'bg-primary-subtle text-primary border-primary-subtle';
     }
 
     let badgePaso = '';
@@ -2150,6 +2188,8 @@ export function renderizarTablaAsistenciaEtapas(alumnosTotales = [], datosCursil
 
     alumnosTotales.forEach(alumno => {
         const nroInsc = Number(
+            alumno['Nº de inscripcion'] ||
+            alumno['N° de inscripcion'] ||
             alumno['Nº de inscripción'] ||
             alumno['N° de inscripción'] ||
             alumno.nro_inscripcion ||
@@ -2242,6 +2282,130 @@ export function renderizarTablaAsistenciaEtapas(alumnosTotales = [], datosCursil
             </tr>
         `;
     }).join('');
+
+    renderizarTablaAbandonoComisiones(alumnosTotales, datosCursillo);
+}
+
+// =================================================================
+// TABLA DE PRESENTISMO Y PARTICIPACIÓN POR COMISIÓN EN CADA ETAPA
+// =================================================================
+export function renderizarTablaAbandonoComisiones(alumnosTotales = [], datosCursillo = []) {
+    const tbody = document.getElementById('tbody-abandono-comisiones');
+    if (!tbody) return;
+
+    if (!Array.isArray(alumnosTotales) || alumnosTotales.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No hay datos de comisiones disponibles.</td></tr>`;
+        return;
+    }
+
+    const mapaCursillo = new Map();
+    if (Array.isArray(datosCursillo)) {
+        datosCursillo.forEach(item => {
+            const id = Number(item.nro_inscripcion);
+            if (id > 0) mapaCursillo.set(id, item.cursillo);
+        });
+    }
+
+    const mapaComisiones = {};
+
+    alumnosTotales.forEach(alumno => {
+        const comRaw = alumno['Comisión'] ?? alumno['Comision'] ?? alumno.comision;
+        if (comRaw === undefined || comRaw === null || String(comRaw).trim() === '' || String(comRaw).trim() === '-') return;
+        const com = String(comRaw).trim();
+
+        if (!mapaComisiones[com]) {
+            mapaComisiones[com] = {
+                comision: com,
+                inscriptos: 0,
+                esPresentes: 0,
+                eePresentes: 0,
+                ofPresentes: 0
+            };
+        }
+
+        mapaComisiones[com].inscriptos++;
+
+        const nroInsc = Number(
+            alumno['Nº de inscripcion'] ||
+            alumno['N° de inscripcion'] ||
+            alumno['Nº de inscripción'] ||
+            alumno['N° de inscripción'] ||
+            alumno.nro_inscripcion ||
+            alumno.id_inscripcion ||
+            alumno['N° de orden'] ||
+            alumno['Nº de orden'] ||
+            0
+        );
+
+        const cursilloAlumno = mapaCursillo.get(nroInsc) || {};
+        const es = cursilloAlumno.evaluacion_seguimiento || {};
+        const ee = cursilloAlumno.ensayo_examen || {};
+        const ex = alumno.datos_examen_oficial || alumno.datos_examen || {};
+
+        // Consideramos que el alumno asistió a la etapa si rindió con nota > 0 (al menos una asignatura evaluada)
+        const rindioES = (parseFloat(es.matematica) > 0) || (parseFloat(es.lengua) > 0) || (parseFloat(es.dibujo) > 0);
+        const rindioEE = (parseFloat(ee.matematica) > 0) || (parseFloat(ee.lengua) > 0) || (parseFloat(ee.dibujo) > 0);
+        const rindioOF = (parseFloat(ex.nota_final_matematica) > 0) || (parseFloat(ex.nota_final_lengua) > 0) || (parseFloat(ex.nota_final_dibujo) > 0);
+
+        if (rindioES) mapaComisiones[com].esPresentes++;
+        if (rindioEE) mapaComisiones[com].eePresentes++;
+        if (rindioOF) mapaComisiones[com].ofPresentes++;
+    });
+
+    const listaComisiones = Object.values(mapaComisiones).map(item => {
+        const total = item.inscriptos || 1;
+        return {
+            ...item,
+            porcAbandonoES: ((total - item.esPresentes) / total) * 100,
+            porcAbandonoEE: ((total - item.eePresentes) / total) * 100,
+            porcAbandonoOF: ((total - item.ofPresentes) / total) * 100,
+            porcPresentismoOF: (item.ofPresentes / total) * 100
+        };
+    });
+
+    const criterioOrden = document.getElementById('select-orden-abandono-comision')?.value || 'comision';
+    listaComisiones.sort((a, b) => {
+        switch (criterioOrden) {
+            case 'abandono_of_desc':
+                return (b.porcAbandonoOF - a.porcAbandonoOF) || (Number(a.comision) - Number(b.comision));
+            case 'abandono_ee_desc':
+                return (b.porcAbandonoEE - a.porcAbandonoEE) || (Number(a.comision) - Number(b.comision));
+            case 'abandono_es_desc':
+                return (b.porcAbandonoES - a.porcAbandonoES) || (Number(a.comision) - Number(b.comision));
+            case 'presentismo_of_desc':
+                return (b.porcPresentismoOF - a.porcPresentismoOF) || (Number(a.comision) - Number(b.comision));
+            case 'comision':
+            default:
+                return Number(a.comision) - Number(b.comision);
+        }
+    });
+
+    // Identificamos el mayor % de abandono en el examen final para resaltarlo si supera el 15%
+    const maxAbandonoOF = listaComisiones.reduce((max, c) => Math.max(max, c.porcAbandonoOF), 0);
+
+    tbody.innerHTML = listaComisiones.map(c => {
+        const esMayorAbandono = maxAbandonoOF >= 15 && Math.abs(c.porcAbandonoOF - maxAbandonoOF) < 0.01;
+        const badgeAlerta = esMayorAbandono
+            ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size: 0.7rem;" title="Comisión con mayor ausentismo en el Examen de Ingreso"><i class="bi bi-exclamation-triangle-fill me-1"></i>Mayor abandono</span>`
+            : '';
+
+        return `
+        <tr class="${esMayorAbandono ? 'table-danger bg-opacity-10' : ''}">
+            <td class="text-start ps-3 fw-bold">
+                <div class="d-flex flex-column align-items-start gap-1">
+                    <span class="badge bg-light text-dark border px-2 py-1 fs-6">Comisión ${c.comision}</span>
+                    ${badgeAlerta}
+                </div>
+            </td>
+            <td>
+                <span class="fw-bold text-dark fs-6">${c.inscriptos}</span>
+                <div class="text-muted" style="font-size: 0.72rem;">inscriptos</div>
+            </td>
+            <td>${formatearCeldaAsistencia(c.esPresentes, c.inscriptos, null)}</td>
+            <td>${formatearCeldaAsistencia(c.eePresentes, c.inscriptos, c.esPresentes)}</td>
+            <td>${formatearCeldaAsistencia(c.ofPresentes, c.inscriptos, c.eePresentes)}</td>
+        </tr>
+    `}).join('');
 }
 
 export function inicializarEventosExamenVsCursillo() {
