@@ -1,5 +1,15 @@
 import { EstadoDashboard } from './api.js';
 
+// Función para truncar estrictamente a N decimales (sin redondear hacia arriba por el siguiente decimal)
+function formatearPromedioTruncado(valor, decimales = 3) {
+    const num = parseFloat(valor);
+    if (isNaN(num) || num <= 0) return '0.000';
+    const factor = Math.pow(10, decimales);
+    // Math.floor para truncar hacia abajo sin alterar el 3er decimal
+    const truncado = Math.floor(num * factor + 0.0000001) / factor;
+    return truncado.toFixed(decimales);
+}
+
 // Función unificada para calcular y normalizar el promedio del alumno
 function obtenerPromedioAlumno(alumno) {
     if (!alumno) return 0;
@@ -451,7 +461,7 @@ export function renderizarTablaMerito(alumnos) {
 
         // Promedio: si es 0 muestra "Ausente"
         const celdaPromedio = alumno.promedioGeneral > 0
-            ? `<span class="fw-bold text-primary">${alumno.promedioGeneral.toFixed(3)}</span>`
+            ? `<span class="fw-bold text-primary">${formatearPromedioTruncado(alumno.promedioGeneral, 3)}</span>`
             : `<span class="badge bg-secondary-subtle text-secondary">Ausente</span>`;
 
         htmlFilas += `
