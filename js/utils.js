@@ -728,6 +728,8 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
             let filas = [];
             let configExtraTabla = {};
 
+            const notaCur = (a, prefijo, matCorto, matLargo) => a?.datos_examen?.[`${prefijo}_${matCorto}`] ?? a?.datos_examen?.[`${prefijo}_${matLargo}`] ?? '-';
+
             switch (tipoEtapa) {
                 case '1er_ev':
                     tituloPrincipal = "CALIFICACIONES - 1º EVALUACIÓN";
@@ -735,9 +737,9 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
                     filas = alumnosDeEstaComision.map((a, i) => [
                         i + 1,
                         `${a.apellido || ''}, ${a.nombre || ''}`,
-                        formatearNota(a.datos_examen?.nota_1er_ev_mat),
-                        formatearNota(a.datos_examen?.nota_1er_ev_len),
-                        formatearNota(a.datos_examen?.nota_1er_ev_dib)
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'mat', 'matematica')),
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'len', 'lengua')),
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'dib', 'dibujo'))
                     ]);
                     configExtraTabla = {
                         columnStyles: {
@@ -756,9 +758,9 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
                     filas = alumnosDeEstaComision.map((a, i) => [
                         i + 1,
                         `${a.apellido || ''}, ${a.nombre || ''}`,
-                        formatearNota(a.datos_examen?.nota_final_mat),
-                        formatearNota(a.datos_examen?.nota_final_len),
-                        formatearNota(a.datos_examen?.nota_final_dib)
+                        formatearNota(notaCur(a, 'nota_final', 'mat', 'matematica')),
+                        formatearNota(notaCur(a, 'nota_final', 'len', 'lengua')),
+                        formatearNota(notaCur(a, 'nota_final', 'dib', 'dibujo'))
                     ]);
                     configExtraTabla = {
                         columnStyles: {
@@ -785,12 +787,12 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
                     filas = alumnosDeEstaComision.map((a, i) => [
                         i + 1,
                         `${a.apellido || ''}, ${a.nombre || ''}`,
-                        formatearNota(a.datos_examen?.nota_1er_ev_mat),
-                        formatearNota(a.datos_examen?.nota_1er_ev_len),
-                        formatearNota(a.datos_examen?.nota_1er_ev_dib),
-                        formatearNota(a.datos_examen?.nota_final_mat),
-                        formatearNota(a.datos_examen?.nota_final_len),
-                        formatearNota(a.datos_examen?.nota_final_dib)
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'mat', 'matematica')),
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'len', 'lengua')),
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'dib', 'dibujo')),
+                        formatearNota(notaCur(a, 'nota_final', 'mat', 'matematica')),
+                        formatearNota(notaCur(a, 'nota_final', 'len', 'lengua')),
+                        formatearNota(notaCur(a, 'nota_final', 'dib', 'dibujo'))
                     ]);
                     configExtraTabla = {
                         columnStyles: {
@@ -870,14 +872,16 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
     let filas = [];
 
     if (tipoEtapa === '1er_ev') {
+        const notaCurCSV = (a, prefijo, matCorto, matLargo) => a?.datos_examen?.[`${prefijo}_${matCorto}`] ?? a?.datos_examen?.[`${prefijo}_${matLargo}`] ?? '';
+
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática 1º Ev', 'Lengua 1º Ev', 'Dibujo 1º Ev'];
         filas = aspirantes.map((a, i) => [
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_mat),
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_len),
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_dib)
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'mat', 'matematica')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'len', 'lengua')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'dib', 'dibujo'))
         ]);
     } else if (tipoEtapa === 'ensayo') {
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática Ensayo', 'Lengua Ensayo', 'Dibujo Ensayo'];
@@ -885,9 +889,9 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            formatearNotaCSV(a.datos_examen?.nota_final_mat),
-            formatearNotaCSV(a.datos_examen?.nota_final_len),
-            formatearNotaCSV(a.datos_examen?.nota_final_dib)
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'mat', 'matematica')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'len', 'lengua')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'dib', 'dibujo'))
         ]);
     } else {
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Mat. 1º Ev', 'Len. 1º Ev', 'Dib. 1º Ev', 'Mat. Ensayo', 'Len. Ensayo', 'Dib. Ensayo'];
@@ -895,12 +899,12 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_mat),
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_len),
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_dib),
-            formatearNotaCSV(a.datos_examen?.nota_final_mat),
-            formatearNotaCSV(a.datos_examen?.nota_final_len),
-            formatearNotaCSV(a.datos_examen?.nota_final_dib)
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'mat', 'matematica')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'len', 'lengua')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'dib', 'dibujo')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'mat', 'matematica')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'len', 'lengua')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'dib', 'dibujo'))
         ]);
     }
 

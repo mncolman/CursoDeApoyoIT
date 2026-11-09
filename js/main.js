@@ -204,8 +204,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const tabTrayectoria = document.getElementById('trayectoria-tab');
     if (tabTrayectoria) {
+        tabTrayectoria.addEventListener('shown.bs.tab', () => {
+            UI.renderizarTrayectoriaGlobal();
+        });
         tabTrayectoria.addEventListener('click', () => {
-
             setTimeout(() => {
                 UI.renderizarTrayectoriaGlobal();
             }, 50);
@@ -802,6 +804,7 @@ async function iniciarSesion(e) {
             // 6. Disparar dibujados
             orquestarFiltros();
             UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
+            UI.renderizarTrayectoriaGlobal();
 
 
             // 7. Forzamos el dibujado inicial directo (Sin depender de eventos fantasma)
@@ -1129,6 +1132,7 @@ function arrancarInterfazBase() {
     if (typeof orquestarFiltros === 'function') orquestarFiltros();
 
     UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
+    UI.renderizarTrayectoriaGlobal();
     UI.renderizarTablaCronograma(eventosGlobales || []);
     UI.inicializarCalendario(eventosGlobales || []);
 
