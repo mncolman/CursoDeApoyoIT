@@ -473,8 +473,8 @@ const obtenerFormatoElegido = () => {
         }
     });
 
-    // Helper para armar la lista de grupos final y descargar
-    function ejecutarDescargaGrupoPorAsignatura(nombreMateria, fechaMateria) {
+    // Helper para armar y validar la lista de grupos final
+    function obtenerConfigFinalGrupos() {
         const { numGrupos, tamanoBase, rebalseTotal, rebalsePorGrupo } = estadoDistribucion;
         const totalAsignados = Object.values(rebalsePorGrupo).reduce((acc, v) => acc + (v || 0), 0);
 
@@ -485,7 +485,7 @@ const obtenerFormatoElegido = () => {
                 title: 'Distribución incompleta',
                 text: `Aún quedan ${faltantes} alumno(s) sobrante(s) por asignar a los grupos.`
             });
-            return;
+            return null;
         }
 
         const configFinalGrupos = [];
@@ -496,6 +496,12 @@ const obtenerFormatoElegido = () => {
                 cantidad: tamanoBase + extra
             });
         }
+        return configFinalGrupos;
+    }
+
+    function ejecutarDescargaGrupoPorAsignatura(nombreMateria, fechaMateria) {
+        const configFinalGrupos = obtenerConfigFinalGrupos();
+        if (!configFinalGrupos) return;
 
         const checkObs = document.getElementById('checkIncluirObservaciones');
         const incluirObservaciones = Boolean(checkObs?.checked);
@@ -509,10 +515,8 @@ const obtenerFormatoElegido = () => {
 
     // Listener para la Planilla General de Asistencia por Grupos (Coordinadores)
     document.getElementById('btnDescargarGrupoGeneral')?.addEventListener('click', () => {
-        if (!configFinalGrupos || configFinalGrupos.length === 0) {
-            Swal.fire('Atención', 'No hay grupos calculados para descargar.', 'warning');
-            return;
-        }
+        const configFinalGrupos = obtenerConfigFinalGrupos();
+        if (!configFinalGrupos) return;
 
         const checkObs = document.getElementById('checkIncluirObservaciones');
         const incluirObservaciones = Boolean(checkObs?.checked);
