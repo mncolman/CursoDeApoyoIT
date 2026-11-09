@@ -818,11 +818,23 @@ async function iniciarSesion(e) {
 
 
         } else {
-            alert(data.mensaje); // Login incorrecto
+            Swal.fire({
+                icon: 'error',
+                title: 'Credenciales Incorrectas',
+                text: data.mensaje || 'El correo o la contraseña ingresados son incorrectos.',
+                confirmButtonColor: '#073a86',
+                confirmButtonText: 'Entendido'
+            });
         }
     } catch (error) {
         console.error(error);
-        alert("Ocurrió un error al intentar conectar con el servidor.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Conexión',
+            text: 'Ocurrió un error al intentar conectar con el servidor.',
+            confirmButtonColor: '#073a86',
+            confirmButtonText: 'Reintentar'
+        });
     } finally {
         // 7. Restaurar botón (Delega a UI)
 
