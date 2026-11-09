@@ -41,7 +41,7 @@ export async function peticionLogin(usuario, clave) {
  */
 export async function enviarNotasAlServidor(payloadDatos) {
     try {
-        console.log("Enviando notas al servidor...", payloadDatos);
+        //console.log("Enviando notas al servidor...", payloadDatos);
 
         // 1. Recuperamos la sesión para obtener el token
         const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
@@ -93,7 +93,6 @@ export async function enviarNotasAlServidor(payloadDatos) {
 
                 // Guardamos el paquete actualizado en el navegador
                 localStorage.setItem('sesionInstitutoTecnico', JSON.stringify(sesion));
-                console.log("Permisos locales actualizados tras el envío.");
             }
         }
 
@@ -206,19 +205,13 @@ export async function cargarDatosEstadisticos() {
         if (btnActualizar) btnActualizar.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Actualizar Datos';
 
         if (json.exito) {
-            console.log("✅ [API] Datos estadísticos recibidos del servidor:", json);
-            console.log("👥 [API] Total alumnos recibidos:", (json.datos?.alumnos || []).length);
-            console.log("🔍 [API] Muestra del primer alumno:", json.datos?.alumnos?.[0]);
-            console.log("📊 [API] Estructura de exámenes:", json.datos?.estructura_examenes);
-            console.log("📝 [API] Cursillo recibido (total " + (json.datos?.cursillo || []).length + " registros). Muestra:", json.datos?.cursillo?.[0]);
-
+            
             // Guardamos los datos en nuestro Estado Global
             EstadoDashboard.alumnos = json.datos.alumnos || [];
             EstadoDashboard.examenes = json.datos.estructura_examenes || {};
             EstadoDashboard.cursillo = json.datos.cursillo || [];
             EstadoDashboard.docentes = json.datos?.docentes || { mapaComisionMateria: {}, docentes: {} };
             sessionStorage.setItem('bancoDocentes', JSON.stringify(EstadoDashboard.docentes));
-            console.log("👨‍🏫 [API DOCENTES] Objeto docentes recibido en JSON:", json.datos?.docentes);
 
             return true;
         } else {

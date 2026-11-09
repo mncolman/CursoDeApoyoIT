@@ -142,17 +142,18 @@
                             </li>
 
 
-                            <!-- Pestaña exclusiva para directivos -->
+                            <!-- Pestañas exclusivas para directivos -->
                             <li class="nav-item d-none" role="presentation" id="nav-item-dashboard">
-                                <button class="nav-link text-start text-lg-center fw-bold w-100" id="dashboard-tab"
+                                <button class="nav-link text-start text-lg-center w-100" id="dashboard-tab"
                                     data-bs-toggle="pill" data-bs-target="#dashboard" type="button" role="tab">
-                                    📊 Reporte Inscriptos
+                                    <i class="bi bi-pie-chart me-1"></i> Reporte Inscriptos
                                 </button>
                             </li>
                             <li class="nav-item d-none my-auto" id="item-redireccion-metricas">
-                                <a class="btn btn-sm btn-outline-success fw-bold ms-lg-2" id="btn-redireccion-metricas"
+                                <a class="btn btn-outline-primary btn-sm text-start text-lg-center w-100 d-inline-flex align-items-center justify-content-start justify-content-lg-center ms-lg-2 py-2 py-lg-1 px-3 shadow-xs" id="btn-redireccion-metricas"
                                     href="./pages/dashboard.html">
-                                    📊 Reporte Estadístico
+                                    <i class="bi bi-bar-chart-fill me-1 text-primary"></i> <span class="fw-bold">Reporte Estadístico</span>
+                                    
                                 </a>
                             </li>
                         </ul>
@@ -575,7 +576,7 @@
 
                 <!-- PESTAÑA: Dashboard General -->
                 <article class="tab-pane fade" id="dashboard" role="tabpanel">
-                    <h4 class="texto_azul_institucional mb-4 mt-2">📊 Reporte General de Inscripciones</h4>
+                    <h4 class="texto_azul_institucional mb-4 mt-2"><i class="bi bi-pie-chart-fill me-2"></i>Reporte General de Inscripciones</h4>
 
                     <div class="row g-3">
                         <!-- Métrica Total -->
@@ -882,50 +883,81 @@
                 </div>
 
                 <!-- Cuerpo del Modal -->
-                <div class="modal-body">
-                    <div class="d-grid gap-3 p-1">
+                <div class="modal-body p-3">
+                    
+                    <!-- Mensaje informativo -->
+                    <div class="alert alert-info py-2 mb-3 text-center" role="alert" style="font-size: 0.85rem;">
+                        <i class="bi bi-info-circle me-1"></i> <strong>Nota:</strong> Las descargas de cursillo respetan las búsquedas, filtros y el orden actual de la tabla.
+                    </div>
 
-                        <!-- Mensajito de aviso con ícono de info -->
-                        <div class="alert alert-info py-2 mb-1 text-center" role="alert" style="font-size: 0.9rem;">
-                            <i class="bi bi-info-circle me-1"></i> <strong>Nota:</strong> Las descargas respetan las
-                            búsquedas, filtros y el orden actual de la tabla.
+                    <p id="comision-seleccionada-modal" class="fs-5 text-center text-dark fw-bold mb-3"></p>
+
+                    <!-- ========================================== -->
+                    <!-- SECCIÓN 1: PLANILLAS DEL CURSILLO / COMISIONES -->
+                    <!-- ========================================== -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center gap-2 mb-2 pb-1 border-bottom">
+                            <i class="bi bi-journal-bookmark text-primary"></i>
+                            <span class="small fw-bold text-uppercase text-secondary" style="letter-spacing: 0.5px;">Planillas de Cursillo y Comisiones</span>
                         </div>
 
-                        <p id="comision-seleccionada-modal" class="fs-5 text-center text-dark mb-3"></p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-dark d-flex justify-content-between align-items-center py-2 px-3 shadow-xs"
+                                id="btnDescargarListadoCompleto">
+                                <span><i class="bi bi-people-fill me-2 text-primary"></i> Listado General (Padrón Completo)</span>
+                                <i class="bi bi-download small text-muted"></i>
+                            </button>
 
-                        <!-- Botones con Flexbox para centrado perfecto -->
-                        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center"
-                            id="btnDescargarListadoCompleto">
-                            <span><i class="bi bi-people-fill me-2"></i> Listado General</span>
-                            <i class="bi bi-download"></i>
-                        </button>
+                            <button class="btn btn-outline-dark d-flex justify-content-between align-items-center py-2 px-3 shadow-xs"
+                                id="btnDescargarComisiones">
+                                <span><i class="bi bi-collection-fill me-2 text-secondary"></i> Listado por Comisiones</span>
+                                <i class="bi bi-download small text-muted"></i>
+                            </button>
 
-                        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center"
-                            id="btnDescargarComisiones">
-                            <span><i class="bi bi-collection-fill me-2"></i> Listado por Comisiones</span>
-                            <i class="bi bi-download"></i>
-                        </button>
+                            <button class="btn btn-outline-dark d-flex justify-content-between align-items-center py-2 px-3 shadow-xs"
+                                id="btnDescargarAsistenciaMensual">
+                                <span><i class="bi bi-calendar-month me-2 text-success"></i> Asistencia Mensual Cursillo</span>
+                                <i class="bi bi-download small text-muted"></i>
+                            </button>
 
-                        <button
-                            class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center d-none"
-                            id="btnDescargarAsistenciaSemanal">
-                            <span><i class="bi bi-calendar-week me-2"></i> Asistencia Semanal</span>
-                            <i class="bi bi-download"></i>
-                        </button>
+                            <button class="btn btn-outline-dark d-flex justify-content-between align-items-center py-2 px-3 shadow-xs"
+                                id="btnDescargarPlanillaObservaciones">
+                                <span><i class="bi bi-clipboard-data me-2 text-warning text-dark"></i> Planilla de Observaciones Cursillo</span>
+                                <i class="bi bi-download small text-muted"></i>
+                            </button>
 
-                        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center"
-                            id="btnDescargarAsistenciaMensual">
-                            <span><i class="bi bi-calendar-month me-2"></i> Asistencia Mensual</span>
-                            <i class="bi bi-download"></i>
-                        </button>
-
-                        <button class="btn btn-outline-dark btn-lg d-flex justify-content-between align-items-center"
-                            id="btnDescargarPlanillaObservaciones">
-                            <span><i class="bi bi-clipboard-data me-2"></i> Planilla Observaciones</span>
-                            <i class="bi bi-download"></i>
-                        </button>
-
+                            <button class="btn btn-outline-dark d-flex justify-content-between align-items-center d-none"
+                                id="btnDescargarAsistenciaSemanal">
+                                <span><i class="bi bi-calendar-week me-2"></i> Asistencia Semanal</span>
+                                <i class="bi bi-download"></i>
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- ========================================== -->
+                    <!-- SECCIÓN 2: PLANILLAS PARA EXÁMENES DE INGRESO -->
+                    <!-- ========================================== -->
+                    <div class="p-3 rounded-3" style="background-color: #f0f4fa; border: 1px solid #d0dcee;">
+                        <div class="d-flex align-items-center gap-2 mb-2 pb-1 border-bottom border-secondary-subtle">
+                            <i class="bi bi-mortarboard-fill" style="color: #1b396a;"></i>
+                            <span class="small fw-bold text-uppercase" style="color: #1b396a; letter-spacing: 0.5px;">Exámenes de Ingreso Oficial</span>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-white border d-flex justify-content-between align-items-center py-2.5 px-3 shadow-xs text-dark hover-shadow"
+                                id="btnDescargarAsistenciaExamenes" style="background-color: #ffffff;">
+                                <span><i class="bi bi-file-earmark-spreadsheet-fill me-2 text-primary"></i> Asistencia a Exámenes (Lista Sábana Completa)</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-download me-1"></i>PDF</span>
+                            </button>
+
+                            <button class="btn text-white d-flex justify-content-between align-items-center py-2.5 px-3 shadow-xs"
+                                id="btnAbrirModalGruposExamen" style="background-color: #1b396a; border-color: #1b396a;">
+                                <span><i class="bi bi-diagram-3-fill me-2 text-warning"></i> Asistencia por Grupos / Aulas (Personalizado Docente)</span>
+                                <span class="badge bg-warning text-dark"><i class="bi bi-gear-fill me-1"></i>Configurar</span>
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Pie del Modal -->
@@ -937,6 +969,107 @@
         </div>
     </div>
 
+
+    <!-- ================================================================= -->
+    <!-- MODAL: ASISTENCIA A EXÁMENES POR GRUPOS / AULAS -->
+    <!-- ================================================================= -->
+    <div class="modal fade" id="modalGruposExamen" tabindex="-1" aria-labelledby="modalGruposExamenLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content shadow-lg border-0">
+                
+                <div class="modal-header fondo_azul_institucional text-white">
+                    <h5 class="modal-title fs-6 fw-bold" id="modalGruposExamenLabel">
+                        <i class="bi bi-diagram-3-fill me-2"></i>Distribución de Asistencia a Exámenes por Grupos / Aulas
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="alert alert-light border shadow-xs mb-3 d-flex align-items-center gap-2">
+                        <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+                        <span class="small text-secondary">
+                            El padrón se ordenará <strong>alfabéticamente de la A a la Z</strong>. Cada grupo se generará en una hoja independiente con campos de firma para el docente y gabinete/aula.
+                        </span>
+                    </div>
+
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="bi bi-people me-1 text-primary"></i> Total Aspirantes:
+                            </label>
+                            <input type="text" class="form-control fw-bold bg-light" id="inputTotalAspirantesGrupos" value="0" readonly>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="inputCantidadGrupos" class="form-label small fw-bold text-dark mb-1">
+                                <i class="bi bi-grid-3x3-gap me-1 text-primary"></i> Cantidad de Grupos:
+                            </label>
+                            <input type="number" class="form-control fw-bold" id="inputCantidadGrupos" min="1" max="50" value="10">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-dark mb-1 d-block">
+                                <i class="bi bi-chat-left-text me-1 text-primary"></i> Columna Observaciones:
+                            </label>
+                            <div class="form-check form-switch p-0 pt-1 d-flex align-items-center gap-2">
+                                <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" id="checkIncluirObservaciones" style="width: 2.4em; height: 1.25em;">
+                                <label class="form-check-label small text-muted cursor-pointer" for="checkIncluirObservaciones" id="labelCheckObservaciones">
+                                    Deshabilitada
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel de Cálculo Dinámico de Distribución -->
+                    <div class="card bg-light border-0 shadow-xs p-3 mb-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                            <h6 class="small fw-bold text-uppercase text-secondary mb-0">
+                                <i class="bi bi-calculator me-1"></i> Resumen de Reparto y Rebalse:
+                            </h6>
+                            <span class="badge bg-primary text-white" id="badgeDistribucionResumen">Base: 0 alumnos / grupo</span>
+                        </div>
+
+                        <div id="contenedorConfiguracionRebalse">
+                            <p class="text-muted small mb-0" id="textoDetalleRebalse">Configurando distribución...</p>
+                            <!-- Los checkboxes o selects de rebalse se renderizarán acá dinámicamente -->
+                            <div class="row g-2 mt-2" id="grillaAsignacionRebalse"></div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Descarga por Asignatura -->
+                    <h6 class="small fw-bold text-uppercase text-dark mb-2">
+                        <i class="bi bi-download me-1 text-primary"></i> Descargar Planilla por Asignatura:
+                    </h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-danger w-100 py-2.5 d-flex flex-column align-items-center justify-content-center shadow-sm" id="btnDescargarGrupoMatematica">
+                                <span class="fw-bold"><i class="bi bi-calculator me-1"></i> Matemática</span>
+                                <small class="text-muted" style="font-size: 0.72rem;">Fecha: 11/11/26</small>
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary w-100 py-2.5 d-flex flex-column align-items-center justify-content-center shadow-sm" id="btnDescargarGrupoLengua">
+                                <span class="fw-bold"><i class="bi bi-book me-1"></i> Lengua</span>
+                                <small class="text-muted" style="font-size: 0.72rem;">Fecha: 13/11/26</small>
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-secondary w-100 py-2.5 d-flex flex-column align-items-center justify-content-center shadow-sm" id="btnDescargarGrupoDibujo">
+                                <span class="fw-bold"><i class="bi bi-pencil-square me-1"></i> Dibujo Técnico</span>
+                                <small class="text-muted" style="font-size: 0.72rem;">Fecha: 16/11/26</small>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
 
     <!-- =================================================== -->

@@ -1125,13 +1125,6 @@ export function procesarMetricasDocentesCompletas(alumnosFiltrados) {
     const docentes = banco?.docentes || {};
     const mapaComisionMateria = banco?.mapaComisionMateria || {};
 
-    console.log("👨‍🏫 [DOCENTES DEBUG] Banco obtenido en ui-metricas:", {
-        cantidadDocentes: Object.keys(docentes).length,
-        docentes: docentes,
-        mapaComisionMateria: mapaComisionMateria,
-        alumnosRecibidos: (alumnosFiltrados || []).length
-    });
-
     const listado = [];
 
     Object.entries(docentes).forEach(([nombreDocente, info]) => {
@@ -1194,7 +1187,6 @@ export function procesarMetricasDocentesCompletas(alumnosFiltrados) {
         });
     });
 
-    console.log("👨‍🏫 [DOCENTES DEBUG] Listado final procesado (" + listado.length + " docentes):", listado);
     return listado;
 }
 
