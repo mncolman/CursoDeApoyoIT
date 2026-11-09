@@ -197,8 +197,8 @@ document.addEventListener('DOMContentLoaded', function () {
     elementosFiltroTrayectoria.forEach(id => {
         const elemento = document.getElementById(id);
         if (elemento) {
-            elemento.addEventListener('input', UI.renderizarTrayectoriaGlobal);
-            elemento.addEventListener('change', UI.renderizarTrayectoriaGlobal);
+            elemento.addEventListener('input', () => UI.renderizarTrayectoriaGlobal());
+            elemento.addEventListener('change', () => UI.renderizarTrayectoriaGlobal());
         }
     });
 

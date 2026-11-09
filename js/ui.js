@@ -940,17 +940,17 @@ export function renderizarTrayectoriaGlobal(aspirantesParam = null) {
     const selectComision = document.getElementById('filterComisionTrayectoria')?.value || '';
     const selectOrden = document.getElementById('sortSelectTrayectoria')?.value || 'nombre_asc';
 
-    // 1. Recuperamos los datos (priorizamos parámetro, luego estado en memoria, luego almacenamiento local)
-    let todosLosAspirantes = aspirantesParam;
+    // 1. Recuperamos los datos (priorizamos parámetro si es Array válido, luego estado en memoria, luego almacenamiento local)
+    let todosLosAspirantes = Array.isArray(aspirantesParam) ? aspirantesParam : null;
     if (!todosLosAspirantes || todosLosAspirantes.length === 0) {
-        if (aspirantesGlobalesState && aspirantesGlobalesState.length > 0) {
+        if (Array.isArray(aspirantesGlobalesState) && aspirantesGlobalesState.length > 0) {
             todosLosAspirantes = aspirantesGlobalesState;
         } else {
             const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
             if (dataGuardada) {
                 try {
                     const sesion = JSON.parse(dataGuardada);
-                    todosLosAspirantes = sesion.aspirantesGlobales || [];
+                    todosLosAspirantes = Array.isArray(sesion.aspirantesGlobales) ? sesion.aspirantesGlobales : [];
                 } catch (e) {
                     todosLosAspirantes = [];
                 }
@@ -958,6 +958,10 @@ export function renderizarTrayectoriaGlobal(aspirantesParam = null) {
                 todosLosAspirantes = [];
             }
         }
+    }
+
+    if (!Array.isArray(todosLosAspirantes)) {
+        todosLosAspirantes = [];
     }
 
     // 2. FILTRADO MULTIPLE (Buscador + Comisión )
