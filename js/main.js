@@ -507,6 +507,21 @@ const obtenerFormatoElegido = () => {
         });
     }
 
+    // Listener para la Planilla General de Asistencia por Grupos (Coordinadores)
+    document.getElementById('btnDescargarGrupoGeneral')?.addEventListener('click', () => {
+        if (!configFinalGrupos || configFinalGrupos.length === 0) {
+            Swal.fire('Atención', 'No hay grupos calculados para descargar.', 'warning');
+            return;
+        }
+
+        const checkObs = document.getElementById('checkIncluirObservaciones');
+        const incluirObservaciones = Boolean(checkObs?.checked);
+
+        Utils.descargarPlanillaExamenPorGruposGeneral(aspirantesGlobales, configFinalGrupos, {
+            incluirObservaciones: incluirObservaciones
+        });
+    });
+
     // Listeners de los 3 botones de asignatura
     document.getElementById('btnDescargarGrupoMatematica')?.addEventListener('click', () => {
         ejecutarDescargaGrupoPorAsignatura('Matemática', '11/11/26');
