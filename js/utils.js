@@ -870,10 +870,9 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
 function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
     let cabeceras = [];
     let filas = [];
+    const notaCurCSV = (a, prefijo, matCorto, matLargo) => a?.datos_examen?.[`${prefijo}_${matCorto}`] ?? a?.datos_examen?.[`${prefijo}_${matLargo}`] ?? '';
 
     if (tipoEtapa === '1er_ev') {
-        const notaCurCSV = (a, prefijo, matCorto, matLargo) => a?.datos_examen?.[`${prefijo}_${matCorto}`] ?? a?.datos_examen?.[`${prefijo}_${matLargo}`] ?? '';
-
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática 1º Ev', 'Lengua 1º Ev', 'Dibujo 1º Ev'];
         filas = aspirantes.map((a, i) => [
             i + 1,
