@@ -38,7 +38,7 @@ function obtenerPromedioAlumno(alumno) {
         }
     });
 
-    return cant > 0 ? +(suma / cant).toFixed(2) : 0;
+    return cant > 0 ? +(suma / 3).toFixed(3) : 0;
 }
 
 
@@ -338,7 +338,7 @@ export function calcularKpisGlobales(alumnos) {
             if (ex.estado_lengua === "Presente") notas.push(ex.nota_final_lengua);
             if (ex.estado_dibujo === "Presente") notas.push(ex.nota_final_dibujo);
 
-            const promAlumno = notas.reduce((acc, v) => acc + v, 0) / notas.length;
+            const promAlumno = typeof a.promedioGeneral === 'number' ? a.promedioGeneral : (notas.reduce((acc, v) => acc + v, 0) / 3);
             sumaPromedios += promAlumno;
             if (promAlumno > maxGlobal) maxGlobal = promAlumno;
         });
@@ -1757,13 +1757,14 @@ export function inicializarPanelFlotanteFiltros() {
 let chartEvolucionInstancia = null;
 let datosGraficoCache = null; // Guardamos los promedios calculados para filtrar rápido con los botones
 
-// Función auxiliar: calcula promedio válido (ignora nulos, NaN y ceros)
+// Función auxiliar: calcula promedio de etapa dividiendo SIEMPRE entre 3 materias (los ausentes cuentan como 0).
+// Si el alumno estuvo ausente en las 3 materias de la etapa, retorna null.
 function calcularPromedioValido(notasArray) {
     const validas = notasArray
         .map(n => parseFloat(n))
         .filter(n => !isNaN(n) && n > 0);
     if (validas.length === 0) return null;
-    return validas.reduce((acc, val) => acc + val, 0) / validas.length;
+    return validas.reduce((acc, val) => acc + val, 0) / 3;
 }
 
 // Formateador visual de nota individual
@@ -2074,19 +2075,19 @@ function renderizarTablaEvolucion(alumnosCruzados) {
                 <td class="border-start border-2">${formatearNotaCelda(es.mat)}</td>
                 <td>${formatearNotaCelda(es.len)}</td>
                 <td>${formatearNotaCelda(es.dib)}</td>
-                <td class="bg-light fw-bold text-secondary">${es.prom !== null ? es.prom.toFixed(2) : '-'}</td>
+                <td class="bg-light fw-bold text-secondary">${es.prom !== null ? formatearPromedioTruncado(es.prom, 3) : '-'}</td>
 
                 <!-- ETAPA 2: E.E. -->
                 <td class="border-start border-2">${formatearNotaCelda(ee.mat)}</td>
                 <td>${formatearNotaCelda(ee.len)}</td>
                 <td>${formatearNotaCelda(ee.dib)}</td>
-                <td class="bg-light fw-bold text-primary">${ee.prom !== null ? ee.prom.toFixed(2) : '-'}</td>
+                <td class="bg-light fw-bold text-primary">${ee.prom !== null ? formatearPromedioTruncado(ee.prom, 3) : '-'}</td>
 
                 <!-- ETAPA 3: OFICIAL -->
                 <td class="border-start border-2">${formatearNotaCelda(of.mat)}</td>
                 <td>${formatearNotaCelda(of.len)}</td>
                 <td>${formatearNotaCelda(of.dib)}</td>
-                <td class="bg-light fw-bold" style="color: #1b396a;">${of.prom !== null ? of.prom.toFixed(2) : '-'}</td>
+                <td class="bg-light fw-bold" style="color: #1b396a;">${of.prom !== null ? formatearPromedioTruncado(of.prom, 3) : '-'}</td>
 
                 <!-- TENDENCIA / EVOLUCIÓN -->
                 <td class="border-start border-2">${badgeEvolucion}</td>

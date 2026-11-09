@@ -600,13 +600,20 @@ export function configurarInterfazPorRol(usuario) {
     document.getElementById('userNameDisplay').textContent = `${usuario.nombre} (${usuario.rol})`;
 
     // Lógica de Permisos de Interfaz
+    // - Reporte Inscriptos (tabDashboard): visible para ADMI y COOR
+    // - Reporte Estadístico de Exámenes (anclaMetricas): exclusivo para ADMI
     const tabDashboard = document.getElementById('nav-item-dashboard');
     const anclaMetricas = document.getElementById('item-redireccion-metricas');
+
     if (usuario.rol === 'ADMI' || usuario.rol === 'COOR') {
         if (tabDashboard) tabDashboard.classList.remove('d-none');
-        if (anclaMetricas) anclaMetricas.classList.remove('d-none');
     } else {
         if (tabDashboard) tabDashboard.classList.add('d-none');
+    }
+
+    if (usuario.rol === 'ADMI') {
+        if (anclaMetricas) anclaMetricas.classList.remove('d-none');
+    } else {
         if (anclaMetricas) anclaMetricas.classList.add('d-none');
     }
 }

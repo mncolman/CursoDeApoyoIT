@@ -194,9 +194,9 @@ function verificarAccesoDirectivo() {
     const usuario = sesion.usuario || {};
     const rol = (usuario.rol || '').toUpperCase();
 
-    // Verificar si el rol tiene permiso para ver este dashboard
-    if (rol !== 'ADMI' && rol !== 'COOR' && rol !== 'DIRECTIVO' && rol !== 'ADMIN') {
-        alert('Acceso no autorizado.');
+    // Verificar si el rol tiene permiso para ver este dashboard (Exclusivo ADMI)
+    if (rol !== 'ADMI' && rol !== 'ADMIN') {
+        alert('Acceso restringido: El Reporte Estadístico es exclusivo para Administradores.');
         console.warn("Rol sin permiso para métricas:", usuario.rol);
         window.location.href = '../index.html';
         return false;

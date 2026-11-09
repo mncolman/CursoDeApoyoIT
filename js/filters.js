@@ -73,7 +73,7 @@ export function proyectarAlumnosPorEtapa(alumnosBase, datosCursillo = [], etapa 
             const ordenOficial = parseInt(ex.orden_merito ?? alumno.orden_merito ?? alumno['Orden_De_Merito'], 10);
             const promedio = !isNaN(promOficial)
                 ? promOficial
-                : (notas.length > 0 ? notas.reduce((a, b) => a + b, 0) / notas.length : 0);
+                : (notas.length > 0 ? notas.reduce((a, b) => a + b, 0) / 3 : 0);
             const ordenMeritoOficial = (!isNaN(ordenOficial) && ordenOficial > 0) ? ordenOficial : null;
             return {
                 ...alumno,
@@ -126,8 +126,9 @@ export function proyectarAlumnosPorEtapa(alumnosBase, datosCursillo = [], etapa 
         if (lenPres) notasValidas.push(lenVal);
         if (dibPres) notasValidas.push(dibVal);
 
+        // El promedio de etapa siempre divide la suma de notas entre las 3 asignaturas (ausente suma 0)
         const promedio = notasValidas.length > 0
-            ? notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length
+            ? notasValidas.reduce((a, b) => a + b, 0) / 3
             : 0;
 
         const datosExamenSintetico = {
