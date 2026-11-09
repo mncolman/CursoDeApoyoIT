@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
                   '<ul class="text-start small text-secondary ps-3 mb-3">' +
                   '<li>Se actualizan según la <strong>Comisión</strong> seleccionada o el texto ingresado en el <strong>Buscador</strong>.</li>' +
                   '<li>Ponderan únicamente las calificaciones de los aspirantes visibles en pantalla.</li>' +
-                  '<li>Las inasistencias o casilleros sin nota (<code>-</code>) no computan ni contribuyen al promedio final.</li>' +
+                  '<li>Las inasistencias o casilleros sin nota (<code>-</code>) no computan ni contribuyen a este promedio general.</li>' +
                   '</ul>',
             confirmButtonColor: '#073a86',
             confirmButtonText: 'Entendido'
