@@ -1155,7 +1155,7 @@
 
     <!-- Tarjeta Flotante Movible -->
     <div id="panel-filtros-flotante" class="card shadow-lg border-0 position-fixed"
-        style="top: 90px; right: 25px; width: 340px; z-index: 1050; background-color: rgba(255, 255, 255, 0.96); backdrop-filter: blur(6px); border-radius: 12px; transition: box-shadow 0.2s;">
+        style="top: 90px; right: 25px; width: 340px; max-width: calc(100vw - 30px); z-index: 1050; background-color: rgba(255, 255, 255, 0.96); backdrop-filter: blur(6px); border-radius: 12px; transition: box-shadow 0.2s;">
 
         <!-- Cabecera Arrastrable (Drag Handle) -->
         <div class="card-header text-white py-2 px-3 d-flex justify-content-between align-items-center"
@@ -1165,15 +1165,9 @@
                 <i class="bi bi-funnel-fill" style="color: #ffffff;"></i>
                 <span class="fw-bold small text-uppercase text-nowrap tracking-wide">Filtros Globales</span>
             </div>
-            <div class="d-flex align-items-center gap-1">
-                <button type="button" class="btn btn-sm text-white-50 p-0 me-1" id="btn-minimizar-filtros"
-                    title="Minimizar">
-                    <i class="bi bi-dash-lg"></i>
-                </button>
-                <button type="button" class="btn btn-sm text-white-50 p-0" id="btn-cerrar-filtros" title="Cerrar panel">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
+            <button type="button" class="btn btn-sm text-white p-0" id="btn-cerrar-filtros" title="Cerrar panel" aria-label="Cerrar">
+                <i class="bi bi-x-lg fs-6"></i>
+            </button>
         </div>
 
         <!-- Cuerpo del Panel (Compacto) -->
