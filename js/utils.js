@@ -13,11 +13,121 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
     try {
         const { jsPDF } = window.jspdf;
 
-        // 2. Identificar qué comisiones vamos a procesar
+        // =================================================================
+        // CASO ESPECIAL: LISTA SÁBANA COMPLETA DE ASISTENCIA A EXÁMENES
+        // - Sin división de comisiones (un solo padrón alfabético continuo).
+        // - Encabezado institucional completo SOLO en la primera página.
+        // - Máximo aprovechamiento vertical (letras compactas, padding mínimo, 45-50 filas por página).
+        // - Numeración de páginas discreta al pie ("Página X de Y").
+        // =================================================================
+        if (tipoDescarga === 'asistencia_examenes') {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const anchoHoja = pdf.internal.pageSize.getWidth();
+            const altoHoja = pdf.internal.pageSize.getHeight();
+            const centroX = anchoHoja / 2;
+
+            // Clonamos y ordenamos alfabéticamente a TODO el padrón
+            const padronCompleto = [...aspirantesFiltrados].sort((a, b) => {
+                const apeA = ((a.apellido || '') + ' ' + (a.nombre || '')).trim().toLowerCase();
+                const apeB = ((b.apellido || '') + ' ' + (b.nombre || '')).trim().toLowerCase();
+                return apeA.localeCompare(apeB, 'es', { sensitivity: 'base' });
+            });
+
+            // 1. Estampar logos y encabezado completo en la Página 1
+            pdf.addImage(logoIT, 'PNG', 14, 8, 22, 22);
+            pdf.addImage(logoUNT, 'PNG', anchoHoja - 32, 8, 18, 22);
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(22);
+            pdf.text("INSTITUTO TÉCNICO", centroX, 14, { align: "center" });
+            pdf.setFont("times", "italic");
+            pdf.setFontSize(13);
+            pdf.text("Universidad Nacional de Tucumán", centroX, 20, { align: "center" });
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(12);
+            pdf.text("PLANILLA DE ASISTENCIA A EXÁMENES", centroX, 28, { align: "center" });
+
+            pdf.setDrawColor(180, 180, 180);
+            pdf.setLineWidth(0.5);
+            pdf.line(14, 32, anchoHoja - 14, 32);
+
+            // Cabeceras y filas
+            const cabeceras = [['Nº', 'Apellido y Nombre', 'DNI', 'Matemática\n11/11/26', 'Lengua\n13/11/26', 'Dibujo\n16/11/26']];
+            const filas = padronCompleto.map((a, i) => [
+                i + 1,
+                ((a.apellido || '') + ', ' + (a.nombre || '')).trim().toUpperCase(),
+                a.dni || '',
+                '',
+                '',
+                ''
+            ]);
+
+            // Dibujar tabla continua multi-página
+            pdf.autoTable({
+                head: cabeceras,
+                body: filas,
+                startY: 35, // En la página 1 arranca justo debajo del encabezado
+                margin: { top: 12, bottom: 12, left: 14, right: 14 }, // En páginas siguientes arranca desde arriba (12mm)
+                theme: 'grid',
+                showHead: 'everyPage', // Repite el encabezado de columnas en cada página para no perder referencia
+                headStyles: {
+                    fillColor: [0, 48, 93],
+                    textColor: [255, 255, 255],
+                    halign: 'center',
+                    valign: 'middle',
+                    lineWidth: 0.2,
+                    fontSize: 8,
+                    cellPadding: 1.2
+                },
+                styles: {
+                    fontSize: 7.5,
+                    cellPadding: 1, // Compacto para que quepan muchas filas por página
+                    valign: 'middle',
+                    lineColor: [100, 100, 100],
+                    lineWidth: 0.15,
+                    minCellHeight: 5.2
+                },
+                alternateRowStyles: { fillColor: [248, 249, 250] },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' }, // Nº (para hasta 3 dígitos)
+                    1: { cellWidth: 72, halign: 'left' },   // Apellido y Nombre
+                    2: { cellWidth: 26, halign: 'center' }, // DNI
+                    3: { cellWidth: 25, halign: 'center' }, // Matemática
+                    4: { cellWidth: 25, halign: 'center' }, // Lengua
+                    5: { cellWidth: 25, halign: 'center' }  // Dibujo
+                },
+                didDrawPage: function (data) {
+                    // Numeración de página discreta al pie
+                    const strPagina = "Página " + data.pageNumber;
+                    pdf.setFontSize(8);
+                    pdf.setFont("helvetica", "normal");
+                    pdf.setTextColor(120, 120, 120);
+                    pdf.text(strPagina, centroX, altoHoja - 6, { align: "center" });
+                }
+            });
+
+            // Reemplazo del total de páginas al finalizar
+            const totalPaginas = pdf.internal.getNumberOfPages();
+            for (let p = 1; p <= totalPaginas; p++) {
+                pdf.setPage(p);
+                pdf.setFontSize(8);
+                pdf.setFont("helvetica", "normal");
+                pdf.setTextColor(120, 120, 120);
+                pdf.setFillColor(255, 255, 255);
+                pdf.rect(centroX - 25, altoHoja - 9, 50, 6, 'F'); // Limpiar texto previo
+                pdf.text("Página " + p + " de " + totalPaginas, centroX, altoHoja - 6, { align: "center" });
+            }
+
+            pdf.save("Planilla_Asistencia_Examenes_General_Sabana.pdf");
+            setTimeout(() => { Swal.close(); }, 800);
+            return;
+        }
+
+        // =========================================================
+        // PLANILLAS CLÁSICAS POR COMISIÓN O LISTADO GENERAL
+        // =========================================================
         let comisionesAProcesar = [];
 
         if (esListadoCompleto) {
-            // Si es listado completo, forzamos un array de un solo elemento para que el bucle dé una sola vuelta
             comisionesAProcesar = ["COMPLETO"];
         } else if (comisionSeleccionada !== "") {
             comisionesAProcesar = [String(comisionSeleccionada)];
@@ -37,12 +147,8 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         const anchoHoja = pdf.internal.pageSize.getWidth();
         const centroX = anchoHoja / 2;
 
-        // =========================================================
-        // BUCLE DE HOJAS
-        // =========================================================
         comisionesAProcesar.forEach((comisionActual, index) => {
 
-            // Si es listado completo, metemos a TODOS. Si no, filtramos por la comisión de esta vuelta
             let alumnosDeEstaComision = esListadoCompleto
                 ? aspirantesFiltrados
                 : aspirantesFiltrados.filter(a => String(a.comision) === comisionActual);
@@ -56,8 +162,6 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
             switch (tipoDescarga) {
                 case 'alumnos':
                     tituloPrincipal = "PLANILLA DE ALUMNOS";
-
-                    // Si es listado completo, mostramos la columna de "Comisión" extra
                     if (esListadoCompleto) {
                         cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre', 'Comisión']];
                         filas = alumnosDeEstaComision.map((a, i) => [i + 1, a.dni, a.apellido, a.nombre, a.comision || '-']);
@@ -65,7 +169,6 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
                         cabeceras = [['Nº', 'DNI', 'Apellido', 'Nombre']];
                         filas = alumnosDeEstaComision.map((a, i) => [i + 1, a.dni, a.apellido, a.nombre]);
                     }
-
                     configExtraTabla = {
                         styles: { fontSize: 9, cellPadding: 1, lineColor: [0, 0, 0] },
                         columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
@@ -99,7 +202,7 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
                     break;
             }
 
-            // 5. Estampar logos y textos
+            // Estampar logos y textos
             pdf.addImage(logoIT, 'PNG', 14, 10, 25, 25);
             pdf.addImage(logoUNT, 'PNG', anchoHoja - 34, 10, 20, 25);
             pdf.setFont("helvetica", "normal");
@@ -111,7 +214,6 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
             pdf.setFont("helvetica", "semibold");
             pdf.setFontSize(13);
 
-            // Si es listado completo, no ponemos " - Comisión X" en el título general
             const textoComisionInfo = (!esListadoCompleto && tipoDescarga !== 'observaciones') ? ` - Comisión ${comisionActual}` : (esListadoCompleto ? " (General)" : "");
             pdf.text(tituloPrincipal + textoComisionInfo, centroX, 33, { align: "center" });
 
@@ -130,7 +232,6 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
             pdf.setLineWidth(0.5);
             pdf.line(14, startYLinea, anchoHoja - 14, startYLinea);
 
-            // 6. Dibujar la tabla
             pdf.autoTable({
                 head: cabeceras,
                 body: filas,
@@ -142,13 +243,11 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
                 ...configExtraTabla,
             });
 
-            // 7. Hoja nueva si no es la última vuelta
             if (index < comisionesAProcesar.length - 1) {
                 pdf.addPage();
             }
         });
 
-        // 8. Guardar el PDF unificado
         let nombreArchivo = `Planilla_${tipoDescarga}`;
         if (esListadoCompleto) nombreArchivo += `_General_Sabana.pdf`;
         else if (comisionSeleccionada) nombreArchivo += `_Comision_${comisionSeleccionada}.pdf`;
@@ -162,7 +261,6 @@ export async function descargarPlanillaPDF(aspirantesFiltrados, comisionSeleccio
         Swal.fire('Error', 'Hubo un problema al crear el PDF.', 'error');
     }
 }
-
 
 export async function descargarPlanillaSaludPDF(listaFiltrada) {
     if (!listaFiltrada || listaFiltrada.length === 0) {
@@ -630,6 +728,8 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
             let filas = [];
             let configExtraTabla = {};
 
+            const notaCur = (a, prefijo, matCorto, matLargo) => a?.datos_examen?.[`${prefijo}_${matCorto}`] ?? a?.datos_examen?.[`${prefijo}_${matLargo}`] ?? '-';
+
             switch (tipoEtapa) {
                 case '1er_ev':
                     tituloPrincipal = "CALIFICACIONES - 1º EVALUACIÓN";
@@ -637,9 +737,9 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
                     filas = alumnosDeEstaComision.map((a, i) => [
                         i + 1,
                         `${a.apellido || ''}, ${a.nombre || ''}`,
-                        formatearNota(a.datos_examen?.nota_1er_ev_mat),
-                        formatearNota(a.datos_examen?.nota_1er_ev_len),
-                        formatearNota(a.datos_examen?.nota_1er_ev_dib)
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'mat', 'matematica')),
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'len', 'lengua')),
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'dib', 'dibujo'))
                     ]);
                     configExtraTabla = {
                         columnStyles: {
@@ -658,9 +758,9 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
                     filas = alumnosDeEstaComision.map((a, i) => [
                         i + 1,
                         `${a.apellido || ''}, ${a.nombre || ''}`,
-                        formatearNota(a.datos_examen?.nota_final_mat),
-                        formatearNota(a.datos_examen?.nota_final_len),
-                        formatearNota(a.datos_examen?.nota_final_dib)
+                        formatearNota(notaCur(a, 'nota_final', 'mat', 'matematica')),
+                        formatearNota(notaCur(a, 'nota_final', 'len', 'lengua')),
+                        formatearNota(notaCur(a, 'nota_final', 'dib', 'dibujo'))
                     ]);
                     configExtraTabla = {
                         columnStyles: {
@@ -687,12 +787,12 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
                     filas = alumnosDeEstaComision.map((a, i) => [
                         i + 1,
                         `${a.apellido || ''}, ${a.nombre || ''}`,
-                        formatearNota(a.datos_examen?.nota_1er_ev_mat),
-                        formatearNota(a.datos_examen?.nota_1er_ev_len),
-                        formatearNota(a.datos_examen?.nota_1er_ev_dib),
-                        formatearNota(a.datos_examen?.nota_final_mat),
-                        formatearNota(a.datos_examen?.nota_final_len),
-                        formatearNota(a.datos_examen?.nota_final_dib)
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'mat', 'matematica')),
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'len', 'lengua')),
+                        formatearNota(notaCur(a, 'nota_1er_ev', 'dib', 'dibujo')),
+                        formatearNota(notaCur(a, 'nota_final', 'mat', 'matematica')),
+                        formatearNota(notaCur(a, 'nota_final', 'len', 'lengua')),
+                        formatearNota(notaCur(a, 'nota_final', 'dib', 'dibujo'))
                     ]);
                     configExtraTabla = {
                         columnStyles: {
@@ -770,6 +870,7 @@ export async function descargarNotasTrayectoria(tipoEtapa, formato = 'pdf') {
 function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
     let cabeceras = [];
     let filas = [];
+    const notaCurCSV = (a, prefijo, matCorto, matLargo) => a?.datos_examen?.[`${prefijo}_${matCorto}`] ?? a?.datos_examen?.[`${prefijo}_${matLargo}`] ?? '';
 
     if (tipoEtapa === '1er_ev') {
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática 1º Ev', 'Lengua 1º Ev', 'Dibujo 1º Ev'];
@@ -777,9 +878,9 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_mat),
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_len),
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_dib)
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'mat', 'matematica')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'len', 'lengua')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'dib', 'dibujo'))
         ]);
     } else if (tipoEtapa === 'ensayo') {
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática Ensayo', 'Lengua Ensayo', 'Dibujo Ensayo'];
@@ -787,9 +888,9 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            formatearNotaCSV(a.datos_examen?.nota_final_mat),
-            formatearNotaCSV(a.datos_examen?.nota_final_len),
-            formatearNotaCSV(a.datos_examen?.nota_final_dib)
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'mat', 'matematica')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'len', 'lengua')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'dib', 'dibujo'))
         ]);
     } else {
         cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Mat. 1º Ev', 'Len. 1º Ev', 'Dib. 1º Ev', 'Mat. Ensayo', 'Len. Ensayo', 'Dib. Ensayo'];
@@ -797,12 +898,12 @@ function descargarNotasCSV(aspirantes, comisionSeleccionada, tipoEtapa) {
             i + 1,
             `${a.apellido || ''}, ${a.nombre || ''}`,
             a.comision || '-',
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_mat),
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_len),
-            formatearNotaCSV(a.datos_examen?.nota_1er_ev_dib),
-            formatearNotaCSV(a.datos_examen?.nota_final_mat),
-            formatearNotaCSV(a.datos_examen?.nota_final_len),
-            formatearNotaCSV(a.datos_examen?.nota_final_dib)
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'mat', 'matematica')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'len', 'lengua')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_1er_ev', 'dib', 'dibujo')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'mat', 'matematica')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'len', 'lengua')),
+            formatearNotaCSV(notaCurCSV(a, 'nota_final', 'dib', 'dibujo'))
         ]);
     }
 
@@ -843,4 +944,163 @@ function formatearNota(nota) {
         return 'A';
     }
     return String(nota).trim().replace(/\./g, ',');
+}
+
+// =================================================================
+// 4. DESCARGAR PLANILLAS DE EXAMEN POR GRUPOS / AULAS (PDF)
+// =================================================================
+export async function descargarPlanillaExamenPorGrupos(aspirantesGlobales, gruposConfig, asignaturaInfo) {
+    if (!aspirantesGlobales || aspirantesGlobales.length === 0) {
+        Swal.fire('Atención', 'No hay alumnos para generar los grupos.', 'warning');
+        return;
+    }
+
+    if (!gruposConfig || gruposConfig.length === 0) {
+        Swal.fire('Atención', 'Configuración de grupos inválida.', 'warning');
+        return;
+    }
+
+    Swal.fire({ title: 'Generando Listados por Grupo...', didOpen: () => { Swal.showLoading(); } });
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const anchoHoja = pdf.internal.pageSize.getWidth();
+        const altoHoja = pdf.internal.pageSize.getHeight();
+        const centroX = anchoHoja / 2;
+
+        // 1. Ordenamos a TODO el universo alfabéticamente antes de repartir
+        const padronOrdenado = [...aspirantesGlobales].sort((a, b) => {
+            const apeA = ((a.apellido || '') + ' ' + (a.nombre || '')).trim().toLowerCase();
+            const apeB = ((b.apellido || '') + ' ' + (b.nombre || '')).trim().toLowerCase();
+            return apeA.localeCompare(apeB, 'es', { sensitivity: 'base' });
+        });
+
+        // 2. Segmentamos los alumnos por cada grupo según la configuración
+        let cursorInicio = 0;
+        const totalGrupos = gruposConfig.length;
+
+        gruposConfig.forEach((grupo, idxGrupo) => {
+            const cantidadEnGrupo = grupo.cantidad || 0;
+            const alumnosDelGrupo = padronOrdenado.slice(cursorInicio, cursorInicio + cantidadEnGrupo);
+            cursorInicio += cantidadEnGrupo;
+
+            // Cada grupo arranca en una página nueva si no es el primero
+            if (idxGrupo > 0) {
+                pdf.addPage();
+            }
+
+            // A) Logos institucionales
+            pdf.addImage(logoIT, 'PNG', 14, 8, 20, 20);
+            pdf.addImage(logoUNT, 'PNG', anchoHoja - 30, 8, 16, 20);
+
+            // B) Títulos
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(18);
+            pdf.text("INSTITUTO TÉCNICO", centroX, 13, { align: "center" });
+
+            pdf.setFont("times", "italic");
+            pdf.setFontSize(11);
+            pdf.text("Universidad Nacional de Tucumán", centroX, 18, { align: "center" });
+
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(12);
+            pdf.text(`EXAMEN DE INGRESO - ${asignaturaInfo.nombre.toUpperCase()}`, centroX, 24, { align: "center" });
+
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9);
+            pdf.text(`Fecha: ${asignaturaInfo.fecha}   |   GRUPO N° ${grupo.numero} (${alumnosDelGrupo.length} alumnos)`, centroX, 29, { align: "center" });
+
+            // C) Campos a completar a mano por el docente (Gabinete / Aula y Docente evaluador)
+            pdf.setDrawColor(160, 160, 160);
+            pdf.setLineWidth(0.4);
+            pdf.line(14, 32, anchoHoja - 14, 32);
+
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(8.5);
+            pdf.text("Docente:", 14, 37);
+            pdf.setFont("helvetica", "normal");
+            pdf.text(".....................................................................................................", 28, 37);
+
+            pdf.setFont("helvetica", "bold");
+            pdf.text("Gabinete / Aula:", anchoHoja - 75, 37);
+            pdf.setFont("helvetica", "normal");
+            pdf.text("............................................", anchoHoja - 47, 37);
+
+            // D) Cabeceras y Filas (Observaciones condicional)
+            const incluirObs = Boolean(asignaturaInfo.incluirObservaciones);
+            const cabeceraColAsignatura = `${asignaturaInfo.nombre}\n${asignaturaInfo.fecha}`;
+
+            const cabeceras = incluirObs
+                ? [['Nº', 'Apellido y Nombre', 'DNI', cabeceraColAsignatura, 'Observaciones']]
+                : [['Nº', 'Apellido y Nombre', 'DNI', cabeceraColAsignatura]];
+
+            const filas = alumnosDelGrupo.map((a, i) => {
+                const nombreComp = ((a.apellido || '') + ', ' + (a.nombre || '')).trim().toUpperCase();
+                return incluirObs
+                    ? [i + 1, nombreComp, a.dni || '', '', '']
+                    : [i + 1, nombreComp, a.dni || '', ''];
+            });
+
+            // Configuración de anchos: si no hay observaciones, se amplía el espacio de nombre y firma
+            const colStylesConfig = incluirObs
+                ? {
+                    0: { cellWidth: 10, halign: 'center' }, // Nº
+                    1: { cellWidth: 74, halign: 'left' },   // Apellido y Nombre
+                    2: { cellWidth: 26, halign: 'center' }, // DNI
+                    3: { cellWidth: 32, halign: 'center' }, // Presente / Firma
+                    4: { cellWidth: 40, halign: 'left' }    // Observaciones
+                }
+                : {
+                    0: { cellWidth: 12, halign: 'center' }, // Nº
+                    1: { cellWidth: 110, halign: 'left' },  // Apellido y Nombre (amplio y legible)
+                    2: { cellWidth: 30, halign: 'center' }, // DNI
+                    3: { cellWidth: 30, halign: 'center' }  // Presente / Firma
+                };
+
+            // E) Renderizar tabla
+            pdf.autoTable({
+                head: cabeceras,
+                body: filas,
+                startY: 41,
+                margin: { top: 12, bottom: 14, left: 14, right: 14 },
+                theme: 'grid',
+                showHead: 'everyPage',
+                headStyles: {
+                    fillColor: [0, 48, 93],
+                    textColor: [255, 255, 255],
+                    halign: 'center',
+                    valign: 'middle',
+                    lineWidth: 0.2,
+                    fontSize: 8,
+                    cellPadding: 1.2
+                },
+                styles: {
+                    fontSize: 7.5,
+                    cellPadding: 1.1,
+                    valign: 'middle',
+                    lineColor: [120, 120, 120],
+                    lineWidth: 0.15,
+                    minCellHeight: 5.2
+                },
+                alternateRowStyles: { fillColor: [248, 249, 250] },
+                columnStyles: colStylesConfig,
+                didDrawPage: function (data) {
+                    pdf.setFontSize(8);
+                    pdf.setFont("helvetica", "normal");
+                    pdf.setTextColor(120, 120, 120);
+                    pdf.text(`Grupo ${grupo.numero} de ${totalGrupos}  -  Página ${data.pageNumber}`, centroX, altoHoja - 6, { align: "center" });
+                }
+            });
+        });
+
+        // Nombre de archivo descriptivo
+        const safeNombreMateria = asignaturaInfo.nombre.replace(/\s+/g, '_');
+        pdf.save(`Planilla_Examen_${safeNombreMateria}_Por_Grupos.pdf`);
+        setTimeout(() => { Swal.close(); }, 800);
+
+    } catch (error) {
+        console.error("Error generando grupos PDF:", error);
+        Swal.fire('Error', 'Hubo un problema al crear los listados por grupo.', 'error');
+    }
 }

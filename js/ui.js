@@ -600,11 +600,21 @@ export function configurarInterfazPorRol(usuario) {
     document.getElementById('userNameDisplay').textContent = `${usuario.nombre} (${usuario.rol})`;
 
     // Lógica de Permisos de Interfaz
+    // - Reporte Inscriptos (tabDashboard): visible para ADMI y COOR
+    // - Reporte Estadístico de Exámenes (anclaMetricas): exclusivo para ADMI
     const tabDashboard = document.getElementById('nav-item-dashboard');
+    const anclaMetricas = document.getElementById('item-redireccion-metricas');
+
     if (usuario.rol === 'ADMI' || usuario.rol === 'COOR') {
-        tabDashboard.classList.remove('d-none');
+        if (tabDashboard) tabDashboard.classList.remove('d-none');
     } else {
-        tabDashboard.classList.add('d-none');
+        if (tabDashboard) tabDashboard.classList.add('d-none');
+    }
+
+    if (usuario.rol === 'ADMI') {
+        if (anclaMetricas) anclaMetricas.classList.remove('d-none');
+    } else {
+        if (anclaMetricas) anclaMetricas.classList.add('d-none');
     }
 }
 
@@ -919,26 +929,44 @@ export function extraerYValidarNotas() {
     return { exito: true, payload: payload };
 }
 
-export function renderizarTrayectoriaGlobal() {
+export function renderizarTrayectoriaGlobal(aspirantesParam = null) {
 
     // Apuntamos al ID exacto de tu HTML
     const tbody = document.getElementById('tabla-trayectoria-body');
+    if (!tbody) return;
 
     // Capturamos los valores de tu barra de herramientas
-    const inputBuscador = document.getElementById('searchInputTrayectoria').value.toLowerCase().trim();
-    const selectComision = document.getElementById('filterComisionTrayectoria').value;
-    const selectOrden = document.getElementById('sortSelectTrayectoria').value;
+    const inputBuscador = (document.getElementById('searchInputTrayectoria')?.value || '').toLowerCase().trim();
+    const selectComision = document.getElementById('filterComisionTrayectoria')?.value || '';
+    const selectOrden = document.getElementById('sortSelectTrayectoria')?.value || 'nombre_asc';
 
-    // 1. Recuperamos los datos de la memoria local
-    const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
-    if (!dataGuardada) return;
+    // 1. Recuperamos los datos (priorizamos parámetro si es Array válido, luego estado en memoria, luego almacenamiento local)
+    let todosLosAspirantes = Array.isArray(aspirantesParam) ? aspirantesParam : null;
+    if (!todosLosAspirantes || todosLosAspirantes.length === 0) {
+        if (Array.isArray(aspirantesGlobalesState) && aspirantesGlobalesState.length > 0) {
+            todosLosAspirantes = aspirantesGlobalesState;
+        } else {
+            const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
+            if (dataGuardada) {
+                try {
+                    const sesion = JSON.parse(dataGuardada);
+                    todosLosAspirantes = Array.isArray(sesion.aspirantesGlobales) ? sesion.aspirantesGlobales : [];
+                } catch (e) {
+                    todosLosAspirantes = [];
+                }
+            } else {
+                todosLosAspirantes = [];
+            }
+        }
+    }
 
-    const sesion = JSON.parse(dataGuardada);
-    const todosLosAspirantes = sesion.aspirantesGlobales || [];
+    if (!Array.isArray(todosLosAspirantes)) {
+        todosLosAspirantes = [];
+    }
 
     // 2. FILTRADO MULTIPLE (Buscador + Comisión )
     let alumnosFiltrados = todosLosAspirantes.filter(alumno => {
-        const id = String(alumno.id_inscripcion || '');
+        const id = String(alumno.id_inscripcion || alumno.nro_inscripcion || '');
         const dni = String(alumno.dni || '');
         const apellidoNombre = `${alumno.apellido || ''} ${alumno.nombre || ''}`.toLowerCase();
         const comisionAlumno = String(alumno.comision || '');
@@ -962,9 +990,9 @@ export function renderizarTrayectoriaGlobal() {
                 valorB = `${b.apellido || ''} ${b.nombre || ''}`.toLowerCase();
                 return valorB.localeCompare(valorA);
             case 'inscripcion_asc':
-                return (parseInt(a.id_inscripcion) || 0) - (parseInt(b.id_inscripcion) || 0);
+                return (parseInt(a.id_inscripcion || a.nro_inscripcion) || 0) - (parseInt(b.id_inscripcion || b.nro_inscripcion) || 0);
             case 'inscripcion_desc':
-                return (parseInt(b.id_inscripcion) || 0) - (parseInt(a.id_inscripcion) || 0);
+                return (parseInt(b.id_inscripcion || b.nro_inscripcion) || 0) - (parseInt(a.id_inscripcion || a.nro_inscripcion) || 0);
             case 'depto_asc':
                 valorA = String(a.departamento || '').toLowerCase();
                 valorB = String(b.departamento || '').toLowerCase();
@@ -993,19 +1021,19 @@ export function renderizarTrayectoriaGlobal() {
     // Agregamos el parámetro "index" al forEach
     alumnosFiltrados.forEach((alumno, index) => {
         const orden = index + 1; // Número incremental 1, 2, 3...
-        const nroInsc = alumno.id_inscripcion || '-';
+        const nroInsc = alumno.id_inscripcion || alumno.nro_inscripcion || '-';
         const nombreCompleto = `${alumno.apellido || ''}, ${alumno.nombre || ''}`;
         const comision = alumno.comision || '-';
 
-        // Notas 1° Evaluación
-        const mat1 = alumno.datos_examen?.nota_1er_ev_mat ?? '-';
-        const len1 = alumno.datos_examen?.nota_1er_ev_len ?? '-';
-        const dib1 = alumno.datos_examen?.nota_1er_ev_dib ?? '-';
+        // Notas 1° Evaluación (compatibilidad corta y larga)
+        const mat1 = alumno.datos_examen?.nota_1er_ev_mat ?? alumno.datos_examen?.nota_1er_ev_matematica ?? '-';
+        const len1 = alumno.datos_examen?.nota_1er_ev_len ?? alumno.datos_examen?.nota_1er_ev_lengua ?? '-';
+        const dib1 = alumno.datos_examen?.nota_1er_ev_dib ?? alumno.datos_examen?.nota_1er_ev_dibujo ?? '-';
 
-        // Notas Ensayo Examen (Final)
-        const matFin = alumno.datos_examen?.nota_final_mat ?? '-';
-        const lenFin = alumno.datos_examen?.nota_final_len ?? '-';
-        const dibFin = alumno.datos_examen?.nota_final_dib ?? '-';
+        // Notas Ensayo Examen (Final) (compatibilidad corta y larga)
+        const matFin = alumno.datos_examen?.nota_final_mat ?? alumno.datos_examen?.nota_final_matematica ?? '-';
+        const lenFin = alumno.datos_examen?.nota_final_len ?? alumno.datos_examen?.nota_final_lengua ?? '-';
+        const dibFin = alumno.datos_examen?.nota_final_dib ?? alumno.datos_examen?.nota_final_dibujo ?? '-';
 
         filasHTML += `
             <tr>
@@ -1065,19 +1093,25 @@ export function actualizarPromediosTrayectoria(alumnosFiltrados) {
     alumnosFiltrados.forEach(alumno => {
         if (!alumno.datos_examen) return; // Si no tiene notas, pasamos al siguiente
 
-        // Mapeo de las claves de tu BD a nuestros acumuladores locales
+        // Mapeo de las claves de tu BD a nuestros acumuladores locales (compatibilidad corta y larga)
         const mapaNotas = [
-            { claveBD: 'nota_1er_ev_mat', claveAcum: 'mat_1' },
-            { claveBD: 'nota_1er_ev_len', claveAcum: 'len_1' },
-            { claveBD: 'nota_1er_ev_dib', claveAcum: 'dib_1' },
-            { claveBD: 'nota_final_mat', claveAcum: 'mat_f' }, // Asumo este nombre para el ensayo
-            { claveBD: 'nota_final_len', claveAcum: 'len_f' }, // Asumo este nombre para el ensayo
-            { claveBD: 'nota_final_dib', claveAcum: 'dib_f' }  // Asumo este nombre para el ensayo
+            { clavesBD: ['nota_1er_ev_mat', 'nota_1er_ev_matematica'], claveAcum: 'mat_1' },
+            { clavesBD: ['nota_1er_ev_len', 'nota_1er_ev_lengua'], claveAcum: 'len_1' },
+            { clavesBD: ['nota_1er_ev_dib', 'nota_1er_ev_dibujo'], claveAcum: 'dib_1' },
+            { clavesBD: ['nota_final_mat', 'nota_final_matematica'], claveAcum: 'mat_f' },
+            { clavesBD: ['nota_final_len', 'nota_final_lengua'], claveAcum: 'len_f' },
+            { clavesBD: ['nota_final_dib', 'nota_final_dibujo'], claveAcum: 'dib_f' }
         ];
 
         // 3. Revisamos cada nota del alumno
         mapaNotas.forEach(mapa => {
-            let valorOriginal = alumno.datos_examen[mapa.claveBD];
+            let valorOriginal = undefined;
+            for (let k of mapa.clavesBD) {
+                if (alumno.datos_examen[k] !== undefined && alumno.datos_examen[k] !== null && alumno.datos_examen[k] !== "") {
+                    valorOriginal = alumno.datos_examen[k];
+                    break;
+                }
+            }
 
             // Si existe y no está vacío
             if (valorOriginal !== undefined && valorOriginal !== null && valorOriginal !== "") {

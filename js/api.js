@@ -1,7 +1,19 @@
 import * as UI from './ui.js';
 
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyuYvx4AOqZoIjC2nRO8wtD0oOv5IPKjfj4m6jKRhEdNM8f1F2ZLSIlWuoJCIZaMR57_g/exec';
+
+export const EstadoDashboard = {
+    alumnos: [],
+    cursillo: [],
+    examenes: {},
+    docentes: { mapaComisionMateria: {}, docentes: {} }
+};
+
+if (typeof window !== 'undefined') {
+    window.EstadoDashboard = EstadoDashboard;
+}
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwUbcVenxihyHX5jnxVzQBxYv57VixgCzrPAAriFgibB8I4yubCDPErBiJLvZhlehis_w/exec';
 
 export async function peticionLogin(usuario, clave) {
     const peticion = {
@@ -12,6 +24,7 @@ export async function peticionLogin(usuario, clave) {
 
     const response = await fetch(GAS_URL, {
         method: 'POST',
+        redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(peticion)
     });
@@ -28,7 +41,7 @@ export async function peticionLogin(usuario, clave) {
  */
 export async function enviarNotasAlServidor(payloadDatos) {
     try {
-        console.log("Enviando notas al servidor...", payloadDatos);
+        //console.log("Enviando notas al servidor...", payloadDatos);
 
         // 1. Recuperamos la sesión para obtener el token
         const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
@@ -80,7 +93,6 @@ export async function enviarNotasAlServidor(payloadDatos) {
 
                 // Guardamos el paquete actualizado en el navegador
                 localStorage.setItem('sesionInstitutoTecnico', JSON.stringify(sesion));
-                console.log("Permisos locales actualizados tras el envío.");
             }
         }
 
@@ -158,5 +170,59 @@ export async function obtenerDatosFrescos(email, token) {
         console.error("Fallo crítico en obtenerDatosFrescos:", error);
         // Devolvemos un objeto estructurado para que el catch de inicializarApp no explote
         return { exito: false, mensaje: error.message }; 
+    }
+}
+
+export async function cargarDatosEstadisticos() {
+    const btnActualizar = document.getElementById('btn-actualizar-graficos');
+    if (btnActualizar) btnActualizar.innerHTML = "⏳ Cargando...";
+
+    // Recuperamos la sesión para obtener el token desde localStorage
+    const dataGuardada = localStorage.getItem('sesionInstitutoTecnico');
+    const sesion = dataGuardada ? JSON.parse(dataGuardada) : {};
+    const token = sesion.token || '';
+
+    const payload = {
+        accion: 'obtener_estadisticas',
+        token: token
+    };
+
+    try {
+        const urlConAccion = `${GAS_URL}?accion=obtener_estadisticas&token=${encodeURIComponent(token)}`;
+        const respuesta = await fetch(urlConAccion, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!respuesta.ok) {
+            throw new Error(`Error HTTP: ${respuesta.status}`);
+        }
+
+        const json = await respuesta.json();
+
+        if (btnActualizar) btnActualizar.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Actualizar Datos';
+
+        if (json.exito) {
+            
+            // Guardamos los datos en nuestro Estado Global
+            EstadoDashboard.alumnos = json.datos.alumnos || [];
+            EstadoDashboard.examenes = json.datos.estructura_examenes || {};
+            EstadoDashboard.cursillo = json.datos.cursillo || [];
+            EstadoDashboard.docentes = json.datos?.docentes || { mapaComisionMateria: {}, docentes: {} };
+            sessionStorage.setItem('bancoDocentes', JSON.stringify(EstadoDashboard.docentes));
+
+            return true;
+        } else {
+            console.error("❌ Error del servidor al cargar estadísticas:", json.mensaje);
+            alert("No se pudieron cargar las estadísticas: " + (json.mensaje || "Error desconocido."));
+            return false;
+        }
+    } catch (error) {
+        console.error("❌ Fallo de red al cargar estadísticas:", error);
+        if (btnActualizar) btnActualizar.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Actualizar Datos';
+        alert("Error de conexión al cargar estadísticas: " + error.message);
+        return false;
     }
 }

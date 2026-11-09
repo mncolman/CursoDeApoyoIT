@@ -124,6 +124,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
+    // Toggle visibilidad de contraseña en el login
+    const btnVerClave = document.getElementById('btnVerClave');
+    if (btnVerClave) {
+        btnVerClave.addEventListener('click', (e) => {
+            e.preventDefault();
+            const inputClave = document.getElementById('loginClave');
+            const iconoOjo = document.getElementById('iconoOjo');
+            if (!inputClave || !iconoOjo) return;
+
+            const esPassword = inputClave.type === 'password';
+            inputClave.type = esPassword ? 'text' : 'password';
+            iconoOjo.classList.toggle('bi-eye', !esPassword);
+            iconoOjo.classList.toggle('bi-eye-slash', esPassword);
+        });
+    }
+
     // inicio y cierre de sesion
     document.getElementById('loginForm').addEventListener('submit', iniciarSesion); // (O Auth.iniciarSesion si la moviste)
     document.getElementById('btnCerrarSesion').addEventListener('click', Auth.cerrarSesion);
@@ -181,15 +197,35 @@ document.addEventListener('DOMContentLoaded', function () {
     elementosFiltroTrayectoria.forEach(id => {
         const elemento = document.getElementById(id);
         if (elemento) {
-            elemento.addEventListener('input', UI.renderizarTrayectoriaGlobal);
-            elemento.addEventListener('change', UI.renderizarTrayectoriaGlobal);
+            elemento.addEventListener('input', () => UI.renderizarTrayectoriaGlobal());
+            elemento.addEventListener('change', () => UI.renderizarTrayectoriaGlobal());
         }
+    });
+
+    // Botón de información de promedios en trayectoria
+    document.getElementById('btn-info-promedios-trayectoria')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        Swal.fire({
+            icon: 'info',
+            title: 'Cálculo de Promedios',
+            html: '<p class="text-muted text-start mb-2">Los <strong>Promedios Generales</strong> de esta fila se calculan dinámicamente en tiempo real:</p>' +
+                  '<ul class="text-start small text-secondary ps-3 mb-3">' +
+                  '<li>Se actualizan según la <strong>Comisión</strong> seleccionada o el texto ingresado en el <strong>Buscador</strong>.</li>' +
+                  '<li>Ponderan únicamente las calificaciones de los aspirantes visibles en pantalla.</li>' +
+                  '<li>Las inasistencias o casilleros sin nota (<code>-</code>) no computan ni contribuyen a este promedio general.</li>' +
+                  '</ul>',
+            confirmButtonColor: '#073a86',
+            confirmButtonText: 'Entendido'
+        });
     });
 
     const tabTrayectoria = document.getElementById('trayectoria-tab');
     if (tabTrayectoria) {
+        tabTrayectoria.addEventListener('shown.bs.tab', () => {
+            UI.renderizarTrayectoriaGlobal();
+        });
         tabTrayectoria.addEventListener('click', () => {
-
             setTimeout(() => {
                 UI.renderizarTrayectoriaGlobal();
             }, 50);
@@ -268,6 +304,222 @@ const obtenerFormatoElegido = () => {
     }
 
     // Escuchadores de los 4 botones del modal
+    // =================================================================
+    // CONTROL DEL MODAL DE DISTRIBUCIÓN POR GRUPOS / AULAS (TIPO CARRITO)
+    // =================================================================
+    const modalGruposEl = document.getElementById('modalGruposExamen');
+    let modalGruposInstancia = null;
+
+    // Estado de la distribución actual
+    let estadoDistribucion = {
+        totalAlumnos: 0,
+        numGrupos: 10,
+        tamanoBase: 0,
+        rebalseTotal: 0,
+        rebalsePorGrupo: {} // Mapa { grupoNum: cantidadExtra } ej: { 1: 3, 2: 2 }
+    };
+
+    function calcularDistribucionDinamica() {
+        const total = (aspirantesGlobales && Array.isArray(aspirantesGlobales)) ? aspirantesGlobales.length : 0;
+        const inputGrupos = document.getElementById('inputCantidadGrupos');
+        let numGrupos = parseInt(inputGrupos?.value, 10);
+
+        if (isNaN(numGrupos) || numGrupos <= 0) numGrupos = 1;
+        if (numGrupos > total && total > 0) numGrupos = total;
+
+        const base = Math.floor(total / numGrupos);
+        const rebalse = total % numGrupos;
+
+        estadoDistribucion.totalAlumnos = total;
+        estadoDistribucion.numGrupos = numGrupos;
+        estadoDistribucion.tamanoBase = base;
+        estadoDistribucion.rebalseTotal = rebalse;
+
+        // Reiniciamos y repartimos inicialmente 1 extra a los primeros 'rebalse' grupos
+        estadoDistribucion.rebalsePorGrupo = {};
+        for (let g = 1; g <= numGrupos; g++) {
+            estadoDistribucion.rebalsePorGrupo[g] = (g <= rebalse) ? 1 : 0;
+        }
+
+        renderizarPanelDistribucion();
+    }
+
+    function renderizarPanelDistribucion() {
+        const { totalAlumnos, numGrupos, tamanoBase, rebalseTotal, rebalsePorGrupo } = estadoDistribucion;
+
+        const inputTotal = document.getElementById('inputTotalAspirantesGrupos');
+        if (inputTotal) inputTotal.value = `${totalAlumnos} alumnos`;
+
+        // Calculamos cuántos extras están asignados actualmente en los carritos
+        const asignadosActualmente = Object.values(rebalsePorGrupo).reduce((acc, v) => acc + (v || 0), 0);
+        const restantesPorAsignar = rebalseTotal - asignadosActualmente;
+
+        const badgeResumen = document.getElementById('badgeDistribucionResumen');
+        if (badgeResumen) {
+            badgeResumen.className = restantesPorAsignar === 0 ? 'badge bg-success text-white' : 'badge bg-warning text-dark';
+            badgeResumen.textContent = `Base: ${tamanoBase} al. | Sobrantes totales: ${rebalseTotal} | Por asignar: ${restantesPorAsignar}`;
+        }
+
+        const textoDetalle = document.getElementById('textoDetalleRebalse');
+        if (textoDetalle) {
+            if (rebalseTotal === 0) {
+                textoDetalle.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Reparto exacto:</span> Todos los ${numGrupos} grupos tendrán exactamente <strong>${tamanoBase} alumnos</strong>.`;
+            } else if (restantesPorAsignar === 0) {
+                textoDetalle.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Rebalse completamente distribuido (${rebalseTotal} alumnos).</span> Podés reajustar los botones (+ / -) de cada grupo según necesites:`;
+            } else {
+                textoDetalle.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Atención:</span> Tenés <strong>${restantesPorAsignar} alumno(s) pendiente(s) de asignar</strong>. Usá los botones (+ / -) para agregarlos al grupo o aula que desees:`;
+            }
+        }
+
+        const grilla = document.getElementById('grillaAsignacionRebalse');
+        if (!grilla) return;
+
+        if (rebalseTotal === 0) {
+            grilla.innerHTML = '';
+            return;
+        }
+
+        let htmlCards = '';
+        for (let g = 1; g <= numGrupos; g++) {
+            const extra = rebalsePorGrupo[g] || 0;
+            const cantidadGrupo = tamanoBase + extra;
+            const tieneExtra = extra > 0;
+            const borderClass = tieneExtra ? 'border-primary bg-white shadow-sm' : 'border-secondary-subtle bg-light';
+
+            htmlCards += `
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card p-2.5 ${borderClass} text-center" style="transition: all 0.2s;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold small text-dark">Grupo ${g}</span>
+                            <span class="badge ${tieneExtra ? 'bg-primary' : 'bg-secondary-subtle text-secondary'}" style="font-size: 0.7rem;">
+                                ${cantidadGrupo} al.
+                            </span>
+                        </div>
+
+                        <!-- Selector tipo carrito (+ / -) -->
+                        <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0.5 btn-restar-rebalse" data-grupo="${g}" ${extra <= 0 ? 'disabled' : ''}>
+                                <i class="bi bi-dash"></i>
+                            </button>
+                            <span class="fw-bold fs-6 font-monospace ${tieneExtra ? 'text-primary' : 'text-muted'}" style="min-width: 24px;">
+                                +${extra}
+                            </span>
+                            <button type="button" class="btn btn-outline-primary btn-sm px-2 py-0.5 btn-sumar-rebalse" data-grupo="${g}" ${restantesPorAsignar <= 0 ? 'disabled' : ''}>
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        grilla.innerHTML = htmlCards;
+
+        // Escuchar clics en los botones de restar (-)
+        grilla.querySelectorAll('.btn-restar-rebalse').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const gNum = parseInt(e.currentTarget.dataset.grupo, 10);
+                if ((estadoDistribucion.rebalsePorGrupo[gNum] || 0) > 0) {
+                    estadoDistribucion.rebalsePorGrupo[gNum]--;
+                    renderizarPanelDistribucion();
+                }
+            });
+        });
+
+        // Escuchar clics en los botones de sumar (+)
+        grilla.querySelectorAll('.btn-sumar-rebalse').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const gNum = parseInt(e.currentTarget.dataset.grupo, 10);
+                const asignados = Object.values(estadoDistribucion.rebalsePorGrupo).reduce((acc, v) => acc + (v || 0), 0);
+                if (asignados < estadoDistribucion.rebalseTotal) {
+                    estadoDistribucion.rebalsePorGrupo[gNum] = (estadoDistribucion.rebalsePorGrupo[gNum] || 0) + 1;
+                    renderizarPanelDistribucion();
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Sin sobrantes disponibles',
+                        text: 'Ya distribuiste la totalidad de los alumnos de rebalse.',
+                        timer: 1800,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        });
+    }
+
+    // Abrir modal de grupos desde el modal de descargas
+    document.getElementById('btnAbrirModalGruposExamen')?.addEventListener('click', () => {
+        const modalOpcionesEl = document.getElementById('modalOpcionesDescarga');
+        const modalOpciones = bootstrap.Modal.getInstance(modalOpcionesEl);
+        if (modalOpciones) modalOpciones.hide();
+
+        if (!modalGruposInstancia && modalGruposEl) {
+            modalGruposInstancia = new bootstrap.Modal(modalGruposEl);
+        }
+        calcularDistribucionDinamica();
+        if (modalGruposInstancia) modalGruposInstancia.show();
+    });
+
+    document.getElementById('inputCantidadGrupos')?.addEventListener('input', () => {
+        calcularDistribucionDinamica();
+    });
+
+    // Actualizar etiqueta del switch de observaciones
+    document.getElementById('checkIncluirObservaciones')?.addEventListener('change', (e) => {
+        const label = document.getElementById('labelCheckObservaciones');
+        if (label) {
+            label.textContent = e.target.checked ? 'Habilitada' : 'Deshabilitada';
+            label.className = e.target.checked ? 'form-check-label small fw-bold text-primary cursor-pointer' : 'form-check-label small text-muted cursor-pointer';
+        }
+    });
+
+    // Helper para armar la lista de grupos final y descargar
+    function ejecutarDescargaGrupoPorAsignatura(nombreMateria, fechaMateria) {
+        const { numGrupos, tamanoBase, rebalseTotal, rebalsePorGrupo } = estadoDistribucion;
+        const totalAsignados = Object.values(rebalsePorGrupo).reduce((acc, v) => acc + (v || 0), 0);
+
+        if (totalAsignados !== rebalseTotal) {
+            const faltantes = rebalseTotal - totalAsignados;
+            Swal.fire({
+                icon: 'warning',
+                title: 'Distribución incompleta',
+                text: `Aún quedan ${faltantes} alumno(s) sobrante(s) por asignar a los grupos.`
+            });
+            return;
+        }
+
+        const configFinalGrupos = [];
+        for (let g = 1; g <= numGrupos; g++) {
+            const extra = rebalsePorGrupo[g] || 0;
+            configFinalGrupos.push({
+                numero: g,
+                cantidad: tamanoBase + extra
+            });
+        }
+
+        const checkObs = document.getElementById('checkIncluirObservaciones');
+        const incluirObservaciones = Boolean(checkObs?.checked);
+
+        Utils.descargarPlanillaExamenPorGrupos(aspirantesGlobales, configFinalGrupos, {
+            nombre: nombreMateria,
+            fecha: fechaMateria,
+            incluirObservaciones: incluirObservaciones
+        });
+    }
+
+    // Listeners de los 3 botones de asignatura
+    document.getElementById('btnDescargarGrupoMatematica')?.addEventListener('click', () => {
+        ejecutarDescargaGrupoPorAsignatura('Matemática', '11/11/26');
+    });
+    document.getElementById('btnDescargarGrupoLengua')?.addEventListener('click', () => {
+        ejecutarDescargaGrupoPorAsignatura('Lengua', '13/11/26');
+    });
+    document.getElementById('btnDescargarGrupoDibujo')?.addEventListener('click', () => {
+        ejecutarDescargaGrupoPorAsignatura('Dibujo Técnico', '16/11/26');
+    });
+
+    // Escuchadores de los 4 botones del modal
+    document.getElementById('btnDescargarAsistenciaExamenes')?.addEventListener('click', () => prepararYDescargar('asistencia_examenes'));
     document.getElementById('btnDescargarComisiones').addEventListener('click', () => prepararYDescargar('alumnos'));
     document.getElementById('btnDescargarAsistenciaSemanal').addEventListener('click', () => prepararYDescargar('semanal'));
     document.getElementById('btnDescargarAsistenciaMensual').addEventListener('click', () => prepararYDescargar('mensual'));
@@ -570,6 +822,7 @@ async function iniciarSesion(e) {
             // 6. Disparar dibujados
             orquestarFiltros();
             UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
+            UI.renderizarTrayectoriaGlobal();
 
 
             // 7. Forzamos el dibujado inicial directo (Sin depender de eventos fantasma)
@@ -583,11 +836,23 @@ async function iniciarSesion(e) {
 
 
         } else {
-            alert(data.mensaje); // Login incorrecto
+            Swal.fire({
+                icon: 'error',
+                title: 'Credenciales Incorrectas',
+                text: data.mensaje || 'El correo o la contraseña ingresados son incorrectos.',
+                confirmButtonColor: '#073a86',
+                confirmButtonText: 'Entendido'
+            });
         }
     } catch (error) {
         console.error(error);
-        alert("Ocurrió un error al intentar conectar con el servidor.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Conexión',
+            text: 'Ocurrió un error al intentar conectar con el servidor.',
+            confirmButtonColor: '#073a86',
+            confirmButtonText: 'Reintentar'
+        });
     } finally {
         // 7. Restaurar botón (Delega a UI)
 
@@ -754,6 +1019,11 @@ function aplicarMutacionLocal(payload) {
 function cruzarDatosAspirantesNotas(aspirantes, notasCrudas) {
     if (!aspirantes || aspirantes.length === 0) return [];
 
+    // Si el backend ya ensambló las notas o no vienen notas crudas sueltas, preservamos los aspirantes intactos
+    if (!notasCrudas || !Array.isArray(notasCrudas) || notasCrudas.length <= 1) {
+        return aspirantes;
+    }
+
     // 1. Armamos un diccionario (Hash Map) ultra rápido con las notas
     const mapaNotas = {};
 
@@ -891,8 +1161,8 @@ function arrancarInterfazBase() {
 
     if (typeof orquestarFiltros === 'function') orquestarFiltros();
 
-    console.log("holaaa",permisosDocentes);
     UI.inicializarModuloNotas(aspirantesGlobales, permisosDocentes);
+    UI.renderizarTrayectoriaGlobal();
     UI.renderizarTablaCronograma(eventosGlobales || []);
     UI.inicializarCalendario(eventosGlobales || []);
 
