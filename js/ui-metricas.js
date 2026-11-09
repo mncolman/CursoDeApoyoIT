@@ -1669,7 +1669,6 @@ export function inicializarPanelFlotanteFiltros() {
     const header = document.getElementById('panel-filtros-header');
     const btnCerrar = document.getElementById('btn-cerrar-filtros');
     const btnAbrir = document.getElementById('btn-abrir-filtros-flotantes');
-    const btnMinimizar = document.getElementById('btn-minimizar-filtros');
     const body = document.getElementById('panel-filtros-body');
 
     if (!panel || !header) return;
@@ -1679,7 +1678,7 @@ export function inicializarPanelFlotanteFiltros() {
     let startX, startY, initialLeft, initialTop;
 
     header.onmousedown = (e) => {
-        // Si hace clic en los botones de minimizar o cerrar, ignorar el arrastre
+        // Si hace clic en el botón de cerrar, ignorar el arrastre
         if (e.target.closest('button')) return;
 
         isDragging = true;
@@ -1715,21 +1714,9 @@ export function inicializarPanelFlotanteFiltros() {
         };
     };
 
-    // --- 2. MINIMIZAR / MAXIMIZAR (Inicializa minimizado) ---
-    let minimizado = true;
-    if (body) body.style.display = 'none';
-    if (btnMinimizar) btnMinimizar.innerHTML = '<i class="bi bi-plus-lg"></i>';
-    panel.style.width = '230px';
-
-    if (btnMinimizar && body) {
-        btnMinimizar.onclick = (e) => {
-            e.stopPropagation();
-            minimizado = !minimizado;
-            body.style.display = minimizado ? 'none' : 'block';
-            btnMinimizar.innerHTML = minimizado ? '<i class="bi bi-plus-lg"></i>' : '<i class="bi bi-dash-lg"></i>';
-            panel.style.width = minimizado ? '230px' : '340px';
-        };
-    }
+    // --- 2. ESTADO INICIAL COMPLETO (Sin minimizado) ---
+    if (body) body.style.display = 'block';
+    panel.style.width = '340px';
 
     // --- 3. CERRAR Y REABRIR ---
     if (btnCerrar && btnAbrir) {

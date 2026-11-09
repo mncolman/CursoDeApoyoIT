@@ -23,6 +23,7 @@
 
 body {
     background-color: #f8f9fa;
+    overflow-x: clip;
 }
 
 .navbar-brand {
@@ -443,4 +444,27 @@ body {
     vertical-align: middle;
     border-color: rgba(255, 255, 255, 0.15) !important;
     letter-spacing: 0.3px;
+}
+
+
+/* ==========================================================================
+   PROTECCIÓN RESPONSIVA DE ENCABEZADOS Y BADGES EN CARDS / DASHBOARD
+   ========================================================================== */
+.card-header .badge {
+    white-space: normal;
+    text-align: left;
+    max-width: 100%;
+}
+
+.card-header select.form-select {
+    max-width: 100%;
+}
+
+/* ==========================================================================
+   RESGUARDO RESPONSIVO PARA TABLAS Y CONTENEDORES
+   ========================================================================== */
+.table-responsive {
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    -webkit-overflow-scrolling: touch;
 }

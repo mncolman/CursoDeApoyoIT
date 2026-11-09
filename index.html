@@ -24,7 +24,7 @@
     <!-- PANTALLA DE LOGIN -->
     <section id="login-container" class="container d-flex align-items-center justify-content-center py-4 py-md-5" style="min-height: 90vh;">
         <div class="row justify-content-center w-100">
-            <div class="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4 px-2 px-sm-3">
+            <div class="col-12 col-sm-11 col-md-8 col-lg-6 col-xl-5 px-2 px-sm-3" style="max-width: 560px;">
                 <div class="card shadow border rounded-4 bg-white" style="border-color: #d0d7de !important;">
                     <article class="card-body p-4 p-sm-5">
                         <div class="d-flex justify-content-center mb-3 mb-sm-4">
@@ -44,6 +44,9 @@
                                         <i class="bi bi-eye" id="iconoOjo"></i>
                                     </button>
                                 </div>
+                                <span class="text-muted d-block mt-2 small" style="font-size: 0.78rem;">
+                                    <i class="bi bi-info-circle me-1 text-primary"></i>Por problemas de acceso, contactar con la coordinación.
+                                </span>
                             </section>
                             <button type="submit" class="btn w-100 py-2.5 text-white fw-semibold rounded-3 shadow-sm btn-login-submit" id="btnLogin"
                                 style="background-color: #073a86;">
@@ -573,7 +576,7 @@
 
 
                 <!-- PESTAÑA: Dashboard General -->
-                <article class="tab-pane fade" id="dashboard" role="tabpanel">
+                <article class="tab-pane fade px-3 px-md-0" id="dashboard" role="tabpanel">
                     <h4 class="texto_azul_institucional mb-4 mt-2"><i class="bi bi-pie-chart-fill me-2"></i>Reporte General de Inscripciones</h4>
 
                     <div class="row g-3">
@@ -636,7 +639,7 @@
                     <section class="row g-3 mt-1">
 
                         <!-- Procedencia (Todos los Departamentos) -->
-                        <div class="col-12 col-md-4 mb-3 mb-md-0"> <!-- Añadí márgenes para móvil -->
+                        <div class="col-12 col-md-4 mb-3 mb-md-0">
                             <div class="card bg-light shadow-sm h-100 border-0">
                                 <div class="card-body">
                                     <h6 class="text-uppercase fw-bold text-muted mb-3">Distribución por Departamento
@@ -942,12 +945,6 @@
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button class="btn btn-white border d-flex justify-content-between align-items-center py-2.5 px-3 shadow-xs text-dark hover-shadow"
-                                id="btnDescargarAsistenciaExamenes" style="background-color: #ffffff;">
-                                <span><i class="bi bi-file-earmark-spreadsheet-fill me-2 text-primary"></i> Asistencia a Exámenes (Lista Sábana Completa)</span>
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-download me-1"></i>PDF</span>
-                            </button>
-
                             <button class="btn text-white d-flex justify-content-between align-items-center py-2.5 px-3 shadow-xs"
                                 id="btnAbrirModalGruposExamen" style="background-color: #1b396a; border-color: #1b396a;">
                                 <span><i class="bi bi-diagram-3-fill me-2 text-warning"></i> Asistencia por Grupos / Aulas (Personalizado Docente)</span>
@@ -1032,6 +1029,25 @@
                             <!-- Los checkboxes o selects de rebalse se renderizarán acá dinámicamente -->
                             <div class="row g-2 mt-2" id="grillaAsignacionRebalse"></div>
                         </div>
+                    </div>
+
+                    <!-- Planilla General de Asistencia para Coordinadores (Todas las asignaturas por Grupo) -->
+                    <div class="mb-3 pb-3 border-bottom">
+                        <h6 class="small fw-bold text-uppercase text-dark mb-2">
+                            <i class="bi bi-file-earmark-spreadsheet-fill me-1 text-primary"></i> Planilla General de Asistencia (Coordinación):
+                        </h6>
+                        <button type="button" class="btn btn-outline-dark w-100 py-2.5 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 shadow-xs hover-shadow" id="btnDescargarGrupoGeneral" style="border-color: #073a86; background-color: #f7f9fc;">
+                            <div class="d-flex align-items-center text-start">
+                                <i class="bi bi-collection-fill me-2 fs-5" style="color: #073a86;"></i>
+                                <div>
+                                    <span class="fw-bold d-block text-dark">Planilla General de Asistencia para Coordinadores</span>
+                                    <small class="text-muted">Incluye Matemática, Lengua y Dibujo Técnico distribuidos por grupo</small>
+                                </div>
+                            </div>
+                            <span class="badge text-white px-3 py-2" style="background-color: #073a86;">
+                                <i class="bi bi-download me-1"></i>Descargar PDF
+                            </span>
+                        </button>
                     </div>
 
                     <!-- Botones de Descarga por Asignatura -->

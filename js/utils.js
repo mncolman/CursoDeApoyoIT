@@ -1104,3 +1104,161 @@ export async function descargarPlanillaExamenPorGrupos(aspirantesGlobales, grupo
         Swal.fire('Error', 'Hubo un problema al crear los listados por grupo.', 'error');
     }
 }
+
+// =================================================================
+// 5. DESCARGAR PLANILLA GENERAL DE ASISTENCIA POR GRUPOS (PDF)
+// Para coordinadores: incluye Matemática, Lengua y Dibujo por grupo
+// =================================================================
+export async function descargarPlanillaExamenPorGruposGeneral(aspirantesGlobales, gruposConfig, opciones = {}) {
+    if (!aspirantesGlobales || aspirantesGlobales.length === 0) {
+        Swal.fire('Atención', 'No hay alumnos para generar los grupos.', 'warning');
+        return;
+    }
+
+    if (!gruposConfig || gruposConfig.length === 0) {
+        Swal.fire('Atención', 'Configuración de grupos inválida.', 'warning');
+        return;
+    }
+
+    Swal.fire({ title: 'Generando Planilla General por Grupos...', didOpen: () => { Swal.showLoading(); } });
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const anchoHoja = pdf.internal.pageSize.getWidth();
+        const altoHoja = pdf.internal.pageSize.getHeight();
+        const centroX = anchoHoja / 2;
+
+        // 1. Ordenamos a TODO el universo alfabéticamente antes de repartir
+        const padronOrdenado = [...aspirantesGlobales].sort((a, b) => {
+            const apeA = ((a.apellido || '') + ' ' + (a.nombre || '')).trim().toLowerCase();
+            const apeB = ((b.apellido || '') + ' ' + (b.nombre || '')).trim().toLowerCase();
+            return apeA.localeCompare(apeB, 'es', { sensitivity: 'base' });
+        });
+
+        // 2. Segmentamos los alumnos por cada grupo según la configuración
+        let cursorInicio = 0;
+        const totalGrupos = gruposConfig.length;
+        const incluirObs = Boolean(opciones.incluirObservaciones);
+
+        gruposConfig.forEach((grupo, idxGrupo) => {
+            const cantidadEnGrupo = grupo.cantidad || 0;
+            const alumnosDelGrupo = padronOrdenado.slice(cursorInicio, cursorInicio + cantidadEnGrupo);
+            cursorInicio += cantidadEnGrupo;
+
+            // Cada grupo arranca en una página nueva si no es el primero
+            if (idxGrupo > 0) {
+                pdf.addPage();
+            }
+
+            // A) Logos institucionales
+            pdf.addImage(logoIT, 'PNG', 14, 8, 20, 20);
+            pdf.addImage(logoUNT, 'PNG', anchoHoja - 30, 8, 16, 20);
+
+            // B) Títulos
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(18);
+            pdf.text("INSTITUTO TÉCNICO", centroX, 13, { align: "center" });
+
+            pdf.setFont("times", "italic");
+            pdf.setFontSize(11);
+            pdf.text("Universidad Nacional de Tucumán", centroX, 18, { align: "center" });
+
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(12);
+            pdf.text("EXAMEN DE INGRESO - PLANILLA GENERAL DE ASISTENCIA", centroX, 24, { align: "center" });
+
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9);
+            pdf.text(`GRUPO N° ${grupo.numero} (${alumnosDelGrupo.length} alumnos)   |   Coordinación de Ingreso`, centroX, 29, { align: "center" });
+
+            // C) Campos a completar por los responsables (Gabinete / Aula y Docente / Responsable)
+            pdf.setDrawColor(160, 160, 160);
+            pdf.setLineWidth(0.4);
+            pdf.line(14, 32, anchoHoja - 14, 32);
+
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(8.5);
+            pdf.text("Docente / Responsable:", 14, 37);
+            pdf.setFont("helvetica", "normal");
+            pdf.text("...........................................................................................", 49, 37);
+
+            pdf.setFont("helvetica", "bold");
+            pdf.text("Gabinete / Aula:", anchoHoja - 75, 37);
+            pdf.setFont("helvetica", "normal");
+            pdf.text("............................................", anchoHoja - 47, 37);
+
+            // D) Cabeceras y Filas (con las 3 asignaturas)
+            const cabeceras = incluirObs
+                ? [['Nº', 'Apellido y Nombre', 'DNI', 'Matemática\n11/11/26', 'Lengua\n13/11/26', 'Dibujo\n16/11/26', 'Observaciones']]
+                : [['Nº', 'Apellido y Nombre', 'DNI', 'Matemática\n11/11/26', 'Lengua\n13/11/26', 'Dibujo\n16/11/26']];
+
+            const filas = alumnosDelGrupo.map((a, i) => {
+                const nombreComp = ((a.apellido || '') + ', ' + (a.nombre || '')).trim().toUpperCase();
+                return incluirObs
+                    ? [i + 1, nombreComp, a.dni || '', '', '', '', '']
+                    : [i + 1, nombreComp, a.dni || '', '', '', ''];
+            });
+
+            const colStylesConfig = incluirObs
+                ? {
+                    0: { cellWidth: 8, halign: 'center' },
+                    1: { cellWidth: 60, halign: 'left' },
+                    2: { cellWidth: 24, halign: 'center' },
+                    3: { cellWidth: 20, halign: 'center' },
+                    4: { cellWidth: 20, halign: 'center' },
+                    5: { cellWidth: 20, halign: 'center' },
+                    6: { cellWidth: 30, halign: 'left' }
+                }
+                : {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 74, halign: 'left' },
+                    2: { cellWidth: 26, halign: 'center' },
+                    3: { cellWidth: 24, halign: 'center' },
+                    4: { cellWidth: 24, halign: 'center' },
+                    5: { cellWidth: 24, halign: 'center' }
+                };
+
+            pdf.autoTable({
+                head: cabeceras,
+                body: filas,
+                startY: 41,
+                margin: { top: 12, bottom: 14, left: 14, right: 14 },
+                theme: 'grid',
+                showHead: 'everyPage',
+                headStyles: {
+                    fillColor: [0, 48, 93],
+                    textColor: [255, 255, 255],
+                    halign: 'center',
+                    valign: 'middle',
+                    lineWidth: 0.2,
+                    fontSize: 8,
+                    cellPadding: 1.2
+                },
+                styles: {
+                    fontSize: 7.5,
+                    cellPadding: 1.1,
+                    valign: 'middle',
+                    lineColor: [120, 120, 120],
+                    lineWidth: 0.15,
+                    minCellHeight: 5.2
+                },
+                alternateRowStyles: { fillColor: [248, 249, 250] },
+                columnStyles: colStylesConfig,
+                didDrawPage: function (data) {
+                    pdf.setFontSize(8);
+                    pdf.setFont("helvetica", "normal");
+                    pdf.setTextColor(120, 120, 120);
+                    pdf.text(`Grupo ${grupo.numero} de ${totalGrupos}  -  Página ${data.pageNumber}`, centroX, altoHoja - 6, { align: "center" });
+                }
+            });
+        });
+
+        pdf.save('Planilla_General_Asistencia_Examenes_Por_Grupos.pdf');
+        setTimeout(() => { Swal.close(); }, 800);
+
+    } catch (error) {
+        console.error("Error generando planilla general por grupos:", error);
+        Swal.fire('Error', 'Hubo un problema al crear la planilla general por grupos.', 'error');
+    }
+}
