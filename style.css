@@ -136,6 +136,17 @@ body {
     z-index: 11; /* Opcional: un punto más para que no choque con celdas combinadas */
 }
 
+/* Pie de tabla (TFOOT) sticky al fondo del contenedor */
+.tabla-fixed-header tfoot td,
+.tabla-fixed-header tfoot th {
+    position: sticky;
+    bottom: 0;
+    z-index: 12;
+    background-color: #f8f9fa !important;
+    background-clip: padding-box;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.08);
+}
+
 
 
 

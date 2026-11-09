@@ -202,6 +202,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Botón de información de promedios en trayectoria
+    document.getElementById('btn-info-promedios-trayectoria')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        Swal.fire({
+            icon: 'info',
+            title: 'Cálculo de Promedios',
+            html: '<p class="text-muted text-start mb-2">Los <strong>Promedios Generales</strong> de esta fila se calculan dinámicamente en tiempo real:</p>' +
+                  '<ul class="text-start small text-secondary ps-3 mb-3">' +
+                  '<li>Se actualizan según la <strong>Comisión</strong> seleccionada o el texto ingresado en el <strong>Buscador</strong>.</li>' +
+                  '<li>Ponderan únicamente las calificaciones de los aspirantes visibles en pantalla.</li>' +
+                  '<li>Las inasistencias o casilleros sin nota (<code>-</code>) no distorsionan el promedio.</li>' +
+                  '</ul>',
+            confirmButtonColor: '#073a86',
+            confirmButtonText: 'Entendido'
+        });
+    });
+
     const tabTrayectoria = document.getElementById('trayectoria-tab');
     if (tabTrayectoria) {
         tabTrayectoria.addEventListener('shown.bs.tab', () => {
