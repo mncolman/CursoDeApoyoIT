@@ -458,3 +458,12 @@ body {
 .card-header select.form-select {
     max-width: 100%;
 }
+
+/* ==========================================================================
+   RESGUARDO RESPONSIVO PARA TABLAS Y CONTENEDORES
+   ========================================================================== */
+.table-responsive {
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    -webkit-overflow-scrolling: touch;
+}
