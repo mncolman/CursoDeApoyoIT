@@ -1,15 +1,19 @@
 // --- archivo: constancias.js ---
 import * as Utils from './utils.js';
 
-const STORAGE_KEY_PLANTILLA = 'it_unt_plantilla_constancia_v2';
-const STORAGE_KEY_SUBTITULO = 'it_unt_subtitulo_constancia_v2';
+const STORAGE_KEY_PLANTILLA = 'it_unt_plantilla_constancia_v6';
+const STORAGE_KEY_SUBTITULO = 'it_unt_subtitulo_constancia_v3';
 const STORAGE_KEY_PIE = 'it_unt_pie_constancia_v2';
+const STORAGE_KEY_RECUADROS = 'it_unt_recuadros_constancia_v1';
 
-const SUBTITULO_DEFAULT = 'Curso de Apoyo - Ingreso a 1° del ciclo lectivo 2027';
+const SUBTITULO_DEFAULT = 'Curso de Apoyo - Ingreso a 1° año del ciclo lectivo 2027';
 const PIE_DEFAULT = 'Instituto Técnico - Universidad Nacional de Tucumán';
 const PLANTILLA_DEFAULT =
-    'Por la presente se deja constancia de que {{NOMBRE}}, D.N.I. N° {{DNI}}, estudiante del establecimiento educativo {{INSTITUCION}}, participa en calidad de aspirante en las instancias evaluativas correspondientes al Examen de Ingreso del Instituto Técnico de la Universidad Nacional de Tucumán.\n\n' +
-    'Asimismo, se informa que el/la mencionado/a estudiante se encuentra afectado/a al cronograma oficial de evaluaciones en las siguientes fechas: 11 de noviembre, 13 de noviembre y 16 de noviembre del corriente año, siendo su concurrencia de carácter obligatorio en cada una de dichas jornadas.\n\n' +
+    'EL QUE SUSCRIBE\n' +
+    'En su carácter de\n' +
+    'del Instituto Técnico de la U.N.T.\n\n' +
+    'En la presente se deja constancia de que {{NOMBRE}}, D.N.I. N° {{DNI}}, estudiante del establecimiento educativo {{INSTITUCION}}, participa en calidad de aspirante en las instancias evaluativas correspondientes al Examen de Ingreso del Instituto Técnico de la Universidad Nacional de Tucumán.\n\n' +
+    'Asimismo, se informa que el/la mencionado/a estudiante se encuentra afectado/a al cronograma oficial de evaluaciones en las siguientes fechas: 11 de noviembre, 13 de noviembre y 16 de noviembre del corriente año, siendo convocado/a a partir de las 15:00 hs y con concurrencia de carácter obligatorio en cada una de dichas jornadas.\n\n' +
     'A solicitud de la parte interesada y al solo efecto de ser presentada ante las autoridades escolares que corresponda para la justificación de las inasistencias en los días detallados, se extiende la presente en la ciudad de San Miguel de Tucumán, a los 13 días del mes de noviembre de 2026.';
 
 const estado = {
@@ -175,6 +179,7 @@ function obtenerConfiguracionValidada() {
     const textarea = document.getElementById('textareaPlantillaConstancia');
     const inputSubtitulo = document.getElementById('inputSubtituloConstancia');
     const inputPie = document.getElementById('inputPieConstancia');
+    const toggleRecuadros = document.getElementById('toggleRecuadrosConstancia');
 
     const texto = (textarea?.value || '').trim();
     if (!texto) {
@@ -185,8 +190,16 @@ function obtenerConfiguracionValidada() {
     return {
         plantilla: textarea.value,
         subtitulo: inputSubtitulo ? inputSubtitulo.value : SUBTITULO_DEFAULT,
-        piePagina: inputPie ? inputPie.value : PIE_DEFAULT
+        piePagina: inputPie ? inputPie.value : PIE_DEFAULT,
+        recuadros: Boolean(toggleRecuadros?.checked)
     };
+}
+
+/** Actualiza el texto del botón de recuadros según su estado activo/inactivo. */
+function actualizarEtiquetaRecuadros(activo) {
+    const label = document.getElementById('labelToggleRecuadrosConstancia');
+    if (!label) return;
+    label.innerHTML = `<i class="bi bi-bounding-box me-1"></i>Recuadros: ${activo ? 'Sí' : 'No'}`;
 }
 
 /** Inicializa eventos y estado del modal de generación de constancias. */
@@ -197,6 +210,7 @@ export function inicializarModuloConstancias(getAspirantesFn) {
     const textarea = document.getElementById('textareaPlantillaConstancia');
     const inputSubtitulo = document.getElementById('inputSubtituloConstancia');
     const inputPie = document.getElementById('inputPieConstancia');
+    const toggleRecuadros = document.getElementById('toggleRecuadrosConstancia');
     const buscador = document.getElementById('buscadorConstancias');
     const tbody = document.getElementById('tbodyConstancias');
 
@@ -208,6 +222,11 @@ export function inicializarModuloConstancias(getAspirantesFn) {
     }
     if (inputPie) {
         inputPie.value = cargarCampoGuardado(STORAGE_KEY_PIE, PIE_DEFAULT, true);
+    }
+    if (toggleRecuadros) {
+        const recuadrosGuardado = localStorage.getItem(STORAGE_KEY_RECUADROS) === 'true';
+        toggleRecuadros.checked = recuadrosGuardado;
+        actualizarEtiquetaRecuadros(recuadrosGuardado);
     }
 
     modalEl.addEventListener('shown.bs.modal', () => {
@@ -224,6 +243,12 @@ export function inicializarModuloConstancias(getAspirantesFn) {
 
     inputPie?.addEventListener('input', () => {
         guardarCampo(STORAGE_KEY_PIE, inputPie.value);
+    });
+
+    toggleRecuadros?.addEventListener('change', () => {
+        const activo = Boolean(toggleRecuadros.checked);
+        guardarCampo(STORAGE_KEY_RECUADROS, activo ? 'true' : 'false');
+        actualizarEtiquetaRecuadros(activo);
     });
 
     // Botones de inserción rápida de marcadores ({{NOMBRE}}, {{DNI}}, {{INSTITUCION}})

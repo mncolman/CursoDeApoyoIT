@@ -1297,7 +1297,7 @@ export function extraerDatosAlumnoConstancia(alumno = {}) {
         alumno['Establecimiento escolar de donde proviene'] ??
         alumno.institucion ??
         'Sin institución registrada'
-    ).trim();
+    ).trim().toUpperCase();
 
     return {
         apellido,
@@ -1351,20 +1351,22 @@ function formatearFechaConstanciaFormal(fecha = new Date()) {
     return `${dia} de ${mes} de ${anio}`;
 }
 
-/** Normaliza el objeto de configuración de constancia aceptando string o { plantilla, subtitulo, piePagina }. */
+/** Normaliza el objeto de configuración de constancia aceptando string o { plantilla, subtitulo, piePagina, recuadros }. */
 function normalizarConfigConstancia(configOrPlantilla) {
     if (typeof configOrPlantilla === 'string') {
         return {
             plantilla: configOrPlantilla,
-            subtitulo: 'Curso de Apoyo - Ingreso a 1° del ciclo lectivo 2027',
-            piePagina: 'Instituto Técnico - Universidad Nacional de Tucumán'
+            subtitulo: 'Curso de Apoyo - Ingreso a 1° año del ciclo lectivo 2027',
+            piePagina: 'Instituto Técnico - Universidad Nacional de Tucumán',
+            recuadros: false
         };
     }
     const cfg = configOrPlantilla || {};
     return {
         plantilla: String(cfg.plantilla ?? ''),
         subtitulo: String(cfg.subtitulo ?? '').trim(),
-        piePagina: String(cfg.piePagina ?? '').trim()
+        piePagina: String(cfg.piePagina ?? '').trim(),
+        recuadros: Boolean(cfg.recuadros)
     };
 }
 
@@ -1378,12 +1380,12 @@ function dibujarEncabezadoConstancia(pdf, subtitulo = '') {
 
     pdf.setTextColor(0, 0, 0);
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(22);
-    pdf.text('INSTITUTO TÉCNICO', centroX, 20, { align: 'center' });
+    pdf.setFontSize(17.5);
+    pdf.text('UNIVERSIDAD NACIONAL DE TUCUMÁN', centroX, 20, { align: 'center' });
 
     pdf.setFont('times', 'italic');
-    pdf.setFontSize(13);
-    pdf.text('Universidad Nacional de Tucumán', centroX, 27, { align: 'center' });
+    pdf.setFontSize(14);
+    pdf.text('Instituto Técnico', centroX, 27, { align: 'center' });
 
     if (subtitulo) {
         pdf.setFont('helvetica', 'normal');
@@ -1399,8 +1401,136 @@ function dibujarEncabezadoConstancia(pdf, subtitulo = '') {
     return 54;
 }
 
-/** Dibuja título, lugar/fecha, cuerpo y reserva el sector inferior derecho para firma digital. */
-function dibujarCuerpoConstancia(pdf, textoResuelto, startY, piePagina = '') {
+/** Construye segmentos { text, bold } de una línea de plantilla, resaltando en negrita nombre y DNI. */
+export function construirSegmentosConstancia(lineaPlantilla, alumno) {
+    const { nombreCompleto, dni, institucion } = extraerDatosAlumnoConstancia(alumno);
+    const mapaMarcadores = {
+        '{{NOMBRE}}': { text: nombreCompleto, bold: true },
+        '[[NOMBRE]]': { text: nombreCompleto, bold: true },
+        '**1**': { text: nombreCompleto, bold: true },
+        '{{DNI}}': { text: dni, bold: true },
+        '[[DNI]]': { text: dni, bold: true },
+        '**2**': { text: dni, bold: true },
+        '{{INSTITUCION}}': { text: institucion, bold: false },
+        '[[INSTITUCION]]': { text: institucion, bold: false },
+        '**3**': { text: institucion, bold: false }
+    };
+
+    const regexMarcadores = /(\{\{NOMBRE\}\}|\{\{DNI\}\}|\{\{INSTITUCION\}\}|\[\[NOMBRE\]\]|\[\[DNI\]\]|\[\[INSTITUCION\]\]|\*\*1\*\*|\*\*2\*\*|\*\*3\*\*)/g;
+    const partes = String(lineaPlantilla || '').split(regexMarcadores);
+    const segmentos = [];
+
+    for (const parte of partes) {
+        if (!parte) continue;
+        const reemplazo = mapaMarcadores[parte];
+        if (reemplazo) {
+            segmentos.push({ text: reemplazo.text, bold: reemplazo.bold });
+        } else {
+            segmentos.push({ text: parte, bold: false });
+        }
+    }
+    return segmentos;
+}
+
+/** Agrupa tokens adyacentes con el mismo peso tipográfico dentro de una línea ya envuelta. */
+function compactarRunsLinea(runs) {
+    const compactados = [];
+    for (const run of runs) {
+        if (!run.text) continue;
+        const ultimo = compactados[compactados.length - 1];
+        if (ultimo && ultimo.bold === run.bold) {
+            ultimo.text += run.text;
+        } else {
+            compactados.push({ text: run.text, bold: run.bold });
+        }
+    }
+    return compactados;
+}
+
+/** Envuelve una lista de segmentos { text, bold } al ancho máximo respetando el ancho real de negrita/normal. */
+function dividirParrafoEnLineasEstilizadas(pdf, segmentos, anchoMax) {
+    const tokens = [];
+    for (const seg of segmentos) {
+        const subPartes = String(seg.text || '').split(/(\s+)/);
+        for (const sub of subPartes) {
+            if (sub !== '') tokens.push({ text: sub, bold: seg.bold });
+        }
+    }
+
+    const lineas = [];
+    let lineaActual = [];
+    let anchoActual = 0;
+
+    for (const token of tokens) {
+        const esEspacio = /^\s+$/.test(token.text);
+        pdf.setFont('helvetica', token.bold ? 'bold' : 'normal');
+        const anchoToken = pdf.getTextWidth(token.text);
+
+        if (esEspacio) {
+            if (lineaActual.length === 0) continue;
+            if (anchoActual + anchoToken <= anchoMax) {
+                lineaActual.push(token);
+                anchoActual += anchoToken;
+            } else {
+                lineas.push(compactarRunsLinea(lineaActual));
+                lineaActual = [];
+                anchoActual = 0;
+            }
+            continue;
+        }
+
+        if (lineaActual.length > 0 && anchoActual + anchoToken > anchoMax) {
+            while (lineaActual.length > 0 && /^\s+$/.test(lineaActual[lineaActual.length - 1].text)) {
+                lineaActual.pop();
+            }
+            if (lineaActual.length > 0) {
+                lineas.push(compactarRunsLinea(lineaActual));
+            }
+            lineaActual = [token];
+            anchoActual = anchoToken;
+        } else {
+            lineaActual.push(token);
+            anchoActual += anchoToken;
+        }
+    }
+
+    if (lineaActual.length > 0) {
+        while (lineaActual.length > 0 && /^\s+$/.test(lineaActual[lineaActual.length - 1].text)) {
+            lineaActual.pop();
+        }
+        if (lineaActual.length > 0) {
+            lineas.push(compactarRunsLinea(lineaActual));
+        }
+    }
+
+    return lineas;
+}
+
+/** Agrupa las líneas de la plantilla en bloques de párrafo (separados por líneas en blanco). */
+function agruparBloquesParrafoConstancia(plantilla) {
+    const lineasRaw = String(plantilla || '').split(/\r?\n/);
+    const bloques = [];
+    let bloqueActual = [];
+
+    for (const lineaRaw of lineasRaw) {
+        const linea = lineaRaw.trim();
+        if (!linea) {
+            if (bloqueActual.length > 0) {
+                bloques.push(bloqueActual);
+                bloqueActual = [];
+            }
+        } else {
+            bloqueActual.push(linea);
+        }
+    }
+    if (bloqueActual.length > 0) {
+        bloques.push(bloqueActual);
+    }
+    return bloques;
+}
+
+/** Dibuja título, lugar/fecha, cuerpo (con nombre y DNI en negrita y recuadros opcionales) y reserva espacio inferior para firma digital. */
+function dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina = '', recuadros = false) {
     const anchoHoja = pdf.internal.pageSize.getWidth();
     const altoHoja = pdf.internal.pageSize.getHeight();
     const centroX = anchoHoja / 2;
@@ -1419,35 +1549,70 @@ function dibujarCuerpoConstancia(pdf, textoResuelto, startY, piePagina = '') {
     pdf.line(centroX - anchoTitulo / 2, startY + 1.5, centroX + anchoTitulo / 2, startY + 1.5);
 
     // Lugar y fecha alineados a la derecha
-    let cursorY = startY + 14;
+    let cursorY = startY + 11;
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(10.5);
     pdf.setTextColor(60, 60, 60);
     pdf.text(`San Miguel de Tucumán, ${formatearFechaConstanciaFormal()}`, anchoHoja - margenX, cursorY, { align: 'right' });
 
-    // Cuerpo del documento por párrafos, dejando libre el sector inferior (y >= 220mm) para firma digital
-    cursorY += 16;
-    const limiteInferiorCuerpo = 215;
-    const altoLinea = 6.8;
+    // Cuerpo del documento por párrafos, dejando libre el sector inferior (y >= 232mm) para firma digital
+    cursorY += 12;
+    const limiteInferiorCuerpo = 232;
+    const altoLinea = recuadros ? 5.6 : 6.0;
+    const paddingX = recuadros ? 3.5 : 0;
+    const paddingYTop = 5.8;
+    const paddingYBottom = 3.8;
+    const anchoContenido = anchoTexto - (paddingX * 2);
+    const gapBloque = recuadros ? 3.5 : 4.0;
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(11.5);
+    pdf.setFontSize(11);
     pdf.setTextColor(25, 25, 25);
 
-    const parrafos = String(textoResuelto || '').split(/\r?\n/);
-    for (const parrafoRaw of parrafos) {
-        const parrafo = parrafoRaw.trim();
-        if (!parrafo) {
-            cursorY += 4.5;
-            continue;
+    const bloques = agruparBloquesParrafoConstancia(plantilla);
+    for (const lineasBloque of bloques) {
+        const lineasEnvueltas = [];
+        for (const lineaTexto of lineasBloque) {
+            const segmentos = construirSegmentosConstancia(lineaTexto, alumno);
+            const envueltas = dividirParrafoEnLineasEstilizadas(pdf, segmentos, anchoContenido);
+            lineasEnvueltas.push(...envueltas);
         }
-        const lineas = pdf.splitTextToSize(parrafo, anchoTexto);
-        for (const linea of lineas) {
-            if (cursorY > limiteInferiorCuerpo) break;
-            pdf.text(linea, margenX, cursorY);
-            cursorY += altoLinea;
+        if (lineasEnvueltas.length === 0) continue;
+
+        if (recuadros) {
+            const cajaY = cursorY;
+            const altoCaja = ((lineasEnvueltas.length - 1) * altoLinea) + paddingYTop + paddingYBottom;
+            if (cajaY + altoCaja > limiteInferiorCuerpo) break;
+
+            pdf.setDrawColor(0, 0, 0);
+            pdf.setLineWidth(0.35);
+            pdf.rect(margenX, cajaY, anchoTexto, altoCaja);
+
+            let textoY = cajaY + paddingYTop;
+            for (const lineaRuns of lineasEnvueltas) {
+                let cursorX = margenX + paddingX;
+                for (const run of lineaRuns) {
+                    pdf.setFont('helvetica', run.bold ? 'bold' : 'normal');
+                    pdf.text(run.text, cursorX, textoY);
+                    cursorX += pdf.getTextWidth(run.text);
+                }
+                textoY += altoLinea;
+            }
+            cursorY = cajaY + altoCaja + gapBloque;
+        } else {
+            for (const lineaRuns of lineasEnvueltas) {
+                if (cursorY > limiteInferiorCuerpo) break;
+                let cursorX = margenX;
+                for (const run of lineaRuns) {
+                    pdf.setFont('helvetica', run.bold ? 'bold' : 'normal');
+                    pdf.text(run.text, cursorX, cursorY);
+                    cursorX += pdf.getTextWidth(run.text);
+                }
+                cursorY += altoLinea;
+            }
+            cursorY += gapBloque;
         }
-        cursorY += 3.5;
+
         if (cursorY > limiteInferiorCuerpo) break;
     }
 
@@ -1470,12 +1635,11 @@ function construirPDFConstancia(alumno, configOrPlantilla) {
         throw new Error('No se encontró la librería jsPDF.');
     }
 
-    const { plantilla, subtitulo, piePagina } = normalizarConfigConstancia(configOrPlantilla);
+    const { plantilla, subtitulo, piePagina, recuadros } = normalizarConfigConstancia(configOrPlantilla);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
     const startY = dibujarEncabezadoConstancia(pdf, subtitulo);
-    const textoResuelto = reemplazarMarcadoresConstancia(plantilla, alumno);
-    dibujarCuerpoConstancia(pdf, textoResuelto, startY, piePagina);
+    dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina, recuadros);
 
     return {
         pdf,

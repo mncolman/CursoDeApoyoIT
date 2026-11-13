@@ -1196,10 +1196,10 @@
                             <div class="row g-2 mb-2">
                                 <div class="col-md-6">
                                     <label for="inputSubtituloConstancia" class="form-label fw-bold text-dark mb-1 small text-uppercase">
-                                        <i class="bi bi-card-heading me-1 text-primary"></i>Subtítulo debajo de "Universidad Nacional de Tucumán"
+                                        <i class="bi bi-card-heading me-1 text-primary"></i>Subtítulo debajo de "Instituto Técnico"
                                     </label>
                                     <input type="text" id="inputSubtituloConstancia" class="form-control form-control-sm"
-                                        placeholder="Ej: Curso de Apoyo - Ingreso a 1° del ciclo lectivo 2027 (dejar vacío para omitir)">
+                                        placeholder="Ej: Curso de Apoyo - Ingreso a 1° año del ciclo lectivo 2027 (dejar vacío para omitir)">
                                 </div>
                                 <div class="col-md-6">
                                     <label for="inputPieConstancia" class="form-label fw-bold text-dark mb-1 small text-uppercase">
@@ -1238,7 +1238,12 @@
                                     Marcadores: <code>{{NOMBRE}}</code> · <code>{{DNI}}</code> · <code>{{INSTITUCION}}</code>.
                                     El sector inferior derecho del PDF queda libre para firma digital.
                                 </small>
-                                <div class="d-flex gap-2">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <input type="checkbox" class="btn-check" id="toggleRecuadrosConstancia" autocomplete="off">
+                                    <label class="btn btn-sm btn-outline-dark" for="toggleRecuadrosConstancia" id="labelToggleRecuadrosConstancia"
+                                        title="Activar o desactivar recuadros negros alrededor de cada párrafo">
+                                        <i class="bi bi-bounding-box me-1"></i>Recuadros: No
+                                    </label>
                                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRestaurarPlantillaConstancia">
                                         <i class="bi bi-arrow-counterclockwise me-1"></i>Restaurar texto
                                     </button>
