@@ -3,6 +3,7 @@ import * as Auth from './auth.js';
 import * as UI from './ui.js';
 import * as Filtros from './filters.js';
 import * as Utils from './utils.js';
+import { inicializarModuloConstancias } from './constancias.js';
 
 
 
@@ -73,6 +74,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const alumnosConSalud = aspirantesGlobales.filter(a => (a.enfermedad).trim() !== '');
         Utils.descargarPlanillaSaludPDF(alumnosConSalud);
     });
+
+    inicializarModuloConstancias(() => aspirantesGlobales);
 
 
     const turnoSelect = document.getElementById('turnoSelect');

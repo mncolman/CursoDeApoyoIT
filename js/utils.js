@@ -1262,3 +1262,310 @@ export async function descargarPlanillaExamenPorGruposGeneral(aspirantesGlobales
         Swal.fire('Error', 'Hubo un problema al crear la planilla general por grupos.', 'error');
     }
 }
+
+// =================================================================
+// 6. GENERADOR DE CONSTANCIAS DE ALUMNOS (PDF INDIVIDUAL Y ZIP LOTE)
+// =================================================================
+
+const MESES_ES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+];
+
+/** Normaliza un texto para usarlo como segmento seguro en nombres de archivo. */
+function normalizarSegmentoArchivo(texto) {
+    return String(texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+/** Extrae y normaliza los campos clave del aspirante para la constancia. */
+export function extraerDatosAlumnoConstancia(alumno = {}) {
+    const apellido = String(alumno.apellido ?? alumno['Apellido/s del alumno'] ?? '').trim();
+    const nombre = String(alumno.nombre ?? alumno['Nombre/s del alumno'] ?? '').trim();
+    const nombreCompleto = (apellido && nombre)
+        ? `${apellido.toUpperCase()}, ${nombre.toUpperCase()}`
+        : String(alumno['Nombre y Apellido'] || alumno['Alumno'] || 'SIN NOMBRE').trim().toUpperCase();
+
+    const dniRaw = String(alumno.dni ?? alumno['DNI'] ?? alumno['Documento'] ?? '').trim();
+    const dniLimpio = dniRaw.replace(/\D/g, '') || dniRaw || 'sin_dni';
+    const institucion = String(
+        alumno.colegio ??
+        alumno['Establecimiento escolar de donde proviene'] ??
+        alumno.institucion ??
+        'Sin institución registrada'
+    ).trim();
+
+    return {
+        apellido,
+        nombre,
+        nombreCompleto,
+        dni: dniRaw || 'S/D',
+        dniArchivo: dniLimpio,
+        institucion
+    };
+}
+
+/** Construye el nombre de archivo estandarizado: apellido_nombre_dni_constancia.pdf */
+export function generarNombreArchivoConstancia(alumno) {
+    const { apellido, nombre, dniArchivo } = extraerDatosAlumnoConstancia(alumno);
+    const partes = [
+        normalizarSegmentoArchivo(apellido) || 'sin_apellido',
+        normalizarSegmentoArchivo(nombre) || 'sin_nombre',
+        normalizarSegmentoArchivo(dniArchivo) || 'sin_dni',
+        'constancia'
+    ];
+    return `${partes.join('_')}.pdf`;
+}
+
+/** Reemplaza los marcadores {{NOMBRE}}, {{DNI}}, {{INSTITUCION}} (y alias) con los datos del alumno. */
+export function reemplazarMarcadoresConstancia(plantilla, alumno) {
+    const { nombreCompleto, dni, institucion } = extraerDatosAlumnoConstancia(alumno);
+    const reemplazos = {
+        '{{NOMBRE}}': nombreCompleto,
+        '{{DNI}}': dni,
+        '{{INSTITUCION}}': institucion,
+        '[[NOMBRE]]': nombreCompleto,
+        '[[DNI]]': dni,
+        '[[INSTITUCION]]': institucion,
+        '**1**': nombreCompleto,
+        '**2**': dni,
+        '**3**': institucion
+    };
+
+    let resultado = String(plantilla || '');
+    for (const [marcador, valor] of Object.entries(reemplazos)) {
+        resultado = resultado.split(marcador).join(valor);
+    }
+    return resultado;
+}
+
+/** Formatea una fecha en español para documentos formales. */
+function formatearFechaConstanciaFormal(fecha = new Date()) {
+    const dia = fecha.getDate();
+    const mes = MESES_ES[fecha.getMonth()];
+    const anio = fecha.getFullYear();
+    return `${dia} de ${mes} de ${anio}`;
+}
+
+/** Normaliza el objeto de configuración de constancia aceptando string o { plantilla, subtitulo, piePagina }. */
+function normalizarConfigConstancia(configOrPlantilla) {
+    if (typeof configOrPlantilla === 'string') {
+        return {
+            plantilla: configOrPlantilla,
+            subtitulo: 'Curso de Apoyo - Ingreso a 1° del ciclo lectivo 2027',
+            piePagina: 'Instituto Técnico - Universidad Nacional de Tucumán'
+        };
+    }
+    const cfg = configOrPlantilla || {};
+    return {
+        plantilla: String(cfg.plantilla ?? ''),
+        subtitulo: String(cfg.subtitulo ?? '').trim(),
+        piePagina: String(cfg.piePagina ?? '').trim()
+    };
+}
+
+/** Estampa logos IT/UNT y encabezados institucionales comunes en la constancia. */
+function dibujarEncabezadoConstancia(pdf, subtitulo = '') {
+    const anchoHoja = pdf.internal.pageSize.getWidth();
+    const centroX = anchoHoja / 2;
+
+    if (typeof logoIT !== 'undefined') pdf.addImage(logoIT, 'PNG', 18, 12, 24, 24);
+    if (typeof logoUNT !== 'undefined') pdf.addImage(logoUNT, 'PNG', anchoHoja - 38, 12, 20, 24);
+
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(22);
+    pdf.text('INSTITUTO TÉCNICO', centroX, 20, { align: 'center' });
+
+    pdf.setFont('times', 'italic');
+    pdf.setFontSize(13);
+    pdf.text('Universidad Nacional de Tucumán', centroX, 27, { align: 'center' });
+
+    if (subtitulo) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9.5);
+        pdf.setTextColor(95, 95, 95);
+        pdf.text(subtitulo, centroX, 33, { align: 'center' });
+    }
+
+    pdf.setDrawColor(7, 58, 134);
+    pdf.setLineWidth(0.6);
+    pdf.line(18, 40, anchoHoja - 18, 40);
+
+    return 54;
+}
+
+/** Dibuja título, lugar/fecha, cuerpo y reserva el sector inferior derecho para firma digital. */
+function dibujarCuerpoConstancia(pdf, textoResuelto, startY, piePagina = '') {
+    const anchoHoja = pdf.internal.pageSize.getWidth();
+    const altoHoja = pdf.internal.pageSize.getHeight();
+    const centroX = anchoHoja / 2;
+    const margenX = 22;
+    const anchoTexto = anchoHoja - (margenX * 2);
+
+    // Título del documento
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(16);
+    pdf.setTextColor(7, 58, 134);
+    pdf.text('CONSTANCIA', centroX, startY, { align: 'center' });
+
+    const anchoTitulo = pdf.getTextWidth('CONSTANCIA');
+    pdf.setDrawColor(7, 58, 134);
+    pdf.setLineWidth(0.4);
+    pdf.line(centroX - anchoTitulo / 2, startY + 1.5, centroX + anchoTitulo / 2, startY + 1.5);
+
+    // Lugar y fecha alineados a la derecha
+    let cursorY = startY + 14;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10.5);
+    pdf.setTextColor(60, 60, 60);
+    pdf.text(`San Miguel de Tucumán, ${formatearFechaConstanciaFormal()}`, anchoHoja - margenX, cursorY, { align: 'right' });
+
+    // Cuerpo del documento por párrafos, dejando libre el sector inferior (y >= 220mm) para firma digital
+    cursorY += 16;
+    const limiteInferiorCuerpo = 215;
+    const altoLinea = 6.8;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(11.5);
+    pdf.setTextColor(25, 25, 25);
+
+    const parrafos = String(textoResuelto || '').split(/\r?\n/);
+    for (const parrafoRaw of parrafos) {
+        const parrafo = parrafoRaw.trim();
+        if (!parrafo) {
+            cursorY += 4.5;
+            continue;
+        }
+        const lineas = pdf.splitTextToSize(parrafo, anchoTexto);
+        for (const linea of lineas) {
+            if (cursorY > limiteInferiorCuerpo) break;
+            pdf.text(linea, margenX, cursorY);
+            cursorY += altoLinea;
+        }
+        cursorY += 3.5;
+        if (cursorY > limiteInferiorCuerpo) break;
+    }
+
+    // Pie discreto en margen inferior izquierdo (el cuadrante inferior derecho queda libre para firma digital)
+    if (piePagina) {
+        pdf.setDrawColor(215, 215, 215);
+        pdf.setLineWidth(0.3);
+        pdf.line(18, altoHoja - 18, anchoHoja - 18, altoHoja - 18);
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(125, 125, 125);
+        pdf.text(piePagina, 18, altoHoja - 12);
+    }
+}
+
+/** Construye la instancia jsPDF completa para un alumno y devuelve { pdf, nombreArchivo }. */
+function construirPDFConstancia(alumno, configOrPlantilla) {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        throw new Error('No se encontró la librería jsPDF.');
+    }
+
+    const { plantilla, subtitulo, piePagina } = normalizarConfigConstancia(configOrPlantilla);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const startY = dibujarEncabezadoConstancia(pdf, subtitulo);
+    const textoResuelto = reemplazarMarcadoresConstancia(plantilla, alumno);
+    dibujarCuerpoConstancia(pdf, textoResuelto, startY, piePagina);
+
+    return {
+        pdf,
+        nombreArchivo: generarNombreArchivoConstancia(alumno)
+    };
+}
+
+/** Abre una vista previa en una nueva pestaña sin descargar archivo. */
+export function previsualizarConstanciaPDF(alumno, configOrPlantilla) {
+    try {
+        const { pdf } = construirPDFConstancia(alumno, configOrPlantilla);
+        const blobUrl = pdf.output('bloburl');
+        window.open(blobUrl, '_blank');
+    } catch (error) {
+        console.error('Error al previsualizar constancia:', error);
+        Swal.fire('Error', 'No se pudo generar la vista previa de la constancia.', 'error');
+    }
+}
+
+/** Descarga el PDF individual de una constancia para un alumno. */
+export function descargarConstanciaIndividualPDF(alumno, configOrPlantilla) {
+    try {
+        const { pdf, nombreArchivo } = construirPDFConstancia(alumno, configOrPlantilla);
+        pdf.save(nombreArchivo);
+        return nombreArchivo;
+    } catch (error) {
+        console.error('Error al generar constancia individual:', error);
+        Swal.fire('Error', 'Hubo un problema al generar el PDF de la constancia.', 'error');
+        return null;
+    }
+}
+
+/** Genera todas las constancias seleccionadas y las empaqueta en un archivo .zip para firma en lote. */
+export async function descargarConstanciasEnZip(alumnos, configOrPlantilla) {
+    if (!Array.isArray(alumnos) || alumnos.length === 0) {
+        Swal.fire('Atención', 'Seleccioná al menos un alumno para descargar las constancias.', 'warning');
+        return false;
+    }
+    if (typeof window.JSZip === 'undefined') {
+        Swal.fire('Error', 'No se cargó la librería JSZip para comprimir los archivos.', 'error');
+        return false;
+    }
+
+    Swal.fire({
+        title: 'Generando constancias...',
+        html: `Empaquetando <b>${alumnos.length}</b> constancia(s) en formato ZIP...`,
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        const zip = new window.JSZip();
+        const nombresUsados = new Set();
+
+        for (const alumno of alumnos) {
+            const { pdf, nombreArchivo } = construirPDFConstancia(alumno, configOrPlantilla);
+            let nombreFinal = nombreArchivo;
+            let contador = 2;
+            while (nombresUsados.has(nombreFinal)) {
+                nombreFinal = nombreArchivo.replace(/\.pdf$/i, `_${contador}.pdf`);
+                contador++;
+            }
+            nombresUsados.add(nombreFinal);
+
+            const buffer = pdf.output('arraybuffer');
+            zip.file(nombreFinal, buffer);
+        }
+
+        const contenidoZip = await zip.generateAsync({ type: 'blob' });
+        const fechaArchivo = new Date().toISOString().slice(0, 10);
+        const url = URL.createObjectURL(contenidoZip);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = `constancias_it_unt_${fechaArchivo}.zip`;
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+        URL.revokeObjectURL(url);
+
+        Swal.fire({
+            icon: 'success',
+            title: '¡Lote generado!',
+            text: `Se descargaron ${alumnos.length} constancia(s) dentro del archivo ZIP.`,
+            timer: 2500,
+            showConfirmButton: false
+        });
+        return true;
+    } catch (error) {
+        console.error('Error al generar ZIP de constancias:', error);
+        Swal.fire('Error', 'Ocurrió un problema al generar el paquete ZIP de constancias.', 'error');
+        return false;
+    }
+}
