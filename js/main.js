@@ -19,20 +19,100 @@ let isExpandedView = false;
 // =================================================================
 // 2. funcion puente para invocar filtros
 // =================================================================
-function orquestarFiltros() {
-    const searchRaw = document.getElementById('searchInput').value.toLowerCase();
+/** Lee el estado actual de los controles del filtro de rango del listado. */
+function obtenerConfigRangoListado() {
+    return {
+        modo: document.getElementById('rangeModeSelect')?.value || 'posicion',
+        desde: document.getElementById('rangeDesdeInput')?.value ?? '',
+        hasta: document.getElementById('rangeHastaInput')?.value ?? ''
+    };
+}
+
+/** Genera el texto resumen del corte/rango actual para la barra y el modal de descargas. */
+function formatearResumenRango(resultadoRango) {
+    const { items, posiciones, totalPreRango, activo } = resultadoRango;
+    if (!activo) {
+        return `Sin filtro de rango (${totalPreRango} alumnos)`;
+    }
+    if (items.length === 0) {
+        return `Mostrando 0 de ${totalPreRango} alumnos en este rango`;
+    }
+    const primero = items[0];
+    const ultimo = items[items.length - 1];
+    const posIni = posiciones[0];
+    const posFin = posiciones[posiciones.length - 1];
+    const apellidoIni = String(primero.apellido || '').trim().toUpperCase();
+    const apellidoFin = String(ultimo.apellido || '').trim().toUpperCase();
+    return `Mostrando ${items.length} de ${totalPreRango} · #${posIni} ${apellidoIni} → #${posFin} ${apellidoFin}`;
+}
+
+/** Actualiza el texto resumen y la visibilidad del botón limpiar rango. */
+function actualizarInterfazRango(resultadoRango) {
+    const resumenEl = document.getElementById('rangeResumenInfo');
+    const btnLimpiar = document.getElementById('btnLimpiarRango');
+
+    if (resumenEl) {
+        resumenEl.textContent = formatearResumenRango(resultadoRango);
+        resumenEl.className = resultadoRango.activo
+            ? 'text-primary fw-semibold'
+            : 'text-muted';
+    }
+    if (btnLimpiar) {
+        btnLimpiar.classList.toggle('d-none', !resultadoRango.activo);
+    }
+}
+
+/** Ajusta tipo y placeholders de los inputs de rango según el modo seleccionado. */
+function sincronizarInputsModoRango(limpiarValores = false) {
+    const modeSelect = document.getElementById('rangeModeSelect');
+    const desdeInput = document.getElementById('rangeDesdeInput');
+    const hastaInput = document.getElementById('rangeHastaInput');
+    if (!modeSelect || !desdeInput || !hastaInput) return;
+
+    const esAlfabetico = modeSelect.value === 'alfabetico';
+    if (esAlfabetico) {
+        desdeInput.type = 'text';
+        hastaInput.type = 'text';
+        desdeInput.removeAttribute('min');
+        hastaInput.removeAttribute('min');
+        desdeInput.placeholder = 'Desde (ej: A o Gómez)';
+        hastaInput.placeholder = 'Hasta (ej: G o López)';
+    } else {
+        desdeInput.type = 'number';
+        hastaInput.type = 'number';
+        desdeInput.min = '1';
+        hastaInput.min = '1';
+        desdeInput.placeholder = 'Desde Nº (ej: 1)';
+        hastaInput.placeholder = 'Hasta Nº (ej: 150)';
+    }
+
+    if (limpiarValores) {
+        desdeInput.value = '';
+        hastaInput.value = '';
+    }
+}
+
+/** Aplica filtros estándar (búsqueda, comisión, orden, turno) y luego el filtro de rango. */
+function calcularListaFiltradaConRango() {
+    const searchRaw = (document.getElementById('searchInput')?.value || '').toLowerCase();
     const search = searchRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    const comision = document.getElementById('filterComision').value;
-    const sortMethod = document.getElementById('sortSelect').value;
-    const turno = document.getElementById('turnoSelect').value;
+    const comision = document.getElementById('filterComision')?.value || '';
+    const sortMethod = document.getElementById('sortSelect')?.value || 'nombre_asc';
+    const turno = document.getElementById('turnoSelect')?.value || '';
 
-    const listaFiltrada = Filtros.filtrarYOrdenar(aspirantesGlobales, search, String(comision), sortMethod, turno);
+    const listaOrdenada = Filtros.filtrarYOrdenar(aspirantesGlobales, search, String(comision), sortMethod, turno);
+    return Filtros.aplicarRangoListado(listaOrdenada, obtenerConfigRangoListado());
+}
 
-    UI.actualizarMiniReporte(listaFiltrada);
-    UI.renderTable(listaFiltrada, isExpandedView);
+function orquestarFiltros() {
+    const resultadoRango = calcularListaFiltradaConRango();
 
-    return listaFiltrada;
+    actualizarInterfazRango(resultadoRango);
+    UI.actualizarMiniReporte(resultadoRango.items);
+    UI.renderTable(resultadoRango.items, isExpandedView, resultadoRango.posiciones);
+
+    return resultadoRango.items;
 }
 
 
@@ -151,6 +231,22 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('searchInput').addEventListener('input', orquestarFiltros);
     document.getElementById('filterComision').addEventListener('change', orquestarFiltros);
     document.getElementById('sortSelect').addEventListener('change', orquestarFiltros);
+
+    // Filtro de rango (por posición o alfabético)
+    document.getElementById('rangeModeSelect')?.addEventListener('change', () => {
+        sincronizarInputsModoRango(true);
+        orquestarFiltros();
+    });
+    document.getElementById('rangeDesdeInput')?.addEventListener('input', orquestarFiltros);
+    document.getElementById('rangeHastaInput')?.addEventListener('input', orquestarFiltros);
+    document.getElementById('btnLimpiarRango')?.addEventListener('click', () => {
+        const desdeInput = document.getElementById('rangeDesdeInput');
+        const hastaInput = document.getElementById('rangeHastaInput');
+        if (desdeInput) desdeInput.value = '';
+        if (hastaInput) hastaInput.value = '';
+        orquestarFiltros();
+    });
+    sincronizarInputsModoRango(false);
 
     // Toggle de Vista Expandida en la Tabla
     document.getElementById('viewToggle').addEventListener('change', function (e) {
@@ -650,6 +746,20 @@ const obtenerFormatoElegido = () => {
                 textoComision.innerHTML = `<strong>Comisión seleccionada:</strong> Todas`;
             } else {
                 textoComision.innerHTML = `<strong>Comisión seleccionada:</strong> ${comisionSeleccionada}`;
+            }
+
+            // 4. Informar si hay un rango activo aplicado sobre la tabla
+            const textoRangoModal = document.getElementById("rango-seleccionado-modal");
+            if (textoRangoModal) {
+                const resRango = calcularListaFiltradaConRango();
+
+                if (resRango.activo) {
+                    textoRangoModal.textContent = `Rango activo: ${formatearResumenRango(resRango)}`;
+                    textoRangoModal.classList.remove('d-none');
+                } else {
+                    textoRangoModal.textContent = '';
+                    textoRangoModal.classList.add('d-none');
+                }
             }
         });
     }

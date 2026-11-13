@@ -202,6 +202,43 @@
                                 </select>
                             </div>
 
+                            <!-- Filtro de Rango (Por Posición o Alfabético) -->
+                            <div class="col-12 mt-2 pt-2 border-top">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-3">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text bg-light fw-semibold text-secondary">
+                                                <i class="bi bi-funnel me-1"></i>Rango
+                                            </span>
+                                            <select id="rangeModeSelect" class="form-select" aria-label="Modo de rango">
+                                                <option value="posicion" selected>Por posición (Nº)</option>
+                                                <option value="alfabetico">Alfabético (A - Z)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <input type="number" min="1" id="rangeDesdeInput"
+                                            class="form-control form-control-sm" placeholder="Desde Nº (ej: 1)"
+                                            aria-label="Rango desde">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <input type="number" min="1" id="rangeHastaInput"
+                                            class="form-control form-control-sm" placeholder="Hasta Nº (ej: 150)"
+                                            aria-label="Rango hasta">
+                                    </div>
+                                    <div class="col-md-5 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <small id="rangeResumenInfo" class="text-muted" style="font-size: 0.8rem;">
+                                            Sin filtro de rango activo
+                                        </small>
+                                        <button type="button" id="btnLimpiarRango"
+                                            class="btn btn-sm btn-outline-secondary py-0 px-2 d-none"
+                                            title="Quitar filtro de rango">
+                                            <i class="bi bi-x-circle me-1"></i>Limpiar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- ================================================================= -->
                             <!-- BLOQUE REORGANIZADO: INTERRUPTOR Y BOTÓN DE DESCARGA -->
                             <!-- ================================================================= -->
@@ -899,7 +936,8 @@
                         <i class="bi bi-info-circle me-1"></i> <strong>Nota:</strong> Las descargas de cursillo respetan las búsquedas, filtros y el orden actual de la tabla.
                     </div>
 
-                    <p id="comision-seleccionada-modal" class="fs-5 text-center text-dark fw-bold mb-3"></p>
+                    <p id="comision-seleccionada-modal" class="fs-5 text-center text-dark fw-bold mb-1"></p>
+                    <p id="rango-seleccionado-modal" class="small text-center text-primary fw-semibold mb-3 d-none"></p>
 
                     <!-- ========================================== -->
                     <!-- SECCIÓN 1: PLANILLAS DEL CURSILLO / COMISIONES -->

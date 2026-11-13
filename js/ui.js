@@ -17,7 +17,7 @@ const mapaAsignaturas = {
 
 
 // --- 4. RENDERIZADO DINÁMICO DE LA TABLA DE ASPIRANTES---
-export function renderTable(data, isExpandedView) {
+export function renderTable(data, isExpandedView, posiciones = null) {
     const thead = document.getElementById('tabla-aspirantes-head');
     const tbody = document.getElementById('tabla-aspirantes-body');
 
@@ -29,6 +29,7 @@ export function renderTable(data, isExpandedView) {
     const trHead = document.createElement('tr');
     if (isExpandedView) {
         trHead.innerHTML = `
+            <th class="text-center" style="width: 52px;">Nº</th>
             <th>Nº Insc.</th>
             <th>Apellido y Nombre</th>
             <th>DNI</th>
@@ -41,6 +42,7 @@ export function renderTable(data, isExpandedView) {
         `;
     } else {
         trHead.innerHTML = `
+            <th class="text-center" style="width: 52px;">Nº</th>
             <th>Apellido y Nombre</th>
             <th>DNI</th>
             <th>Comisión</th>
@@ -52,15 +54,17 @@ export function renderTable(data, isExpandedView) {
 
     // 4B. Construir Filas con los datos filtrados
     if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No se encontraron aspirantes con esos filtros.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">No se encontraron aspirantes con esos filtros.</td></tr>`;
         return;
     }
 
-    data.forEach(asp => {
+    data.forEach((asp, idx) => {
         const tr = document.createElement('tr');
+        const nroOrden = (Array.isArray(posiciones) && posiciones[idx] !== undefined) ? posiciones[idx] : (idx + 1);
 
         if (isExpandedView) {
             tr.innerHTML = `
+                <td class="text-center text-muted small fw-semibold">${nroOrden}</td>
                 <td><strong>${asp.id_inscripcion}</strong></td>
                 <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
                 <td>${asp.dni}</td>
@@ -76,6 +80,7 @@ export function renderTable(data, isExpandedView) {
             `;
         } else {
             tr.innerHTML = `
+                <td class="text-center text-muted small fw-semibold">${nroOrden}</td>
                 <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
