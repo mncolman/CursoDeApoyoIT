@@ -91,6 +91,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         UImetrics.renderizarTablaComisiones(alumnosFiltrados);
     });
 
+    // Listeners para descargar el listado de calificaciones desde el subtab Resumen (respetando filtros activos)
+    document.getElementById('btn-descargar-resumen-principal')?.addEventListener('click', () => {
+        UImetrics.descargarListadoNotasResumen('pdf');
+    });
+    document.getElementById('btn-descargar-resumen-pdf')?.addEventListener('click', () => {
+        UImetrics.descargarListadoNotasResumen('pdf');
+    });
+    document.getElementById('btn-descargar-resumen-excel')?.addEventListener('click', () => {
+        UImetrics.descargarListadoNotasResumen('excel');
+    });
+
     // Carga automática al abrir dashboard.html
     const sinDatos = !EstadoDashboard.alumnos || EstadoDashboard.alumnos.length === 0;
     if (sinDatos) {

@@ -1,4 +1,6 @@
 import { EstadoDashboard } from './api.js';
+import * as Filtros from './filters.js';
+import { logoIT, logoUNT } from './assets.js';
 
 // Función para truncar estrictamente a N decimales (sin redondear hacia arriba por el siguiente decimal)
 function formatearPromedioTruncado(valor, decimales = 3) {
@@ -308,15 +310,25 @@ export function calcularKpisGlobales(alumnos) {
     const calcularMateria = (materia) => {
         const presentes = alumnos.filter(a => a.datos_examen?.[`estado_${materia}`] === "Presente");
         if (presentes.length > 0) {
-            const notas = presentes.map(a => a.datos_examen[`nota_final_${materia}`]);
+            const notas = presentes.map(a => {
+                const raw = a.datos_examen?.[`nota_final_${materia}`];
+                const val = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '').replace(',', '.'));
+                return !isNaN(val) ? val : 0;
+            });
             const promedio = (notas.reduce((acc, v) => acc + v, 0) / notas.length).toFixed(2);
             const max = Math.max(...notas).toFixed(2);
+            const aprobados = notas.filter(n => n >= 4).length;
+            const desaprobados = notas.filter(n => n < 4).length;
 
             asignarTexto(`kpi-promedio-${materia}`, promedio);
             asignarTexto(`kpi-max-${materia}`, max);
+            asignarTexto(`kpi-aprobados-${materia}`, aprobados);
+            asignarTexto(`kpi-desaprobados-${materia}`, desaprobados);
         } else {
             asignarTexto(`kpi-promedio-${materia}`, "-");
             asignarTexto(`kpi-max-${materia}`, "-");
+            asignarTexto(`kpi-aprobados-${materia}`, "-");
+            asignarTexto(`kpi-desaprobados-${materia}`, "-");
         }
     };
 
@@ -425,6 +437,7 @@ export function inicializarFiltrosMerito() {
 export function renderizarTablaMerito(alumnos) {
     const tbody = document.getElementById('tabla-merito-cuerpo');
     const badgeFiltrados = document.getElementById('cant-alumnos-filtrados');
+    const badgeResumen = document.getElementById('cant-alumnos-filtrados-resumen');
     if (!tbody) return;
 
     if (!alumnos || alumnos.length === 0) {
@@ -435,10 +448,12 @@ export function renderizarTablaMerito(alumnos) {
                 </td>
             </tr>`;
         if (badgeFiltrados) badgeFiltrados.innerText = '0';
+        if (badgeResumen) badgeResumen.innerText = '0';
         return;
     }
 
     if (badgeFiltrados) badgeFiltrados.innerText = alumnos.length;
+    if (badgeResumen) badgeResumen.innerText = alumnos.length;
 
     let htmlFilas = '';
 
@@ -2420,4 +2435,238 @@ export function inicializarEventosExamenVsCursillo() {
             renderizarGraficoEvolucion(datosGraficoCache, filtro);
         }
     });
+}
+
+// =================================================================
+// DESCARGA DE CALIFICACIONES DESDE LA SUBTABLA RESUMEN (PDF / EXCEL)
+// =================================================================
+export function descargarListadoNotasResumen(formato = 'pdf') {
+    // Leemos los alumnos filtrados respetando los filtros globales activos
+    const alumnos = Filtros.obtenerAlumnosFiltradosPorMerito(
+        EstadoDashboard.alumnos,
+        EstadoDashboard.cursillo
+    );
+
+    if (!alumnos || alumnos.length === 0) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Atención', 'No hay alumnos para exportar con los filtros actuales.', 'warning');
+        } else {
+            alert('No hay alumnos para exportar con los filtros actuales.');
+        }
+        return;
+    }
+
+    const etapaActiva = Filtros.obtenerEtapaSeleccionada ? Filtros.obtenerEtapaSeleccionada() : 'oficial';
+    const nombresEtapas = {
+        oficial: 'Examen de Ingreso',
+        ensayo: '2º Ensayo de Examen',
+        seguimiento: '1º Eval. Seguimiento'
+    };
+    const nombreEtapa = nombresEtapas[etapaActiva] || 'Examen de Ingreso';
+
+    const comisionFiltro = (document.getElementById('filtro-global-comision')?.value || 'todas').trim();
+    const infoComision = (comisionFiltro !== 'todas' && comisionFiltro !== '')
+        ? `Comisión ${comisionFiltro}`
+        : 'Todas las Comisiones';
+
+    if (formato === 'excel') {
+        exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro);
+    } else {
+        exportarResumenPDF(alumnos, nombreEtapa, infoComision);
+    }
+}
+
+function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro) {
+    const cabeceras = ['Orden de Mérito', 'Apellido y Nombre', 'Comisión', 'Matemática', 'Lengua', 'Dibujo', 'Promedio General'];
+    const filas = alumnos.map(a => {
+        const ex = a.datos_examen || {};
+        const apellido = a['Apellido/s del alumno'] || a.apellido || '';
+        const nombre = a['Nombre/s del alumno'] || a.nombre || '';
+        const nombreCompleto = (apellido && nombre) ? `${apellido}, ${nombre}` : (a['Nombre y Apellido'] || a['Alumno'] || 'Sin Nombre');
+        const com = a['Comisión'] || a['Comision'] || a.comision || '-';
+
+        const notaMat = ex.estado_matematica === 'Presente' && typeof ex.nota_final_matematica === 'number'
+            ? ex.nota_final_matematica.toFixed(2)
+            : (parseFloat(ex.nota_final_matematica) > 0 ? parseFloat(ex.nota_final_matematica).toFixed(2) : '-');
+        const notaLen = ex.estado_lengua === 'Presente' && typeof ex.nota_final_lengua === 'number'
+            ? ex.nota_final_lengua.toFixed(2)
+            : (parseFloat(ex.nota_final_lengua) > 0 ? parseFloat(ex.nota_final_lengua).toFixed(2) : '-');
+        const notaDib = ex.estado_dibujo === 'Presente' && typeof ex.nota_final_dibujo === 'number'
+            ? ex.nota_final_dibujo.toFixed(2)
+            : (parseFloat(ex.nota_final_dibujo) > 0 ? parseFloat(ex.nota_final_dibujo).toFixed(2) : '-');
+        const prom = a.promedioGeneral > 0 ? formatearPromedioTruncado(a.promedioGeneral, 3) : 'Ausente';
+
+        return [
+            a.ordenMerito,
+            nombreCompleto,
+            com,
+            notaMat,
+            notaLen,
+            notaDib,
+            prom
+        ];
+    });
+
+    let csvContent = "\uFEFF" + cabeceras.join(";") + "\n";
+    filas.forEach(fila => {
+        const linea = fila.map(val => `"${String(val).replace(/"/g, '""')}"`).join(";");
+        csvContent += linea + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const sufijo = (comisionFiltro !== 'todas' && comisionFiltro !== '') ? `Comision_${comisionFiltro}` : 'General';
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Notas_${nombreEtapa.replace(/\s+/g, '_')}_${sufijo}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function exportarResumenPDF(alumnos, nombreEtapa, infoComision) {
+    if (!window.jspdf) {
+        if (typeof Swal !== 'undefined') Swal.fire('Error', 'No se encontró la librería jsPDF.', 'error');
+        return;
+    }
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Generando PDF...',
+            text: 'Por favor aguarde un momento.',
+            didOpen: () => { Swal.showLoading(); }
+        });
+    }
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const anchoHoja = pdf.internal.pageSize.getWidth();
+        const centroX = anchoHoja / 2;
+
+        const cabeceras = [['#', 'Apellido y Nombre', 'Comisión', 'Matemática', 'Lengua', 'Dibujo', 'Promedio']];
+        const filas = alumnos.map(a => {
+            const ex = a.datos_examen || {};
+            const apellido = a['Apellido/s del alumno'] || a.apellido || '';
+            const nombre = a['Nombre/s del alumno'] || a.nombre || '';
+            const nombreCompleto = (apellido && nombre) ? `${apellido}, ${nombre}` : (a['Nombre y Apellido'] || a['Alumno'] || 'Sin Nombre');
+            const com = a['Comisión'] || a['Comision'] || a.comision || '-';
+
+            const notaMat = ex.estado_matematica === 'Presente' && typeof ex.nota_final_matematica === 'number'
+                ? ex.nota_final_matematica.toFixed(2)
+                : (parseFloat(ex.nota_final_matematica) > 0 ? parseFloat(ex.nota_final_matematica).toFixed(2) : '-');
+            const notaLen = ex.estado_lengua === 'Presente' && typeof ex.nota_final_lengua === 'number'
+                ? ex.nota_final_lengua.toFixed(2)
+                : (parseFloat(ex.nota_final_lengua) > 0 ? parseFloat(ex.nota_final_lengua).toFixed(2) : '-');
+            const notaDib = ex.estado_dibujo === 'Presente' && typeof ex.nota_final_dibujo === 'number'
+                ? ex.nota_final_dibujo.toFixed(2)
+                : (parseFloat(ex.nota_final_dibujo) > 0 ? parseFloat(ex.nota_final_dibujo).toFixed(2) : '-');
+            const prom = a.promedioGeneral > 0 ? formatearPromedioTruncado(a.promedioGeneral, 3) : 'Ausente';
+
+            return [
+                a.ordenMerito,
+                nombreCompleto,
+                com,
+                notaMat,
+                notaLen,
+                notaDib,
+                prom
+            ];
+        });
+
+        const fechaHoy = new Date().toLocaleDateString('es-AR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        // 1. Estampar logos y encabezados institucionales en la Página 1 (idéntico a los otros listados)
+        if (typeof logoIT !== 'undefined') pdf.addImage(logoIT, 'PNG', 14, 8, 22, 22);
+        if (typeof logoUNT !== 'undefined') pdf.addImage(logoUNT, 'PNG', anchoHoja - 32, 8, 18, 22);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(22);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text("INSTITUTO TÉCNICO", centroX, 14, { align: "center" });
+
+        pdf.setFont("times", "italic");
+        pdf.setFontSize(13);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text("Universidad Nacional de Tucumán", centroX, 20, { align: "center" });
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(12);
+        pdf.setTextColor(0, 48, 93);
+        pdf.text(`CALIFICACIONES - ${nombreEtapa.toUpperCase()}`, centroX, 27, { align: "center" });
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(90, 90, 90);
+        pdf.text(`Filtro: ${infoComision} | Postulantes listados: ${alumnos.length} | Generado el: ${fechaHoy}`, centroX, 32, { align: "center" });
+
+        pdf.setDrawColor(180, 180, 180);
+        pdf.setLineWidth(0.5);
+        pdf.line(14, 35, anchoHoja - 14, 35);
+
+        pdf.autoTable({
+            head: cabeceras,
+            body: filas,
+            startY: 38,
+            margin: { top: 15, bottom: 12, left: 14, right: 14 },
+            theme: 'grid',
+            showHead: 'everyPage',
+            headStyles: {
+                fillColor: [0, 48, 93],
+                textColor: [255, 255, 255],
+                halign: 'center',
+                valign: 'middle',
+                lineWidth: 0.2
+            },
+            styles: {
+                fontSize: 8.5,
+                cellPadding: 2,
+                valign: 'middle',
+                lineColor: [210, 210, 210],
+                lineWidth: 0.1
+            },
+            alternateRowStyles: {
+                fillColor: [248, 249, 250]
+            },
+            columnStyles: {
+                0: { cellWidth: 12, halign: 'center' },
+                1: { cellWidth: 'auto' },
+                2: { cellWidth: 20, halign: 'center' },
+                3: { cellWidth: 22, halign: 'center' },
+                4: { cellWidth: 22, halign: 'center' },
+                5: { cellWidth: 22, halign: 'center' },
+                6: { cellWidth: 24, halign: 'center', fontStyle: 'bold' }
+            },
+            didDrawPage: function (data) {
+                if (data.pageNumber > 1) {
+                    // Encabezado compacto institucional en páginas subsiguientes
+                    pdf.setFont("helvetica", "normal");
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(110, 110, 110);
+                    pdf.text(`INSTITUTO TÉCNICO - UNT | CALIFICACIONES - ${nombreEtapa.toUpperCase()} (${infoComision})`, 14, 9);
+                    pdf.setDrawColor(200, 200, 200);
+                    pdf.setLineWidth(0.3);
+                    pdf.line(14, 11, anchoHoja - 14, 11);
+                }
+
+                // Pie de página con numeración
+                const numPagina = data.pageNumber;
+                pdf.setFontSize(8);
+                pdf.setFont("helvetica", "normal");
+                pdf.setTextColor(130, 130, 130);
+                pdf.text(`Página ${numPagina}`, anchoHoja - 14, pdf.internal.pageSize.getHeight() - 6, { align: 'right' });
+            }
+        });
+
+        if (typeof Swal !== 'undefined') Swal.close();
+        const sufijo = infoComision.replace(/\s+/g, '_');
+        pdf.save(`Notas_${nombreEtapa.replace(/\s+/g, '_')}_${sufijo}.pdf`);
+    } catch (err) {
+        console.error('Error generando PDF:', err);
+        if (typeof Swal !== 'undefined') Swal.fire('Error', 'Ocurrió un error al generar el PDF: ' + err.message, 'error');
+    }
 }
