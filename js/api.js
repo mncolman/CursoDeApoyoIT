@@ -13,7 +13,7 @@ if (typeof window !== 'undefined') {
     window.EstadoDashboard = EstadoDashboard;
 }
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPrYeAQCPFAZtfjUCzACgzYJtSHv3hjzAZUSG8GhQa-OSxga6qlppWn8S4uiuChYde/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyVFi2R8H6gTEowe_uBh_A5EqaKwtmn4MQRcPblcKYkMtW6XC3f-vpAqY98o7tc0tMkuw/exec';
 
 export async function peticionLogin(usuario, clave) {
     const peticion = {
