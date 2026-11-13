@@ -33,6 +33,84 @@ export function filtrarYOrdenar(listaOriginal, search, comision, sortMethod, tur
     return filteredData;
 }
 
+/** Normaliza texto alfabético (sin acentos, minúsculas, espacios colapsados) para comparar rangos. */
+function normalizarClaveAlfabetica(texto) {
+    return quitarAcentos(String(texto ?? ''))
+        .toLowerCase()
+        .replace(/,/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/**
+ * Recorta una lista ya filtrada y ordenada según un rango por posición (1-based)
+ * o alfabético por apellido y nombre, preservando la posición original previa al corte.
+ */
+export function aplicarRangoListado(listaOrdenada, rangoConfig = {}) {
+    const lista = Array.isArray(listaOrdenada) ? listaOrdenada : [];
+    const totalPreRango = lista.length;
+
+    if (totalPreRango === 0) {
+        return { items: [], posiciones: [], totalPreRango: 0, activo: false };
+    }
+
+    const modo = rangoConfig?.modo === 'alfabetico' ? 'alfabetico' : 'posicion';
+    const desdeRaw = String(rangoConfig?.desde ?? '').trim();
+    const hastaRaw = String(rangoConfig?.hasta ?? '').trim();
+
+    if (desdeRaw === '' && hastaRaw === '') {
+        return {
+            items: lista,
+            posiciones: lista.map((_, idx) => idx + 1),
+            totalPreRango,
+            activo: false
+        };
+    }
+
+    if (modo === 'posicion') {
+        let desdeNum = desdeRaw !== '' ? parseInt(desdeRaw, 10) : 1;
+        let hastaNum = hastaRaw !== '' ? parseInt(hastaRaw, 10) : totalPreRango;
+
+        if (isNaN(desdeNum) || desdeNum < 1) desdeNum = 1;
+        if (isNaN(hastaNum) || hastaNum < 1) hastaNum = totalPreRango;
+
+        if (desdeNum > hastaNum || desdeNum > totalPreRango) {
+            return { items: [], posiciones: [], totalPreRango, activo: true };
+        }
+
+        const inicio = desdeNum - 1;
+        const fin = Math.min(hastaNum, totalPreRango);
+        const items = lista.slice(inicio, fin);
+        const posiciones = items.map((_, idx) => inicio + idx + 1);
+
+        return { items, posiciones, totalPreRango, activo: true };
+    }
+
+    const desdeNorm = normalizarClaveAlfabetica(desdeRaw);
+    const hastaNorm = normalizarClaveAlfabetica(hastaRaw);
+
+    const items = [];
+    const posiciones = [];
+
+    lista.forEach((asp, idx) => {
+        const claveAlumno = normalizarClaveAlfabetica(`${asp.apellido || ''} ${asp.nombre || ''}`);
+        if (desdeNorm && claveAlumno < desdeNorm) return;
+        if (hastaNorm) {
+            const prefijo = claveAlumno.slice(0, hastaNorm.length);
+            if (prefijo > hastaNorm) return;
+        }
+        items.push(asp);
+        posiciones.push(idx + 1);
+    });
+
+    return {
+        items,
+        posiciones,
+        totalPreRango,
+        activo: Boolean(desdeNorm || hastaNorm)
+    };
+}
+
 // Función para eliminar acentos y diacríticos
 function quitarAcentos(texto) {
     return String(texto || '').normalize("NFD").replace(/[̀-ͯ]/g, "");

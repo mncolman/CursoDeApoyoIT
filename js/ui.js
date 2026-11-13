@@ -16,8 +16,101 @@ const mapaAsignaturas = {
 };
 
 
+/** Escapa caracteres HTML especiales para evitar roturas al interpolar texto en celdas. */
+function escaparHtmlTabla(texto) {
+    return String(texto ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * Valida y normaliza un teléfono argentino (o internacional con +) al formato wa.me.
+ * Devuelve { valido: boolean, numeroWa: string|null }.
+ */
+export function validarYFormatearWhatsApp(telefonoRaw) {
+    const raw = String(telefonoRaw ?? '').trim();
+    if (!raw) return { valido: false, numeroWa: null };
+
+    const tieneMas = raw.startsWith('+');
+    let digitos = raw.replace(/\D/g, '');
+    if (!digitos || /^(\d)\1+$/.test(digitos)) {
+        return { valido: false, numeroWa: null };
+    }
+
+    // Número internacional explícito no argentino (+código...)
+    if (tieneMas && !digitos.startsWith('54')) {
+        if (digitos.length >= 10 && digitos.length <= 15) {
+            return { valido: true, numeroWa: digitos };
+        }
+        return { valido: false, numeroWa: null };
+    }
+
+    // Normalizar prefijo país argentino (54 / 549)
+    if (digitos.startsWith('549') && digitos.length === 13) {
+        return { valido: true, numeroWa: digitos };
+    }
+    if (digitos.startsWith('54')) {
+        digitos = digitos.slice(2);
+    }
+
+    // Quitar 0 inicial de larga distancia nacional (0381..., 011...)
+    if (digitos.startsWith('0')) {
+        digitos = digitos.slice(1);
+    }
+
+    // Si tiene el prefijo móvil "15" intercalado tras el código de área (12 dígitos -> 10 dígitos)
+    if (digitos.length === 12) {
+        const match15 = digitos.match(/^(11|[23]\d{1,3})15(\d{6,8})$/);
+        if (match15 && (match15[1].length + match15[2].length === 10)) {
+            digitos = match15[1] + match15[2];
+        }
+    }
+
+    // Un celular argentino válido sin código país tiene exactamente 10 dígitos (ej. 3815123456)
+    if (digitos.length === 10 && !/^(\d)\1+$/.test(digitos)) {
+        return { valido: true, numeroWa: `549${digitos}` };
+    }
+
+    return { valido: false, numeroWa: null };
+}
+
+/** Genera el HTML de la celda de contacto del tutor titular con link a WhatsApp y verificación de formato. */
+function renderCeldaContactoTutor(asp) {
+    const nombreTutor = String(asp.tutor ?? '').trim() || 'Tutor titular';
+    const telRaw = String(asp.tel1 ?? '').trim();
+    const { valido, numeroWa } = validarYFormatearWhatsApp(telRaw);
+
+    const nombreHtml = escaparHtmlTabla(nombreTutor);
+    const telHtml = escaparHtmlTabla(telRaw || 'Sin teléfono');
+
+    if (valido && numeroWa) {
+        return `
+            <div class="d-flex align-items-center gap-2">
+                <a href="https://wa.me/${numeroWa}" target="_blank" rel="noopener noreferrer"
+                    class="text-decoration-none fw-semibold text-success d-inline-flex align-items-center"
+                    title="Abrir WhatsApp con ${nombreHtml} (+${numeroWa})">
+                    <i class="bi bi-whatsapp me-1"></i>${nombreHtml}
+                </a>
+                <span class="text-muted small">(${telHtml})</span>
+                <i class="bi bi-check-circle-fill text-success" title="Formato apto para WhatsApp"></i>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-dark">${nombreHtml}</span>
+            <span class="text-muted small">(${telHtml})</span>
+            <i class="bi bi-x-circle-fill text-danger" title="Formato no apto para WhatsApp"></i>
+        </div>
+    `;
+}
+
 // --- 4. RENDERIZADO DINÁMICO DE LA TABLA DE ASPIRANTES---
-export function renderTable(data, isExpandedView) {
+export function renderTable(data, isExpandedView, posiciones = null) {
     const thead = document.getElementById('tabla-aspirantes-head');
     const tbody = document.getElementById('tabla-aspirantes-body');
 
@@ -29,6 +122,7 @@ export function renderTable(data, isExpandedView) {
     const trHead = document.createElement('tr');
     if (isExpandedView) {
         trHead.innerHTML = `
+            <th class="text-center" style="width: 52px;">Nº</th>
             <th>Nº Insc.</th>
             <th>Apellido y Nombre</th>
             <th>DNI</th>
@@ -41,6 +135,7 @@ export function renderTable(data, isExpandedView) {
         `;
     } else {
         trHead.innerHTML = `
+            <th class="text-center" style="width: 52px;">Nº</th>
             <th>Apellido y Nombre</th>
             <th>DNI</th>
             <th>Comisión</th>
@@ -52,22 +147,25 @@ export function renderTable(data, isExpandedView) {
 
     // 4B. Construir Filas con los datos filtrados
     if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No se encontraron aspirantes con esos filtros.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">No se encontraron aspirantes con esos filtros.</td></tr>`;
         return;
     }
 
-    data.forEach(asp => {
+    data.forEach((asp, idx) => {
         const tr = document.createElement('tr');
+        const nroOrden = (Array.isArray(posiciones) && posiciones[idx] !== undefined) ? posiciones[idx] : (idx + 1);
+        const celdaContactoTutor = renderCeldaContactoTutor(asp);
 
         if (isExpandedView) {
             tr.innerHTML = `
+                <td class="text-center text-muted small fw-semibold">${nroOrden}</td>
                 <td><strong>${asp.id_inscripcion}</strong></td>
                 <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
                 <td class="text-uppercase">${asp.departamento}</td>
                 <td>${asp.domicilio}</td>
-                <td>${asp.tel1}</td>
+                <td>${celdaContactoTutor}</td>
                 <td>${asp.tel2}</td>
                                  <td class="d-flex justify-content-center">
                  <button class="btn btn-sm btn-outline-primary  btn-abrir-ficha" data-id="${asp.id_inscripcion}">Ver Ficha</button>
@@ -76,10 +174,11 @@ export function renderTable(data, isExpandedView) {
             `;
         } else {
             tr.innerHTML = `
+                <td class="text-center text-muted small fw-semibold">${nroOrden}</td>
                 <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
-                <td>${asp.tel1}</td>
+                <td>${celdaContactoTutor}</td>
                  <td class="d-flex justify-content-center">
                  <button class="btn btn-sm btn-outline-primary  btn-abrir-ficha" data-id="${asp.id_inscripcion}">Ver Ficha</button>
                  </td>
