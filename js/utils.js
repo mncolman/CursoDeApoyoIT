@@ -1282,6 +1282,15 @@ function normalizarSegmentoArchivo(texto) {
         .replace(/^_+|_+$/g, '');
 }
 
+/** Formatea un DNI numérico agregando puntos de miles (ej: 46123456 -> 46.123.456). */
+export function formatearDniConPuntos(dniRaw) {
+    const raw = String(dniRaw ?? '').trim();
+    if (!raw) return 'S/D';
+    const digitos = raw.replace(/\D/g, '');
+    if (!digitos) return raw;
+    return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 /** Extrae y normaliza los campos clave del aspirante para la constancia. */
 export function extraerDatosAlumnoConstancia(alumno = {}) {
     const apellido = String(alumno.apellido ?? alumno['Apellido/s del alumno'] ?? '').trim();
@@ -1303,7 +1312,7 @@ export function extraerDatosAlumnoConstancia(alumno = {}) {
         apellido,
         nombre,
         nombreCompleto,
-        dni: dniRaw || 'S/D',
+        dni: formatearDniConPuntos(dniRaw),
         dniArchivo: dniLimpio,
         institucion
     };
@@ -1529,7 +1538,64 @@ function agruparBloquesParrafoConstancia(plantilla) {
     return bloques;
 }
 
-/** Dibuja título, lugar/fecha, cuerpo (con nombre y DNI en negrita y recuadros opcionales) y reserva espacio inferior para firma digital. */
+/** Dibuja una línea de runs estilizados, justificándola al ancho indicado cuando corresponde. */
+function dibujarLineaEstilizada(pdf, lineaRuns, xInicio, y, anchoContenido, justificar) {
+    const palabras = [];
+    let palabraActual = [];
+
+    for (const run of lineaRuns) {
+        const subPartes = String(run.text || '').split(/(\s+)/);
+        for (const sub of subPartes) {
+            if (!sub) continue;
+            if (/^\s+$/.test(sub)) {
+                if (palabraActual.length > 0) {
+                    palabras.push(palabraActual);
+                    palabraActual = [];
+                }
+            } else {
+                palabraActual.push({ text: sub, bold: run.bold });
+            }
+        }
+    }
+    if (palabraActual.length > 0) {
+        palabras.push(palabraActual);
+    }
+    if (palabras.length === 0) return;
+
+    let anchoPalabras = 0;
+    for (const palabra of palabras) {
+        for (const chunk of palabra) {
+            pdf.setFont('helvetica', chunk.bold ? 'bold' : 'normal');
+            anchoPalabras += pdf.getTextWidth(chunk.text);
+        }
+    }
+
+    pdf.setFont('helvetica', 'normal');
+    const espacioNormal = pdf.getTextWidth(' ');
+    const numHuecos = palabras.length - 1;
+    let espacioEntrePalabras = espacioNormal;
+
+    if (justificar && numHuecos > 0) {
+        const calculado = (anchoContenido - anchoPalabras) / numHuecos;
+        if (calculado >= espacioNormal * 0.5 && calculado <= 12) {
+            espacioEntrePalabras = calculado;
+        }
+    }
+
+    let cursorX = xInicio;
+    palabras.forEach((palabra, idx) => {
+        for (const chunk of palabra) {
+            pdf.setFont('helvetica', chunk.bold ? 'bold' : 'normal');
+            pdf.text(chunk.text, cursorX, y);
+            cursorX += pdf.getTextWidth(chunk.text);
+        }
+        if (idx < numHuecos) {
+            cursorX += espacioEntrePalabras;
+        }
+    });
+}
+
+/** Dibuja título, lugar/fecha, cuerpo (justificado, con nombre y DNI en negrita y recuadros opcionales) y reserva espacio inferior para firma digital. */
 function dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina = '', recuadros = false) {
     const anchoHoja = pdf.internal.pageSize.getWidth();
     const altoHoja = pdf.internal.pageSize.getHeight();
@@ -1571,17 +1637,23 @@ function dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina = '',
 
     const bloques = agruparBloquesParrafoConstancia(plantilla);
     for (const lineasBloque of bloques) {
-        const lineasEnvueltas = [];
+        // Guardamos cada línea envuelta junto con si debe justificarse (todas menos la última de cada párrafo)
+        const lineasConJustificado = [];
         for (const lineaTexto of lineasBloque) {
             const segmentos = construirSegmentosConstancia(lineaTexto, alumno);
             const envueltas = dividirParrafoEnLineasEstilizadas(pdf, segmentos, anchoContenido);
-            lineasEnvueltas.push(...envueltas);
+            envueltas.forEach((lineaRuns, idx) => {
+                lineasConJustificado.push({
+                    runs: lineaRuns,
+                    justificar: idx < envueltas.length - 1
+                });
+            });
         }
-        if (lineasEnvueltas.length === 0) continue;
+        if (lineasConJustificado.length === 0) continue;
 
         if (recuadros) {
             const cajaY = cursorY;
-            const altoCaja = ((lineasEnvueltas.length - 1) * altoLinea) + paddingYTop + paddingYBottom;
+            const altoCaja = ((lineasConJustificado.length - 1) * altoLinea) + paddingYTop + paddingYBottom;
             if (cajaY + altoCaja > limiteInferiorCuerpo) break;
 
             pdf.setDrawColor(0, 0, 0);
@@ -1589,25 +1661,15 @@ function dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina = '',
             pdf.rect(margenX, cajaY, anchoTexto, altoCaja);
 
             let textoY = cajaY + paddingYTop;
-            for (const lineaRuns of lineasEnvueltas) {
-                let cursorX = margenX + paddingX;
-                for (const run of lineaRuns) {
-                    pdf.setFont('helvetica', run.bold ? 'bold' : 'normal');
-                    pdf.text(run.text, cursorX, textoY);
-                    cursorX += pdf.getTextWidth(run.text);
-                }
+            for (const item of lineasConJustificado) {
+                dibujarLineaEstilizada(pdf, item.runs, margenX + paddingX, textoY, anchoContenido, item.justificar);
                 textoY += altoLinea;
             }
             cursorY = cajaY + altoCaja + gapBloque;
         } else {
-            for (const lineaRuns of lineasEnvueltas) {
+            for (const item of lineasConJustificado) {
                 if (cursorY > limiteInferiorCuerpo) break;
-                let cursorX = margenX;
-                for (const run of lineaRuns) {
-                    pdf.setFont('helvetica', run.bold ? 'bold' : 'normal');
-                    pdf.text(run.text, cursorX, cursorY);
-                    cursorX += pdf.getTextWidth(run.text);
-                }
+                dibujarLineaEstilizada(pdf, item.runs, margenX, cursorY, anchoContenido, item.justificar);
                 cursorY += altoLinea;
             }
             cursorY += gapBloque;
