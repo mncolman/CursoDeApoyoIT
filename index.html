@@ -168,73 +168,104 @@
                     <div class="table-wrapper">
 
                         <!-- BARRA DE HERRAMIENTAS Y FILTROS -->
-                        <div class="row g-2 mb-4 align-items-center border-2 border-secondary p-3 rounded  shadow-sm"
+                        <div class="row g-2 mb-4 align-items-center border-2 border-secondary p-3 rounded shadow-sm"
                             style="top: 15px; z-index: 1000;">
 
-                            <!-- Buscador -->
-                            <div class="col-md-3">
-                                <input type="text" id="searchInput" class="form-control" placeholder="Buscar...">
-                            </div>
+                            <!-- Sección 1: Buscador y Filtros comunes -->
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small fw-bold text-uppercase text-secondary" style="letter-spacing: 0.4px;">
+                                        <i class="bi bi-sliders me-1 text-primary"></i>Filtros
+                                    </span>
+                                    <button class="btn btn-sm btn-outline-secondary d-md-none py-0 px-2" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseFiltrosComunes"
+                                        aria-expanded="false" aria-controls="collapseFiltrosComunes">
+                                        <i class="bi bi-funnel me-1"></i>Más filtros
+                                    </button>
+                                </div>
 
-                            <!-- Filtro Comisión -->
-                            <div class="col-md-3">
-                                <select id="filterComision" class="form-select">
-                                    <option value="">Todas las Comisiones</option>
-                                    <!-- Las opciones se generarán dinámicamente con JS -->
-                                </select>
-                            </div>
-
-                            <!-- NUEVO: Ordenamiento -->
-                            <div class="col-md-3">
-                                <select id="sortSelect" class="form-select">
-                                    <option value="nombre_asc">Nombre (A - Z)</option>
-                                    <option value="nombre_desc">Nombre (Z - A)</option>
-                                    <option value="inscripcion_asc">Nº Inscripción (Menor a Mayor)</option>
-                                    <option value="inscripcion_desc">Nº Inscripción (Mayor a Menor)</option>
-                                    <option value="depto_asc">Departamento (A - Z)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <select id="turnoSelect" class="form-select">
-                                    <option selected value="">Ambos turnos</option> <!-- Corregido el value -->
-                                    <option value="1º">1° Turno</option>
-                                    <option value="2º">2° Turno</option>
-                                </select>
-                            </div>
-
-                            <!-- Filtro de Rango (Por Posición o Alfabético) -->
-                            <div class="col-12 mt-2 pt-2 border-top">
                                 <div class="row g-2 align-items-center">
-                                    <div class="col-md-3">
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text bg-light fw-semibold text-secondary">
-                                                <i class="bi bi-funnel me-1"></i>Rango
-                                            </span>
-                                            <select id="rangeModeSelect" class="form-select" aria-label="Modo de rango">
-                                                <option value="posicion" selected>Por posición (Nº)</option>
-                                                <option value="alfabetico">Alfabético (A - Z)</option>
-                                            </select>
+                                    <!-- Buscador (siempre visible en escritorio y celular) -->
+                                    <div class="col-12 col-md-3">
+                                        <input type="text" id="searchInput" class="form-control" placeholder="Buscar...">
+                                    </div>
+
+                                    <!-- Filtros comunes (colapsables en celular, visibles en md+) -->
+                                    <div class="col-12 col-md-9 collapse d-md-block" id="collapseFiltrosComunes">
+                                        <div class="row g-2">
+                                            <div class="col-12 col-md-4">
+                                                <select id="filterComision" class="form-select">
+                                                    <option value="">Todas las Comisiones</option>
+                                                    <!-- Las opciones se generarán dinámicamente con JS -->
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-md-4">
+                                                <select id="sortSelect" class="form-select">
+                                                    <option value="nombre_asc">Nombre (A - Z)</option>
+                                                    <option value="nombre_desc">Nombre (Z - A)</option>
+                                                    <option value="inscripcion_asc">Nº Inscripción (Menor a Mayor)</option>
+                                                    <option value="inscripcion_desc">Nº Inscripción (Mayor a Menor)</option>
+                                                    <option value="depto_asc">Departamento (A - Z)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-md-4">
+                                                <select id="turnoSelect" class="form-select">
+                                                    <option selected value="">Ambos turnos</option>
+                                                    <option value="1º">1° Turno</option>
+                                                    <option value="2º">2° Turno</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="col-6 col-md-2">
-                                        <input type="number" min="1" id="rangeDesdeInput"
-                                            class="form-control form-control-sm" placeholder="Desde Nº (ej: 1)"
-                                            aria-label="Rango desde">
-                                    </div>
-                                    <div class="col-6 col-md-2">
-                                        <input type="number" min="1" id="rangeHastaInput"
-                                            class="form-control form-control-sm" placeholder="Hasta Nº (ej: 150)"
-                                            aria-label="Rango hasta">
-                                    </div>
-                                    <div class="col-md-5 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                        <small id="rangeResumenInfo" class="text-muted" style="font-size: 0.8rem;">
-                                            Sin filtro de rango activo
-                                        </small>
-                                        <button type="button" id="btnLimpiarRango"
-                                            class="btn btn-sm btn-outline-secondary py-0 px-2 d-none"
-                                            title="Quitar filtro de rango">
-                                            <i class="bi bi-x-circle me-1"></i>Limpiar
-                                        </button>
+                                </div>
+                            </div>
+
+                            <!-- Sección 2: Filtro por rango (colapsable en celular, visible en md+) -->
+                            <div class="col-12 mt-3 pt-2 border-top">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small fw-bold text-uppercase text-secondary" style="letter-spacing: 0.4px;">
+                                        <i class="bi bi-funnel me-1 text-primary"></i>Filtro por rango
+                                    </span>
+                                    <button class="btn btn-sm btn-outline-secondary d-md-none py-0 px-2" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseFiltroRango"
+                                        aria-expanded="false" aria-controls="collapseFiltroRango">
+                                        <i class="bi bi-arrows-expand me-1"></i>Rango
+                                    </button>
+                                </div>
+
+                                <div class="collapse d-md-block" id="collapseFiltroRango">
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-12 col-md-3">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text bg-light fw-semibold text-secondary">
+                                                    Modo
+                                                </span>
+                                                <select id="rangeModeSelect" class="form-select" aria-label="Modo de rango">
+                                                    <option value="posicion" selected>Por posición (Nº)</option>
+                                                    <option value="alfabetico">Alfabético (A - Z)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-2">
+                                            <input type="number" min="1" id="rangeDesdeInput"
+                                                class="form-control form-control-sm" placeholder="Desde Nº (ej: 1)"
+                                                aria-label="Rango desde">
+                                        </div>
+                                        <div class="col-6 col-md-2">
+                                            <input type="number" min="1" id="rangeHastaInput"
+                                                class="form-control form-control-sm" placeholder="Hasta Nº (ej: 150)"
+                                                aria-label="Rango hasta">
+                                        </div>
+                                        <div class="col-12 col-md-5 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                            <small id="rangeResumenInfo" class="text-muted" style="font-size: 0.8rem;">
+                                                Sin filtro de rango activo
+                                            </small>
+                                            <button type="button" id="btnLimpiarRango"
+                                                class="btn btn-sm btn-outline-secondary py-0 px-2 d-none"
+                                                title="Quitar filtro de rango">
+                                                <i class="bi bi-x-circle me-1"></i>Limpiar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
