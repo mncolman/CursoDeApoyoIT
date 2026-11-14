@@ -304,35 +304,40 @@
 
 
                         <!-- REPORTE DINÁMICO (Mini Dashboard) -->
-                        <article class="row mb-3 text-center" id="miniReporte">
-                            <section class="col-12 col-md-4 mb-2">
-                                <div class="card text-white shadow-sm border-0 h-100"
-                                    style="background-color: #073a86;">
-                                    <div class="card-body p-2">
-                                        <small class="text-uppercase fw-bold">Total aspirantes</small>
-                                        <h3 class="mb-0 fw-bold" id="dashTotal">0</h3>
+                        <div class="mb-3">
+                            <h6 class="text-uppercase fw-bold text-secondary small mb-2" style="letter-spacing: 0.5px;">
+                                <i class="bi bi-people-fill me-1 text-primary"></i>Aspirantes
+                            </h6>
+                            <article class="row g-2 text-center" id="miniReporte">
+                                <section class="col-4">
+                                    <div class="card text-white shadow-sm border-0 h-100"
+                                        style="background-color: #073a86;">
+                                        <div class="card-body p-2 p-md-3">
+                                            <small class="text-uppercase fw-bold d-block text-truncate" style="font-size: 0.72rem;">Total</small>
+                                            <h3 class="mb-0 fw-bold fs-4 fs-md-3" id="dashTotal">0</h3>
+                                        </div>
                                     </div>
-                                </div>
-                            </section>
-                            <section class="col-12 col-md-4 mb-2">
-                                <div class="card text-black shadow-sm border-black border-1 h-100"
-                                    style="background-color: #ffffff;">
-                                    <div class="card-body p-2">
-                                        <small class="text-uppercase fw-bold">Masculino</small>
-                                        <h3 class="mb-0 fw-bold" id="dashM">0</h3>
+                                </section>
+                                <section class="col-4">
+                                    <div class="card text-black shadow-sm border-black border-1 h-100"
+                                        style="background-color: #ffffff;">
+                                        <div class="card-body p-2 p-md-3">
+                                            <small class="text-uppercase fw-bold d-block text-truncate" style="font-size: 0.72rem;">Masculino</small>
+                                            <h3 class="mb-0 fw-bold fs-4 fs-md-3" id="dashM">0</h3>
+                                        </div>
                                     </div>
-                                </div>
-                            </section>
-                            <section class="col-12 col-md-4 mb-2">
-                                <div class="card text-white shadow-sm border-0 h-100"
-                                    style="background-color: #c00505;">
-                                    <div class="card-body p-2">
-                                        <small class="text-uppercase fw-bold">Femenino</small>
-                                        <h3 class="mb-0 fw-bold" id="dashF">0</h3>
+                                </section>
+                                <section class="col-4">
+                                    <div class="card text-white shadow-sm border-0 h-100"
+                                        style="background-color: #c00505;">
+                                        <div class="card-body p-2 p-md-3">
+                                            <small class="text-uppercase fw-bold d-block text-truncate" style="font-size: 0.72rem;">Femenino</small>
+                                            <h3 class="mb-0 fw-bold fs-4 fs-md-3" id="dashF">0</h3>
+                                        </div>
                                     </div>
-                                </div>
-                            </section>
-                        </article>
+                                </section>
+                            </article>
+                        </div>
 
 
                         <!-- TABLA -->
