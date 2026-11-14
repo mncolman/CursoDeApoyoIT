@@ -131,6 +131,27 @@ function renderCeldaContactoWhatsApp(nombreRaw, telefonoRaw) {
     `;
 }
 
+/** Renderiza Apellido y Nombre del aspirante e incluye un botiquín rojizo clickeable si registra enfermedad. */
+export function renderNombreConAlertaSalud(asp) {
+    const nombreCompleto = `${escaparHtmlTabla(asp.apellido)}, ${escaparHtmlTabla(asp.nombre)}`;
+    const enfermedad = String(asp.enfermedad ?? '').trim();
+    if (!enfermedad) return nombreCompleto;
+
+    const enfermedadHtml = escaparHtmlTabla(enfermedad);
+    return `
+        <span class="d-inline-flex align-items-center gap-1">
+            <span>${nombreCompleto}</span>
+            <button type="button"
+                class="btn btn-link p-0 border-0 text-danger lh-1 btn-abrir-ficha"
+                data-id="${escaparHtmlTabla(asp.id_inscripcion)}"
+                title="Observación médica: ${enfermedadHtml} (Clic para ver ficha)"
+                aria-label="Ver ficha médica">
+                <i class="fa-solid fa-kit-medical"></i>
+            </button>
+        </span>
+    `;
+}
+
 // --- 4. RENDERIZADO DINÁMICO DE LA TABLA DE ASPIRANTES---
 export function renderTable(data, isExpandedView, posiciones = null) {
     const thead = document.getElementById('tabla-aspirantes-head');
@@ -177,6 +198,7 @@ export function renderTable(data, isExpandedView, posiciones = null) {
         const tr = document.createElement('tr');
         const nroOrden = (Array.isArray(posiciones) && posiciones[idx] !== undefined) ? posiciones[idx] : (idx + 1);
         const celdaContactoTutor = renderCeldaContactoWhatsApp(asp.tutor || 'Tutor titular', asp.tel1);
+        const celdaNombreSalud = renderNombreConAlertaSalud(asp);
 
         if (isExpandedView) {
             const alt = parsearContactoAlternativo(asp.tel2);
@@ -184,7 +206,7 @@ export function renderTable(data, isExpandedView, posiciones = null) {
             tr.innerHTML = `
                 <td class="text-center text-muted small fw-semibold">${nroOrden}</td>
                 <td><strong>${asp.id_inscripcion}</strong></td>
-                <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
+                <td class="fw-bold">${celdaNombreSalud}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
                 <td class="text-uppercase">${asp.departamento}</td>
@@ -199,7 +221,7 @@ export function renderTable(data, isExpandedView, posiciones = null) {
         } else {
             tr.innerHTML = `
                 <td class="text-center text-muted small fw-semibold">${nroOrden}</td>
-                <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
+                <td class="fw-bold">${celdaNombreSalud}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
                 <td>${celdaContactoTutor}</td>
