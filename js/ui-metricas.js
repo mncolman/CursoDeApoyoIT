@@ -188,6 +188,20 @@ export function calcularRendimientoIncisos(materia, alumnos) {
 // =================================================================
 // 2. RADAR CON CAPA BASE (MÁXIMO POSIBLE) Y TOOLTIP DESCRIPTIVO
 // =================================================================
+
+/** Devuelve radios responsivos para puntos de gráficos radar (más grandes en móvil para facilitar el toque). */
+function obtenerRadiosPuntoRadar(esCapaBase = false) {
+    const esMovil = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (esCapaBase) {
+        return esMovil
+            ? { radius: 6, hoverRadius: 8, hitRadius: 14 }
+            : { radius: 4, hoverRadius: 6, hitRadius: 8 };
+    }
+    return esMovil
+        ? { radius: 7, hoverRadius: 9, hitRadius: 16 }
+        : { radius: 6, hoverRadius: 8, hitRadius: 10 };
+}
+
 export function renderizarRadarDinamico(materia, idCanvas, colorBorde, colorFondo, alumnos) {
     const canvas = document.getElementById(idCanvas);
     if (!canvas) return;
@@ -199,6 +213,8 @@ export function renderizarRadarDinamico(materia, idCanvas, colorBorde, colorFond
     if (etiquetas.length === 0) return;
 
     const ctx = canvas.getContext('2d');
+    const radiosBase = obtenerRadiosPuntoRadar(true);
+    const radiosFrente = obtenerRadiosPuntoRadar(false);
 
     // Radar con dos capas superpuestas
     new Chart(ctx, {
@@ -214,8 +230,9 @@ export function renderizarRadarDinamico(materia, idCanvas, colorBorde, colorFond
                     backgroundColor: 'rgba(108, 117, 125, 0.08)',
                     borderWidth: 1.5,
                     borderDash: [4, 4],
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
+                    pointRadius: radiosBase.radius,
+                    pointHoverRadius: radiosBase.hoverRadius,
+                    pointHitRadius: radiosBase.hitRadius,
                     pointBackgroundColor: 'rgba(108, 117, 125, 0.58)',
                     fill: true
                 },
@@ -226,8 +243,9 @@ export function renderizarRadarDinamico(materia, idCanvas, colorBorde, colorFond
                     borderColor: colorBorde,
                     backgroundColor: colorFondo,
                     borderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
+                    pointRadius: radiosFrente.radius,
+                    pointHoverRadius: radiosFrente.hoverRadius,
+                    pointHitRadius: radiosFrente.hitRadius,
                     pointBackgroundColor: colorBorde,
                     fill: true
                 }
@@ -1368,6 +1386,7 @@ export function renderizarRadarsDocentes(alumnosFiltrados) {
         }
 
         // Radar normal para 3 o más docentes
+        const radiosDocente = obtenerRadiosPuntoRadar(false);
         new Chart(ctx, {
             type: 'radar',
             data: {
@@ -1378,8 +1397,9 @@ export function renderizarRadarsDocentes(alumnosFiltrados) {
                     borderColor: cfg.borde,
                     backgroundColor: cfg.fondo,
                     borderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
+                    pointRadius: radiosDocente.radius,
+                    pointHoverRadius: radiosDocente.hoverRadius,
+                    pointHitRadius: radiosDocente.hitRadius,
                     pointBackgroundColor: cfg.borde,
                     fill: true
                 }]
