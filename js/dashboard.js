@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function inicializarYRenderizarDashboard() {
     UImetrics.inicializarFiltrosMerito();
     UImetrics.inicializarSelectorComisiones(EstadoDashboard.alumnos);
+    UImetrics.calcularKpiAprobadosEnsayo(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
     actualizarDashboardFiltrado();
 }
 

@@ -127,21 +127,15 @@ function obtenerMapaEstructuraMateria(materia) {
 }
 
 export function calcularRendimientoIncisos(materia, alumnos) {
-    if (!alumnos || alumnos.length === 0) {
-        return { etiquetas: [], promedios: [], maximos: [], descripciones: {} };
-    }
-
     const areaKey = normalizarMateriaClave(materia);
-    const presentes = alumnos.filter(a => {
+    const mapaEstructura = obtenerMapaEstructuraMateria(materia);
+    const listaAlumnos = Array.isArray(alumnos) ? alumnos : [];
+
+    const presentes = listaAlumnos.filter(a => {
         const ex = a.datos_examen || {};
         const est = String(ex[`estado_${areaKey}`] || ex[`estado_${materia}`] || "").toLowerCase();
         return est === "presente";
     });
-    if (presentes.length === 0) {
-        return { etiquetas: [], promedios: [], maximos: [], descripciones: {} };
-    }
-
-    const mapaEstructura = obtenerMapaEstructuraMateria(materia);
 
     // Acumulamos puntajes obtenidos por cada inciso en los alumnos presentes
     const acumulador = {};
@@ -158,8 +152,18 @@ export function calcularRendimientoIncisos(materia, alumnos) {
         });
     });
 
+    // Combinamos estructura oficial del examen + incisos observados para renderizar siempre las notas máximas alcanzables
+    const clavesIncisos = new Set([
+        ...Object.keys(mapaEstructura),
+        ...Object.keys(acumulador)
+    ]);
+
+    if (clavesIncisos.size === 0) {
+        return { etiquetas: [], promedios: [], maximos: [], descripciones: {} };
+    }
+
     // Ordenamos las etiquetas numéricamente o por orden de clave
-    const etiquetas = Object.keys(acumulador).sort((a, b) => {
+    const etiquetas = Array.from(clavesIncisos).sort((a, b) => {
         const numA = parseFloat(a), numB = parseFloat(b);
         return (!isNaN(numA) && !isNaN(numB)) ? numA - numB : a.localeCompare(b);
     });
@@ -172,7 +176,7 @@ export function calcularRendimientoIncisos(materia, alumnos) {
         const info = mapaEstructura[inciso] || { maximo: 10, descripcion: `Inciso ${inciso}` };
         const data = acumulador[inciso];
 
-        const prom = data.count > 0 ? data.suma / data.count : 0;
+        const prom = (data && data.count > 0) ? data.suma / data.count : 0;
         promedios.push(parseFloat(prom.toFixed(2)));
         maximos.push(info.maximo > 0 ? info.maximo : 10);
         descripciones[inciso] = info.descripcion;
@@ -357,6 +361,64 @@ export function calcularKpisGlobales(alumnos) {
 
         asignarTexto('kpi-promedio-general', (sumaPromedios / rindieron.length).toFixed(2));
         asignarTexto('kpi-max-general', maxGlobal.toFixed(2));
+    }
+}
+
+/**
+ * Calcula el KPI fijo de alumnos que aprobaron las 3 áreas (nota >= 4)
+ * en el Ensayo de Examen sobre el padrón completo.
+ */
+export function calcularKpiAprobadosEnsayo(alumnos = [], datosCursillo = []) {
+    const elValor = document.getElementById('kpi-aprobados-ensayo-3');
+    const elPorcentaje = document.getElementById('kpi-aprobados-ensayo-3-pct');
+    if (!elValor) return;
+
+    if (!Array.isArray(alumnos) || alumnos.length === 0 || !Array.isArray(datosCursillo)) {
+        elValor.innerText = '-';
+        if (elPorcentaje) elPorcentaje.innerText = '';
+        return;
+    }
+
+    const mapaCursillo = new Map();
+    datosCursillo.forEach(item => {
+        const id = Number(item.nro_inscripcion);
+        if (id > 0) mapaCursillo.set(id, item.cursillo);
+    });
+
+    const parseNota = (val) => {
+        const n = typeof val === 'number' ? val : parseFloat(String(val ?? '').replace(',', '.'));
+        return Number.isFinite(n) ? n : 0;
+    };
+
+    let aprobadosTresAreas = 0;
+
+    alumnos.forEach(alumno => {
+        const nroInsc = Number(
+            alumno['Nº de inscripcion'] ||
+            alumno['N° de inscripcion'] ||
+            alumno['Nº de inscripción'] ||
+            alumno['N° de inscripción'] ||
+            alumno.nro_inscripcion ||
+            alumno.id_inscripcion ||
+            alumno['N° de orden'] ||
+            alumno['Nº de orden'] ||
+            0
+        );
+
+        const ee = mapaCursillo.get(nroInsc)?.ensayo_examen || {};
+        const mat = parseNota(ee.matematica);
+        const len = parseNota(ee.lengua);
+        const dib = parseNota(ee.dibujo);
+
+        if (mat >= 4 && len >= 4 && dib >= 4) {
+            aprobadosTresAreas++;
+        }
+    });
+
+    elValor.innerText = aprobadosTresAreas;
+    if (elPorcentaje) {
+        const pct = ((aprobadosTresAreas / alumnos.length) * 100).toFixed(1);
+        elPorcentaje.innerText = `${pct}% de ${alumnos.length} inscriptos`;
     }
 }
 
