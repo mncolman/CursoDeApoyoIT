@@ -514,10 +514,10 @@ export function renderizarTablaMerito(alumnos) {
             <tr>
                 <td class="text-center">${puestoBadge}</td>
                 <td class="fw-semibold">${nombreCompleto}</td>
+                <td class="text-center">${celdaPromedio}</td>
                 <td class="text-center">${notaMat}</td>
                 <td class="text-center">${notaLen}</td>
                 <td class="text-center">${notaDib}</td>
-                <td class="text-center">${celdaPromedio}</td>
             </tr>
         `;
     });
@@ -1759,7 +1759,7 @@ export function inicializarPanelFlotanteFiltros() {
         };
     };
 
-    // --- 2. ESTADO INICIAL COMPLETO (Sin minimizado) ---
+    // --- 2. ESTADO INICIAL MINIMIZADO (Oculto mostrando el botón flotante) ---
     if (body) body.style.display = 'block';
     panel.style.width = '340px';
 
@@ -1773,6 +1773,7 @@ export function inicializarPanelFlotanteFiltros() {
             btnAbrir.classList.add('d-flex');
         };
 
+        cerrarPanel();
         if (btnCerrar) btnCerrar.onclick = cerrarPanel;
         if (btnCerrarInferior) btnCerrarInferior.onclick = cerrarPanel;
 
@@ -2638,7 +2639,7 @@ function exportarResumenPDF(alumnos, nombreEtapa, infoComision) {
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(8.5);
         pdf.setTextColor(90, 90, 90);
-        pdf.text(`Filtro: ${infoComision} | Postulantes listados: ${alumnos.length} | Generado el: ${fechaHoy}`, centroX, 32, { align: "center" });
+        pdf.text(`Filtro: ${infoComision} | Aspirantes listados: ${alumnos.length} | Generado el: ${fechaHoy}`, centroX, 32, { align: "center" });
 
         pdf.setDrawColor(180, 180, 180);
         pdf.setLineWidth(0.5);

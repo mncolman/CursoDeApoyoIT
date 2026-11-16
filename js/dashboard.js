@@ -21,6 +21,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     UImetrics.inicializarPanelFlotanteFiltros();
     UImetrics.inicializarEventosExamenVsCursillo();
 
+    // Cierra automáticamente el menú hamburguesa al elegir una subtab en móviles y hace scroll al inicio
+    const menuCollapse = document.getElementById('collapsibleTabs');
+    document.querySelectorAll('#collapsibleTabs .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992 && menuCollapse && typeof bootstrap !== 'undefined') {
+                bootstrap.Collapse.getInstance(menuCollapse)?.hide();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+
     // =================================================================
     // 2. LISTENERS DE FILTROS EN TIEMPO REAL
     // =================================================================
