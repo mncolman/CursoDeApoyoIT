@@ -9,9 +9,7 @@ const STORAGE_KEY_RECUADROS = 'it_unt_recuadros_constancia_v1';
 const SUBTITULO_DEFAULT = 'Curso de Apoyo - Ingreso a 1° año del ciclo lectivo 2027';
 const PIE_DEFAULT = 'Instituto Técnico - Universidad Nacional de Tucumán';
 const PLANTILLA_DEFAULT =
-    'EL QUE SUSCRIBE\n' +
-    'En su carácter de\n' +
-    'del Instituto Técnico de la U.N.T.\n\n' +
+    'El que suscribe **** en su carácter de **** del Instituto Técnico de la U.N.T.\n\n' +
     'En la presente se deja constancia de que {{NOMBRE}}, D.N.I. N° {{DNI}}, estudiante del establecimiento educativo {{INSTITUCION}}, participa en calidad de aspirante en las instancias evaluativas correspondientes al Examen de Ingreso del Instituto Técnico de la Universidad Nacional de Tucumán.\n\n' +
     'Asimismo, se informa que el/la mencionado/a estudiante se encuentra afectado/a al cronograma oficial de evaluaciones en las siguientes fechas: 11 de noviembre, 13 de noviembre y 16 de noviembre del corriente año, siendo convocado/a a partir de las 15:00 hs y con concurrencia de carácter obligatorio en cada una de dichas jornadas.\n\n' +
     'A solicitud de la parte interesada y al solo efecto de ser presentada ante las autoridades escolares que corresponda para la justificación de las inasistencias en los días detallados, se extiende la presente en la ciudad de San Miguel de Tucumán, a los 13 días del mes de noviembre de 2026.';

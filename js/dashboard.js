@@ -49,6 +49,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         actualizarDashboardFiltrado();
     });
 
+    document.getElementById('btn-restablecer-filtros-globales')?.addEventListener('click', () => {
+        const etapaEl = document.getElementById('filtro-etapa-evaluacion');
+        const comisionEl = document.getElementById('filtro-global-comision');
+        const nombreEl = document.getElementById('buscador-nombre-alumno');
+        const escuelaEl = document.getElementById('buscador-escuela-alumno');
+        const minEl = document.getElementById('filtro-merito-min');
+        const maxEl = document.getElementById('filtro-merito-max');
+
+        if (etapaEl) etapaEl.value = 'oficial';
+        if (comisionEl) comisionEl.value = 'todas';
+        if (nombreEl) nombreEl.value = '';
+        if (escuelaEl) escuelaEl.value = '';
+        if (minEl) minEl.value = '';
+        if (maxEl) maxEl.value = '';
+
+        actualizarDashboardFiltrado();
+    });
+
     // =================================================================
     // 3. DISPARADORES DE CARGA (Sin tareas duplicadas)
     // =================================================================
@@ -89,6 +107,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('select-ordenar-comisiones')?.addEventListener('change', () => {
         const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
         UImetrics.renderizarTablaComisiones(alumnosFiltrados);
+    });
+
+    // Escuchamos el cambio en el selector de orden de la tabla de calificaciones (subtab Resumen)
+    document.getElementById('select-orden-tabla-resumen')?.addEventListener('change', () => {
+        const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
+        UImetrics.renderizarTablaMerito(alumnosFiltrados);
     });
 
     // Listeners para descargar el listado de calificaciones desde el subtab Resumen (respetando filtros activos)

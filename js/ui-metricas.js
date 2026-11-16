@@ -434,6 +434,36 @@ export function inicializarFiltrosMerito() {
 }
 
 
+/** Ordena la lista de alumnos de mayor a menor según promedio o nota de un área específica. */
+export function ordenarAlumnosResumenPorCriterio(alumnos, criterio = 'promedio') {
+    if (!Array.isArray(alumnos) || alumnos.length === 0) return [];
+    const copia = [...alumnos];
+
+    const mapaAreas = {
+        matematica: { estado: 'estado_matematica', nota: 'nota_final_matematica' },
+        lengua: { estado: 'estado_lengua', nota: 'nota_final_lengua' },
+        dibujo: { estado: 'estado_dibujo', nota: 'nota_final_dibujo' }
+    };
+
+    const configArea = mapaAreas[criterio];
+    if (!configArea) return copia;
+
+    const leerNota = (alumno) => {
+        const ex = alumno.datos_examen || {};
+        if (ex[configArea.estado] !== 'Presente') return -1;
+        const val = parseFloat(ex[configArea.nota]);
+        return Number.isFinite(val) ? val : -1;
+    };
+
+    return copia.sort((a, b) => {
+        const diffNota = leerNota(b) - leerNota(a);
+        if (diffNota !== 0) return diffNota;
+        const diffProm = (b.promedioGeneral || 0) - (a.promedioGeneral || 0);
+        if (diffProm !== 0) return diffProm;
+        return (a.ordenMerito || 999999) - (b.ordenMerito || 999999);
+    });
+}
+
 export function renderizarTablaMerito(alumnos) {
     const tbody = document.getElementById('tabla-merito-cuerpo');
     const badgeFiltrados = document.getElementById('cant-alumnos-filtrados');
@@ -443,7 +473,7 @@ export function renderizarTablaMerito(alumnos) {
     if (!alumnos || alumnos.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center text-muted py-4">
+                <td colspan="6" class="text-center text-muted py-4">
                     No se encontraron alumnos que coincidan con la búsqueda.
                 </td>
             </tr>`;
@@ -452,12 +482,15 @@ export function renderizarTablaMerito(alumnos) {
         return;
     }
 
-    if (badgeFiltrados) badgeFiltrados.innerText = alumnos.length;
-    if (badgeResumen) badgeResumen.innerText = alumnos.length;
+    const criterioOrden = document.getElementById('select-orden-tabla-resumen')?.value || 'promedio';
+    const alumnosOrdenados = ordenarAlumnosResumenPorCriterio(alumnos, criterioOrden);
+
+    if (badgeFiltrados) badgeFiltrados.innerText = alumnosOrdenados.length;
+    if (badgeResumen) badgeResumen.innerText = alumnosOrdenados.length;
 
     let htmlFilas = '';
 
-    alumnos.forEach(alumno => {
+    alumnosOrdenados.forEach(alumno => {
         const examen = alumno.datos_examen || {};
         // Notas por materia (o guión si no rindió la materia puntual)
         const notaMat = examen.estado_matematica === 'Presente' ? examen.nota_final_matematica.toFixed(2) : '-';
@@ -467,12 +500,10 @@ export function renderizarTablaMerito(alumnos) {
         // Badge para el puesto en orden de mérito (estilo uniforme)
         const puestoBadge = `<span class="badge bg-light text-dark border">#${alumno.ordenMerito}</span>`;
 
-        // Datos del alumno y comisión
+        // Datos del alumno
         const apellido = alumno['Apellido/s del alumno'] || alumno.apellido || '';
         const nombre = alumno['Nombre/s del alumno'] || alumno.nombre || '';
         const nombreCompleto = (apellido && nombre) ? `${apellido}, ${nombre}` : (alumno['Nombre y Apellido'] || alumno['Alumno'] || 'Sin Nombre');
-
-        const comision = alumno['Comisión'] || alumno['Comision'] || alumno['comision'] || '-';
 
         // Promedio: si es 0 muestra "Ausente"
         const celdaPromedio = alumno.promedioGeneral > 0
@@ -483,7 +514,6 @@ export function renderizarTablaMerito(alumnos) {
             <tr>
                 <td class="text-center">${puestoBadge}</td>
                 <td class="fw-semibold">${nombreCompleto}</td>
-                <td class="text-center font-monospace bold"><span class="badge bg-dark text-white fw-bold">${comision}</span> </td>
                 <td class="text-center">${notaMat}</td>
                 <td class="text-center">${notaLen}</td>
                 <td class="text-center">${notaDib}</td>
@@ -1734,13 +1764,17 @@ export function inicializarPanelFlotanteFiltros() {
     panel.style.width = '340px';
 
     // --- 3. CERRAR Y REABRIR ---
-    if (btnCerrar && btnAbrir) {
-        btnCerrar.onclick = (e) => {
-            e.stopPropagation();
+    const btnCerrarInferior = document.getElementById('btn-ocultar-filtros-inferior');
+    if (btnAbrir) {
+        const cerrarPanel = (e) => {
+            e?.stopPropagation();
             panel.style.display = 'none';
             btnAbrir.classList.remove('d-none');
             btnAbrir.classList.add('d-flex');
         };
+
+        if (btnCerrar) btnCerrar.onclick = cerrarPanel;
+        if (btnCerrarInferior) btnCerrarInferior.onclick = cerrarPanel;
 
         btnAbrir.onclick = () => {
             panel.style.display = 'block';
@@ -2441,11 +2475,13 @@ export function inicializarEventosExamenVsCursillo() {
 // DESCARGA DE CALIFICACIONES DESDE LA SUBTABLA RESUMEN (PDF / EXCEL)
 // =================================================================
 export function descargarListadoNotasResumen(formato = 'pdf') {
-    // Leemos los alumnos filtrados respetando los filtros globales activos
-    const alumnos = Filtros.obtenerAlumnosFiltradosPorMerito(
+    // Leemos los alumnos filtrados respetando los filtros globales y el orden activo de la tabla
+    const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(
         EstadoDashboard.alumnos,
         EstadoDashboard.cursillo
     );
+    const criterioOrden = document.getElementById('select-orden-tabla-resumen')?.value || 'promedio';
+    const alumnos = ordenarAlumnosResumenPorCriterio(alumnosFiltrados, criterioOrden);
 
     if (!alumnos || alumnos.length === 0) {
         if (typeof Swal !== 'undefined') {

@@ -362,9 +362,9 @@
 
                             </div>
 
-                            <!-- Barra de Acciones de la Tabla: Conteo y Botón de Descarga -->
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 pt-2 border-top">
-                                <div class="d-flex align-items-center gap-2 small text-muted">
+                            <!-- Barra de Acciones de la Tabla: Conteo, Ordenamiento y Botón de Descarga -->
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 pt-2 mb-3 border-top">
+                                <div class="d-flex flex-wrap align-items-center gap-2 small text-muted">
                                     <span class="fw-bold text-secondary text-uppercase" style="letter-spacing: 0.5px; font-size: 0.78rem;">
                                         <i class="bi bi-table me-1" style="color: #1b396a;"></i> Tabla de Calificaciones:
                                     </span>
@@ -372,7 +372,15 @@
                                         <strong id="cant-alumnos-filtrados-resumen" style="color: #1b396a;">-</strong> postulantes
                                     </span>
                                 </div>
-                                <div class="btn-group shadow-sm">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <select id="select-orden-tabla-resumen" class="form-select form-select-sm w-auto shadow-xs"
+                                        aria-label="Ordenar tabla de calificaciones de mayor a menor">
+                                        <option value="promedio" selected>Orden: Promedio (Mayor a menor)</option>
+                                        <option value="matematica">Orden: Matemática (Mayor a menor)</option>
+                                        <option value="lengua">Orden: Lengua (Mayor a menor)</option>
+                                        <option value="dibujo">Orden: Dibujo (Mayor a menor)</option>
+                                    </select>
+                                    <div class="btn-group shadow-sm">
                                     <button type="button" class="btn btn-sm text-white fw-semibold px-3 py-1.5"
                                         style="background-color: #1b396a; border-color: #1b396a;"
                                         id="btn-descargar-resumen-principal" title="Descargar listado en PDF">
@@ -415,7 +423,6 @@
                                     <tr>
                                         <th class="text-center th-columna-merito-dinamica">Orden de Mérito</th>
                                         <th>Postulante</th>
-                                        <th class="text-center">Comisión</th>
                                         <th class="text-center">Mat.</th>
                                         <th class="text-center">Len.</th>
                                         <th class="text-center">Dib.</th>
@@ -424,7 +431,7 @@
                                 </thead>
                                 <tbody id="tabla-merito-cuerpo" class="bg-white">
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">Cargando datos...
+                                        <td colspan="6" class="text-center text-muted py-4">Cargando datos...
                                         </td>
                                     </tr>
                                 </tbody>
@@ -1351,6 +1358,21 @@
                     <span id="cant-alumnos-filtrados" class="text-primary">0</span> / <span
                         id="cant-alumnos-total">0</span>
                 </span>
+            </div>
+
+            <!-- Botones inferiores (accesibles en móvil con teclado abierto) -->
+            <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                <button type="button" id="btn-restablecer-filtros-globales"
+                    class="btn btn-sm btn-outline-secondary w-50 d-flex align-items-center justify-content-center"
+                    title="Restablecer todos los filtros por defecto">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Restablecer
+                </button>
+                <button type="button" id="btn-ocultar-filtros-inferior"
+                    class="btn btn-sm text-white w-50 d-flex align-items-center justify-content-center"
+                    style="background-color: #073a86; border-color: #073a86;"
+                    title="Ocultar panel de filtros">
+                    <i class="bi bi-x-lg me-1"></i>Ocultar
+                </button>
             </div>
         </div>
     </div>

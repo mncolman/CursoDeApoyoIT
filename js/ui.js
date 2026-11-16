@@ -77,35 +77,78 @@ export function validarYFormatearWhatsApp(telefonoRaw) {
     return { valido: false, numeroWa: null };
 }
 
-/** Genera el HTML de la celda de contacto del tutor titular con link a WhatsApp y verificación de formato. */
-function renderCeldaContactoTutor(asp) {
-    const nombreTutor = String(asp.tutor ?? '').trim() || 'Tutor titular';
-    const telRaw = String(asp.tel1 ?? '').trim();
+/** Separa un campo tipo "3815123456 (Madre)" en { telefono, etiqueta }. */
+export function parsearContactoAlternativo(valorRaw) {
+    const raw = String(valorRaw ?? '').trim();
+    if (!raw) return { telefono: '', etiqueta: '' };
+
+    const match = raw.match(/^(.*?)\s*\(([^()]+)\)\s*$/);
+    if (match) {
+        return {
+            telefono: match[1].trim(),
+            etiqueta: match[2].trim()
+        };
+    }
+    return { telefono: raw, etiqueta: '' };
+}
+
+/** Genera el HTML de una celda de contacto con link a WhatsApp y verificación de formato. */
+function renderCeldaContactoWhatsApp(nombreRaw, telefonoRaw) {
+    const nombreTutor = String(nombreRaw ?? '').trim();
+    const telRaw = String(telefonoRaw ?? '').trim();
     const { valido, numeroWa } = validarYFormatearWhatsApp(telRaw);
 
     const nombreHtml = escaparHtmlTabla(nombreTutor);
     const telHtml = escaparHtmlTabla(telRaw || 'Sin teléfono');
 
     if (valido && numeroWa) {
+        const textoLink = nombreHtml || telHtml;
+        const detalleTel = nombreHtml ? `<span class="text-muted small">(${telHtml})</span>` : '';
         return `
             <div class="d-flex align-items-center gap-2">
                 <a href="https://wa.me/${numeroWa}" target="_blank" rel="noopener noreferrer"
                     class="text-decoration-none fw-semibold text-success d-inline-flex align-items-center"
-                    title="Abrir WhatsApp con ${nombreHtml} (+${numeroWa})">
-                    <i class="bi bi-whatsapp me-1"></i>${nombreHtml}
+                    title="Abrir WhatsApp (+${numeroWa})">
+                    <i class="bi bi-whatsapp me-1"></i>${textoLink}
                 </a>
-                <span class="text-muted small">(${telHtml})</span>
+                ${detalleTel}
                 <i class="bi bi-check-circle-fill text-success" title="Formato apto para WhatsApp"></i>
             </div>
         `;
     }
 
+    const textoNombre = nombreHtml ? `<span class="text-dark">${nombreHtml}</span>` : '';
+    const detalleTel = nombreHtml
+        ? `<span class="text-muted small">(${telHtml})</span>`
+        : `<span class="text-muted small">${telHtml}</span>`;
+
     return `
         <div class="d-flex align-items-center gap-2">
-            <span class="text-dark">${nombreHtml}</span>
-            <span class="text-muted small">(${telHtml})</span>
+            ${textoNombre}
+            ${detalleTel}
             <i class="bi bi-x-circle-fill text-danger" title="Formato no apto para WhatsApp"></i>
         </div>
+    `;
+}
+
+/** Renderiza Apellido y Nombre del aspirante e incluye un botiquín rojizo clickeable si registra enfermedad. */
+export function renderNombreConAlertaSalud(asp) {
+    const nombreCompleto = `${escaparHtmlTabla(asp.apellido)}, ${escaparHtmlTabla(asp.nombre)}`;
+    const enfermedad = String(asp.enfermedad ?? '').trim();
+    if (!enfermedad) return nombreCompleto;
+
+    const enfermedadHtml = escaparHtmlTabla(enfermedad);
+    return `
+        <span class="d-inline-flex align-items-center gap-1">
+            <span>${nombreCompleto}</span>
+            <button type="button"
+                class="btn btn-link p-0 border-0 text-danger lh-1 btn-abrir-ficha"
+                data-id="${escaparHtmlTabla(asp.id_inscripcion)}"
+                title="Observación médica: ${enfermedadHtml} (Clic para ver ficha)"
+                aria-label="Ver ficha médica">
+                <i class="fa-solid fa-kit-medical"></i>
+            </button>
+        </span>
     `;
 }
 
@@ -154,19 +197,22 @@ export function renderTable(data, isExpandedView, posiciones = null) {
     data.forEach((asp, idx) => {
         const tr = document.createElement('tr');
         const nroOrden = (Array.isArray(posiciones) && posiciones[idx] !== undefined) ? posiciones[idx] : (idx + 1);
-        const celdaContactoTutor = renderCeldaContactoTutor(asp);
+        const celdaContactoTutor = renderCeldaContactoWhatsApp(asp.tutor || 'Tutor titular', asp.tel1);
+        const celdaNombreSalud = renderNombreConAlertaSalud(asp);
 
         if (isExpandedView) {
+            const alt = parsearContactoAlternativo(asp.tel2);
+            const celdaContactoAlternativo = renderCeldaContactoWhatsApp(alt.etiqueta, alt.telefono);
             tr.innerHTML = `
                 <td class="text-center text-muted small fw-semibold">${nroOrden}</td>
                 <td><strong>${asp.id_inscripcion}</strong></td>
-                <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
+                <td class="fw-bold">${celdaNombreSalud}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
                 <td class="text-uppercase">${asp.departamento}</td>
                 <td>${asp.domicilio}</td>
                 <td>${celdaContactoTutor}</td>
-                <td>${asp.tel2}</td>
+                <td>${celdaContactoAlternativo}</td>
                                  <td class="d-flex justify-content-center">
                  <button class="btn btn-sm btn-outline-primary  btn-abrir-ficha" data-id="${asp.id_inscripcion}">Ver Ficha</button>
                  </td>
@@ -175,7 +221,7 @@ export function renderTable(data, isExpandedView, posiciones = null) {
         } else {
             tr.innerHTML = `
                 <td class="text-center text-muted small fw-semibold">${nroOrden}</td>
-                <td class="fw-bold">${asp.apellido}, ${asp.nombre}</td>
+                <td class="fw-bold">${celdaNombreSalud}</td>
                 <td>${asp.dni}</td>
                 <td><span class="badge bg-secondary fw-bold">${asp.comision}</span></td>
                 <td>${celdaContactoTutor}</td>
