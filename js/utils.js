@@ -1330,16 +1330,42 @@ export function generarNombreArchivoConstancia(alumno) {
     return `${partes.join('_')}.pdf`;
 }
 
-/** Reemplaza los marcadores {{NOMBRE}}, {{DNI}}, {{INSTITUCION}} (y alias) con los datos del alumno. */
-export function reemplazarMarcadoresConstancia(plantilla, alumno) {
+/** Normaliza los componentes de fecha (día, mes en palabras, año) aceptando string de día u objeto. */
+function normalizarPartesFechaConstancia(fechaDatos, hoy = new Date()) {
+    if (typeof fechaDatos === 'string') {
+        return {
+            diaTexto: fechaDatos || String(hoy.getDate()),
+            mesTexto: MESES_ES[hoy.getMonth()],
+            anioTexto: String(hoy.getFullYear())
+        };
+    }
+    const obj = fechaDatos || {};
+    return {
+        diaTexto: String(obj.diaTexto || hoy.getDate()),
+        mesTexto: String(obj.mesTexto || MESES_ES[hoy.getMonth()]),
+        anioTexto: String(obj.anioTexto || hoy.getFullYear())
+    };
+}
+
+/** Reemplaza los marcadores {{NOMBRE}}, {{DNI}}, {{INSTITUCION}}, {{DIA}}, {{MES}}, {{ANIO}} (y alias) con los datos del alumno. */
+export function reemplazarMarcadoresConstancia(plantilla, alumno, fechaDatos = null) {
     const { nombreCompleto, dni, institucion } = extraerDatosAlumnoConstancia(alumno);
+    const { diaTexto, mesTexto, anioTexto } = normalizarPartesFechaConstancia(fechaDatos);
     const reemplazos = {
         '{{NOMBRE}}': nombreCompleto,
         '{{DNI}}': dni,
         '{{INSTITUCION}}': institucion,
+        '{{DIA}}': diaTexto,
+        '{{MES}}': mesTexto,
+        '{{ANIO}}': anioTexto,
+        '{{AÑO}}': anioTexto,
         '[[NOMBRE]]': nombreCompleto,
         '[[DNI]]': dni,
         '[[INSTITUCION]]': institucion,
+        '[[DIA]]': diaTexto,
+        '[[MES]]': mesTexto,
+        '[[ANIO]]': anioTexto,
+        '[[AÑO]]': anioTexto,
         '**1**': nombreCompleto,
         '**2**': dni,
         '**3**': institucion
@@ -1360,14 +1386,43 @@ function formatearFechaConstanciaFormal(fecha = new Date()) {
     return `${dia} de ${mes} de ${anio}`;
 }
 
-/** Normaliza el objeto de configuración de constancia aceptando string o { plantilla, subtitulo, piePagina, recuadros }. */
+/** Resuelve el texto de fecha del encabezado (manteniendo la ciudad) y el día, mes y año para los marcadores. */
+export function resolverFechaConstancia(opciones = {}, hoy = new Date()) {
+    const usarFechaActual = opciones?.usarFechaActual !== false;
+    const fechaManual = String(opciones?.fechaManual ?? '').trim();
+
+    if (usarFechaActual || !fechaManual) {
+        return {
+            fechaEncabezado: formatearFechaConstanciaFormal(hoy),
+            diaTexto: String(hoy.getDate()),
+            mesTexto: MESES_ES[hoy.getMonth()],
+            anioTexto: String(hoy.getFullYear())
+        };
+    }
+
+    const matchDia = fechaManual.match(/\b(\d{1,2})\b/);
+    const textoLower = fechaManual.toLowerCase();
+    const mesEncontrado = MESES_ES.find(m => textoLower.includes(m));
+    const matchAnio = fechaManual.match(/\b(19\d{2}|20\d{2})\b/);
+
+    return {
+        fechaEncabezado: fechaManual,
+        diaTexto: matchDia ? String(parseInt(matchDia[1], 10)) : String(hoy.getDate()),
+        mesTexto: mesEncontrado || MESES_ES[hoy.getMonth()],
+        anioTexto: matchAnio ? matchAnio[1] : String(hoy.getFullYear())
+    };
+}
+
+/** Normaliza el objeto de configuración de constancia aceptando string o { plantilla, subtitulo, piePagina, recuadros, usarFechaActual, fechaManual }. */
 function normalizarConfigConstancia(configOrPlantilla) {
     if (typeof configOrPlantilla === 'string') {
         return {
             plantilla: configOrPlantilla,
             subtitulo: 'Curso de Apoyo - Ingreso a 1° año del ciclo lectivo 2027',
             piePagina: 'Instituto Técnico - Universidad Nacional de Tucumán',
-            recuadros: false
+            recuadros: false,
+            usarFechaActual: true,
+            fechaManual: ''
         };
     }
     const cfg = configOrPlantilla || {};
@@ -1375,7 +1430,9 @@ function normalizarConfigConstancia(configOrPlantilla) {
         plantilla: String(cfg.plantilla ?? ''),
         subtitulo: String(cfg.subtitulo ?? '').trim(),
         piePagina: String(cfg.piePagina ?? '').trim(),
-        recuadros: Boolean(cfg.recuadros)
+        recuadros: Boolean(cfg.recuadros),
+        usarFechaActual: cfg.usarFechaActual !== false,
+        fechaManual: String(cfg.fechaManual ?? '').trim()
     };
 }
 
@@ -1411,8 +1468,9 @@ function dibujarEncabezadoConstancia(pdf, subtitulo = '') {
 }
 
 /** Construye segmentos { text, bold } de una línea de plantilla, resaltando en negrita nombre y DNI. */
-export function construirSegmentosConstancia(lineaPlantilla, alumno) {
+export function construirSegmentosConstancia(lineaPlantilla, alumno, fechaDatos = null) {
     const { nombreCompleto, dni, institucion } = extraerDatosAlumnoConstancia(alumno);
+    const { diaTexto, mesTexto, anioTexto } = normalizarPartesFechaConstancia(fechaDatos);
     const mapaMarcadores = {
         '{{NOMBRE}}': { text: nombreCompleto, bold: true },
         '[[NOMBRE]]': { text: nombreCompleto, bold: true },
@@ -1422,10 +1480,18 @@ export function construirSegmentosConstancia(lineaPlantilla, alumno) {
         '**2**': { text: dni, bold: true },
         '{{INSTITUCION}}': { text: institucion, bold: false },
         '[[INSTITUCION]]': { text: institucion, bold: false },
-        '**3**': { text: institucion, bold: false }
+        '**3**': { text: institucion, bold: false },
+        '{{DIA}}': { text: diaTexto, bold: false },
+        '[[DIA]]': { text: diaTexto, bold: false },
+        '{{MES}}': { text: mesTexto, bold: false },
+        '[[MES]]': { text: mesTexto, bold: false },
+        '{{ANIO}}': { text: anioTexto, bold: false },
+        '[[ANIO]]': { text: anioTexto, bold: false },
+        '{{AÑO}}': { text: anioTexto, bold: false },
+        '[[AÑO]]': { text: anioTexto, bold: false }
     };
 
-    const regexMarcadores = /(\{\{NOMBRE\}\}|\{\{DNI\}\}|\{\{INSTITUCION\}\}|\[\[NOMBRE\]\]|\[\[DNI\]\]|\[\[INSTITUCION\]\]|\*\*1\*\*|\*\*2\*\*|\*\*3\*\*)/g;
+    const regexMarcadores = /(\{\{NOMBRE\}\}|\{\{DNI\}\}|\{\{INSTITUCION\}\}|\{\{DIA\}\}|\{\{MES\}\}|\{\{ANIO\}\}|\{\{AÑO\}\}|\[\[NOMBRE\]\]|\[\[DNI\]\]|\[\[INSTITUCION\]\]|\[\[DIA\]\]|\[\[MES\]\]|\[\[ANIO\]\]|\[\[AÑO\]\]|\*\*1\*\*|\*\*2\*\*|\*\*3\*\*)/g;
     const partes = String(lineaPlantilla || '').split(regexMarcadores);
     const segmentos = [];
 
@@ -1596,12 +1662,13 @@ function dibujarLineaEstilizada(pdf, lineaRuns, xInicio, y, anchoContenido, just
 }
 
 /** Dibuja título, lugar/fecha, cuerpo (justificado, con nombre y DNI en negrita y recuadros opcionales) y reserva espacio inferior para firma digital. */
-function dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina = '', recuadros = false) {
+function dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina = '', recuadros = false, opcionesFecha = {}) {
     const anchoHoja = pdf.internal.pageSize.getWidth();
     const altoHoja = pdf.internal.pageSize.getHeight();
     const centroX = anchoHoja / 2;
     const margenX = 22;
     const anchoTexto = anchoHoja - (margenX * 2);
+    const { fechaEncabezado, diaTexto, mesTexto, anioTexto } = resolverFechaConstancia(opcionesFecha);
 
     // Título del documento
     pdf.setFont('helvetica', 'bold');
@@ -1619,7 +1686,7 @@ function dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina = '',
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(10.5);
     pdf.setTextColor(60, 60, 60);
-    pdf.text(`San Miguel de Tucumán, ${formatearFechaConstanciaFormal()}`, anchoHoja - margenX, cursorY, { align: 'right' });
+    pdf.text(`San Miguel de Tucumán, ${fechaEncabezado}`, anchoHoja - margenX, cursorY, { align: 'right' });
 
     // Cuerpo del documento por párrafos, dejando libre el sector inferior (y >= 232mm) para firma digital
     cursorY += 12;
@@ -1640,7 +1707,7 @@ function dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina = '',
         // Guardamos cada línea envuelta junto con si debe justificarse (todas menos la última de cada párrafo)
         const lineasConJustificado = [];
         for (const lineaTexto of lineasBloque) {
-            const segmentos = construirSegmentosConstancia(lineaTexto, alumno);
+            const segmentos = construirSegmentosConstancia(lineaTexto, alumno, { diaTexto, mesTexto, anioTexto });
             const envueltas = dividirParrafoEnLineasEstilizadas(pdf, segmentos, anchoContenido);
             envueltas.forEach((lineaRuns, idx) => {
                 lineasConJustificado.push({
@@ -1697,11 +1764,11 @@ function construirPDFConstancia(alumno, configOrPlantilla) {
         throw new Error('No se encontró la librería jsPDF.');
     }
 
-    const { plantilla, subtitulo, piePagina, recuadros } = normalizarConfigConstancia(configOrPlantilla);
+    const { plantilla, subtitulo, piePagina, recuadros, usarFechaActual, fechaManual } = normalizarConfigConstancia(configOrPlantilla);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
     const startY = dibujarEncabezadoConstancia(pdf, subtitulo);
-    dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina, recuadros);
+    dibujarCuerpoConstancia(pdf, plantilla, alumno, startY, piePagina, recuadros, { usarFechaActual, fechaManual });
 
     return {
         pdf,
