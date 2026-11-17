@@ -1,10 +1,12 @@
 // --- archivo: constancias.js ---
 import * as Utils from './utils.js';
 
-const STORAGE_KEY_PLANTILLA = 'it_unt_plantilla_constancia_v6';
+const STORAGE_KEY_PLANTILLA = 'it_unt_plantilla_constancia_v8';
 const STORAGE_KEY_SUBTITULO = 'it_unt_subtitulo_constancia_v3';
 const STORAGE_KEY_PIE = 'it_unt_pie_constancia_v2';
 const STORAGE_KEY_RECUADROS = 'it_unt_recuadros_constancia_v1';
+const STORAGE_KEY_USAR_FECHA_ACTUAL = 'it_unt_usar_fecha_actual_constancia_v1';
+const STORAGE_KEY_FECHA_MANUAL = 'it_unt_fecha_manual_constancia_v1';
 
 const SUBTITULO_DEFAULT = 'Curso de Apoyo - Ingreso a 1° año del ciclo lectivo 2027';
 const PIE_DEFAULT = 'Instituto Técnico - Universidad Nacional de Tucumán';
@@ -12,7 +14,7 @@ const PLANTILLA_DEFAULT =
     'El que suscribe **** en su carácter de **** del Instituto Técnico de la U.N.T.\n\n' +
     'En la presente se deja constancia de que {{NOMBRE}}, D.N.I. N° {{DNI}}, estudiante del establecimiento educativo {{INSTITUCION}}, participa en calidad de aspirante en las instancias evaluativas correspondientes al Examen de Ingreso del Instituto Técnico de la Universidad Nacional de Tucumán.\n\n' +
     'Asimismo, se informa que el/la mencionado/a estudiante se encuentra afectado/a al cronograma oficial de evaluaciones en las siguientes fechas: 11 de noviembre, 13 de noviembre y 16 de noviembre del corriente año, siendo convocado/a a partir de las 15:00 hs y con concurrencia de carácter obligatorio en cada una de dichas jornadas.\n\n' +
-    'A solicitud de la parte interesada y al solo efecto de ser presentada ante las autoridades escolares que corresponda para la justificación de las inasistencias en los días detallados, se extiende la presente en la ciudad de San Miguel de Tucumán, a los 13 días del mes de noviembre de 2026.';
+    'A solicitud de la parte interesada y al solo efecto de ser presentada ante las autoridades escolares que corresponda para la justificación de las inasistencias en los días detallados, se extiende la presente en la ciudad de San Miguel de Tucumán, a los {{DIA}} días del mes de {{MES}} de {{ANIO}}.';
 
 const estado = {
     getAspirantes: () => [],
@@ -178,6 +180,8 @@ function obtenerConfiguracionValidada() {
     const inputSubtitulo = document.getElementById('inputSubtituloConstancia');
     const inputPie = document.getElementById('inputPieConstancia');
     const toggleRecuadros = document.getElementById('toggleRecuadrosConstancia');
+    const switchFechaActual = document.getElementById('switchFechaActualConstancia');
+    const inputFechaManual = document.getElementById('inputFechaManualConstancia');
 
     const texto = (textarea?.value || '').trim();
     if (!texto) {
@@ -185,11 +189,21 @@ function obtenerConfiguracionValidada() {
         return null;
     }
 
+    const usarFechaActual = switchFechaActual ? Boolean(switchFechaActual.checked) : true;
+    const fechaManual = inputFechaManual ? inputFechaManual.value.trim() : '';
+
+    if (!usarFechaActual && !fechaManual) {
+        Swal.fire('Atención', 'Ingresá la fecha de la constancia o activá "Usar fecha actual en encabezado".', 'warning');
+        return null;
+    }
+
     return {
         plantilla: textarea.value,
         subtitulo: inputSubtitulo ? inputSubtitulo.value : SUBTITULO_DEFAULT,
         piePagina: inputPie ? inputPie.value : PIE_DEFAULT,
-        recuadros: Boolean(toggleRecuadros?.checked)
+        recuadros: Boolean(toggleRecuadros?.checked),
+        usarFechaActual,
+        fechaManual
     };
 }
 
@@ -198,6 +212,13 @@ function actualizarEtiquetaRecuadros(activo) {
     const label = document.getElementById('labelToggleRecuadrosConstancia');
     if (!label) return;
     label.innerHTML = `<i class="bi bi-bounding-box me-1"></i>Recuadros: ${activo ? 'Sí' : 'No'}`;
+}
+
+/** Muestra u oculta el campo editable de fecha manual según el estado del switch. */
+function actualizarVisibilidadFechaManual(usarFechaActual) {
+    const contenedor = document.getElementById('contenedorFechaManualConstancia');
+    if (!contenedor) return;
+    contenedor.classList.toggle('d-none', Boolean(usarFechaActual));
 }
 
 /** Inicializa eventos y estado del modal de generación de constancias. */
@@ -209,6 +230,8 @@ export function inicializarModuloConstancias(getAspirantesFn) {
     const inputSubtitulo = document.getElementById('inputSubtituloConstancia');
     const inputPie = document.getElementById('inputPieConstancia');
     const toggleRecuadros = document.getElementById('toggleRecuadrosConstancia');
+    const switchFechaActual = document.getElementById('switchFechaActualConstancia');
+    const inputFechaManual = document.getElementById('inputFechaManualConstancia');
     const buscador = document.getElementById('buscadorConstancias');
     const tbody = document.getElementById('tbodyConstancias');
 
@@ -225,6 +248,15 @@ export function inicializarModuloConstancias(getAspirantesFn) {
         const recuadrosGuardado = localStorage.getItem(STORAGE_KEY_RECUADROS) === 'true';
         toggleRecuadros.checked = recuadrosGuardado;
         actualizarEtiquetaRecuadros(recuadrosGuardado);
+    }
+    if (inputFechaManual) {
+        inputFechaManual.value = cargarCampoGuardado(STORAGE_KEY_FECHA_MANUAL, '', true);
+    }
+    if (switchFechaActual) {
+        const guardadoSwitch = localStorage.getItem(STORAGE_KEY_USAR_FECHA_ACTUAL);
+        const usarActual = guardadoSwitch === null ? true : guardadoSwitch === 'true';
+        switchFechaActual.checked = usarActual;
+        actualizarVisibilidadFechaManual(usarActual);
     }
 
     modalEl.addEventListener('shown.bs.modal', () => {
@@ -249,7 +281,20 @@ export function inicializarModuloConstancias(getAspirantesFn) {
         actualizarEtiquetaRecuadros(activo);
     });
 
-    // Botones de inserción rápida de marcadores ({{NOMBRE}}, {{DNI}}, {{INSTITUCION}})
+    switchFechaActual?.addEventListener('change', () => {
+        const usarActual = Boolean(switchFechaActual.checked);
+        guardarCampo(STORAGE_KEY_USAR_FECHA_ACTUAL, usarActual ? 'true' : 'false');
+        actualizarVisibilidadFechaManual(usarActual);
+        if (!usarActual && inputFechaManual) {
+            inputFechaManual.focus();
+        }
+    });
+
+    inputFechaManual?.addEventListener('input', () => {
+        guardarCampo(STORAGE_KEY_FECHA_MANUAL, inputFechaManual.value);
+    });
+
+    // Botones de inserción rápida de marcadores ({{NOMBRE}}, {{DNI}}, {{INSTITUCION}}, {{DIA}})
     modalEl.querySelectorAll('[data-marcador-constancia]').forEach(btn => {
         btn.addEventListener('click', () => {
             const marcador = btn.getAttribute('data-marcador-constancia');
@@ -268,6 +313,11 @@ export function inicializarModuloConstancias(getAspirantesFn) {
         if (inputPie) {
             inputPie.value = PIE_DEFAULT;
             guardarCampo(STORAGE_KEY_PIE, PIE_DEFAULT);
+        }
+        if (switchFechaActual) {
+            switchFechaActual.checked = true;
+            guardarCampo(STORAGE_KEY_USAR_FECHA_ACTUAL, 'true');
+            actualizarVisibilidadFechaManual(true);
         }
     });
 
