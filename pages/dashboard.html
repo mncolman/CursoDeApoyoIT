@@ -308,31 +308,141 @@
                             </div>
                         </div>
 
-                        <!-- Tarjeta KPI Fija: Aprobados en los 3 exámenes del Ensayo de Examen -->
-                        <div class="col-12">
-                            <div class="card shadow-sm border-0"
-                                style="border-left: 4px solid #198754 !important; background-color: #f8f9fa; border-radius: 8px;">
-                                <div class="card-body py-3 px-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-2 text-center text-md-start">
-                                    <div>
-                                        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-2 mb-1">
-                                            <h6 class="text-uppercase mb-0 text-muted small fw-bold tracking-wide">
-                                                <i class="bi bi-check2-all me-1 text-success"></i>Aprobados en Ensayo de Examen
-                                            </h6>
-                                            <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;">Dato fijo</span>
+                    </div>
+
+                    <!-- Fila 2.5: Diagrama de Venn (Triple Intersección de Aprobados por Área - Reactivo al Filtro Global) -->
+                    <section class="card shadow-sm mb-4 border-0" id="card-venn-aprobados">
+                        <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div>
+                                <h6 class="text-uppercase mb-0 fw-bold tracking-wide" style="color: #1b396a; font-size: 0.85rem;">
+                                    <i class="bi bi-intersect me-2"></i>Intersección de Aprobados por Área (Nota ≥ 4)
+                                </h6>
+                                <small class="text-muted">Distribución reactiva al filtro global según cantidad de exámenes aprobados por aspirante</small>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="venn-badge-etapa">3º Examen Ingreso</span>
+                                <span class="badge bg-light text-dark border" id="venn-badge-total">0 aspirantes</span>
+                            </div>
+                        </div>
+                        <div class="card-body py-3">
+                            <div class="row g-4 align-items-center">
+                                <!-- Diagrama SVG de 3 círculos -->
+                                <div class="col-lg-7 d-flex justify-content-center">
+                                    <svg id="svg-venn-aprobados" viewBox="0 0 460 355" role="img"
+                                        aria-label="Diagrama de Venn de aprobados en Lengua, Matemática y Dibujo"
+                                        style="width: 100%; max-width: 460px; height: auto; user-select: none;">
+                                        <!-- Etiquetas externas de cada conjunto -->
+                                        <text x="115" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#081e42">LENGUA</text>
+                                        <text x="345" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#ac1a21">MATEMÁTICA</text>
+                                        <text x="230" y="346" text-anchor="middle" font-size="13" font-weight="700" fill="#495057">DIBUJO</text>
+
+                                        <!-- 3 Círculos -->
+                                        <circle cx="175" cy="138" r="98" fill="rgba(27, 57, 106, 0.24)" stroke="#081e42" stroke-width="2.5"></circle>
+                                        <circle cx="285" cy="138" r="98" fill="rgba(172, 26, 33, 0.24)" stroke="#ac1a21" stroke-width="2.5"></circle>
+                                        <circle cx="230" cy="230" r="98" fill="rgba(73, 80, 87, 0.24)" stroke="#495057" stroke-width="2.5"></circle>
+
+                                        <!-- Solo 1 área -->
+                                        <g>
+                                            <title>Solo Lengua</title>
+                                            <text id="venn-solo-len" x="132" y="124" text-anchor="middle" font-size="18" font-weight="700" fill="#081e42">-</text>
+                                            <text x="132" y="140" text-anchor="middle" font-size="9.5" font-weight="600" fill="#081e42" opacity="0.85">Solo Len.</text>
+                                        </g>
+                                        <g>
+                                            <title>Solo Matemática</title>
+                                            <text id="venn-solo-mat" x="328" y="124" text-anchor="middle" font-size="18" font-weight="700" fill="#8b1218">-</text>
+                                            <text x="328" y="140" text-anchor="middle" font-size="9.5" font-weight="600" fill="#8b1218" opacity="0.85">Solo Mat.</text>
+                                        </g>
+                                        <g>
+                                            <title>Solo Dibujo</title>
+                                            <text id="venn-solo-dib" x="230" y="276" text-anchor="middle" font-size="18" font-weight="700" fill="#343a40">-</text>
+                                            <text x="230" y="292" text-anchor="middle" font-size="9.5" font-weight="600" fill="#343a40" opacity="0.85">Solo Dib.</text>
+                                        </g>
+
+                                        <!-- Intersecciones de 2 áreas -->
+                                        <g>
+                                            <title>Lengua y Matemática (sin Dibujo)</title>
+                                            <text id="venn-len-mat" x="230" y="106" text-anchor="middle" font-size="16" font-weight="700" fill="#2b1b42">-</text>
+                                            <text x="230" y="120" text-anchor="middle" font-size="8.5" font-weight="600" fill="#2b1b42" opacity="0.85">Len + Mat</text>
+                                        </g>
+                                        <g>
+                                            <title>Lengua y Dibujo (sin Matemática)</title>
+                                            <text id="venn-len-dib" x="174" y="198" text-anchor="middle" font-size="16" font-weight="700" fill="#1b3047">-</text>
+                                            <text x="174" y="212" text-anchor="middle" font-size="8.5" font-weight="600" fill="#1b3047" opacity="0.85">Len + Dib</text>
+                                        </g>
+                                        <g>
+                                            <title>Matemática y Dibujo (sin Lengua)</title>
+                                            <text id="venn-mat-dib" x="286" y="198" text-anchor="middle" font-size="16" font-weight="700" fill="#5e2124">-</text>
+                                            <text x="286" y="212" text-anchor="middle" font-size="8.5" font-weight="600" fill="#5e2124" opacity="0.85">Mat + Dib</text>
+                                        </g>
+
+                                        <!-- Intersección central (las 3 áreas aprobadas) -->
+                                        <g>
+                                            <title>Aprobaron las 3 áreas (Lengua, Matemática y Dibujo)</title>
+                                            <circle cx="230" cy="171" r="28" fill="rgba(255, 255, 255, 0.92)" stroke="#198754" stroke-width="2.5"></circle>
+                                            <text id="venn-las-tres" x="230" y="174" text-anchor="middle" font-size="20" font-weight="800" fill="#198754">-</text>
+                                            <text x="230" y="188" text-anchor="middle" font-size="8.5" font-weight="700" fill="#146c43">3 áreas</text>
+                                        </g>
+                                    </svg>
+                                </div>
+
+                                <!-- Panel lateral de desglose numérico -->
+                                <div class="col-lg-5">
+                                    <div class="d-flex flex-column gap-2">
+                                        <!-- Destacado central: 3 áreas aprobadas -->
+                                        <div class="p-3 rounded-3 border" style="background-color: #f0fdf4; border-color: #bbf7d0 !important;">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <div class="small fw-bold text-uppercase text-success" style="font-size: 0.72rem; letter-spacing: 0.4px;">
+                                                        <i class="bi bi-check2-all me-1"></i>Aprobaron las 3 áreas
+                                                    </div>
+                                                    <small class="text-muted" id="venn-pct-tres">-</small>
+                                                </div>
+                                                <span class="fs-3 fw-bold text-success" id="venn-resumen-tres">-</span>
+                                            </div>
                                         </div>
-                                        <p class="mb-0 text-secondary small">
-                                            Alumnos que aprobaron las 3 etapas del ensayo examen (nota ≥ 4 en Lengua, Matemática y Dibujo).
-                                        </p>
-                                    </div>
-                                    <div class="text-center text-md-end flex-shrink-0">
-                                        <h2 class="display-6 fw-bold text-success mb-0" id="kpi-aprobados-ensayo-3">-</h2>
-                                        <small class="text-muted fw-semibold" id="kpi-aprobados-ensayo-3-pct"></small>
+
+                                        <!-- Intersecciones de 2 áreas -->
+                                        <div class="p-2 px-3 rounded-3 bg-light border">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <span class="small fw-bold text-dark">Aprobaron exactamente 2 áreas</span>
+                                                <span class="badge bg-dark" id="venn-resumen-dos">-</span>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-2 small text-muted" style="font-size: 0.76rem;">
+                                                <span>Len+Mat: <strong class="text-dark" id="venn-det-len-mat">-</strong></span>
+                                                <span>•</span>
+                                                <span>Len+Dib: <strong class="text-dark" id="venn-det-len-dib">-</strong></span>
+                                                <span>•</span>
+                                                <span>Mat+Dib: <strong class="text-dark" id="venn-det-mat-dib">-</strong></span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Solo 1 área -->
+                                        <div class="p-2 px-3 rounded-3 bg-light border">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <span class="small fw-bold text-dark">Aprobaron solo 1 área</span>
+                                                <span class="badge bg-secondary" id="venn-resumen-una">-</span>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-2 small text-muted" style="font-size: 0.76rem;">
+                                                <span>Len: <strong class="text-dark" id="venn-det-solo-len">-</strong></span>
+                                                <span>•</span>
+                                                <span>Mat: <strong class="text-dark" id="venn-det-solo-mat">-</strong></span>
+                                                <span>•</span>
+                                                <span>Dib: <strong class="text-dark" id="venn-det-solo-dib">-</strong></span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Ninguna área aprobada / Ausentes -->
+                                        <div class="p-2 px-3 rounded-3 bg-white border d-flex justify-content-between align-items-center">
+                                            <span class="small text-muted">
+                                                <i class="bi bi-x-circle me-1 text-danger"></i>Sin áreas aprobadas / Ausentes
+                                            </span>
+                                            <strong class="text-danger" id="venn-resumen-ninguna">-</strong>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                    </div>
+                    </section>
 
                     <!-- Fila 3: Tabla Oficial de Orden de Mérito con Mini-KPIs -->
                     <section class="card shadow-sm mb-4">

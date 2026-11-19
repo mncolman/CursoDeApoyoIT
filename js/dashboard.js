@@ -153,7 +153,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 function inicializarYRenderizarDashboard() {
     UImetrics.inicializarFiltrosMerito();
     UImetrics.inicializarSelectorComisiones(EstadoDashboard.alumnos);
-    UImetrics.calcularKpiAprobadosEnsayo(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
     actualizarDashboardFiltrado();
 }
 
@@ -181,8 +180,9 @@ function actualizarDashboardFiltrado() {
         EstadoDashboard.cursillo
     );
 
-    // 3. KPIs Globales (Fila 1 y 2 de Resumen) y Tabla de Orden de Mérito
+    // 3. KPIs Globales (Fila 1 y 2 de Resumen), Diagrama de Venn de Aprobados y Tabla de Orden de Mérito
     UImetrics.calcularKpisGlobales(padronProyectadoEtapa);
+    UImetrics.renderizarVennAprobados(alumnosFiltrados, etapaActiva);
     UImetrics.renderizarTablaMerito(alumnosFiltrados);
     UImetrics.calcularMiniKpisFiltrados(alumnosFiltrados);
 

@@ -383,61 +383,99 @@ export function calcularKpisGlobales(alumnos) {
 }
 
 /**
- * Calcula el KPI fijo de alumnos que aprobaron las 3 áreas (nota >= 4)
- * en el Ensayo de Examen sobre el padrón completo.
+ * Calcula las 8 regiones disjuntas del Diagrama de Venn (nota >= 4 en Lengua, Matemática y Dibujo)
+ * sobre el conjunto de alumnos ya proyectados y filtrados por los filtros globales.
  */
-export function calcularKpiAprobadosEnsayo(alumnos = [], datosCursillo = []) {
-    const elValor = document.getElementById('kpi-aprobados-ensayo-3');
-    const elPorcentaje = document.getElementById('kpi-aprobados-ensayo-3-pct');
-    if (!elValor) return;
-
-    if (!Array.isArray(alumnos) || alumnos.length === 0 || !Array.isArray(datosCursillo)) {
-        elValor.innerText = '-';
-        if (elPorcentaje) elPorcentaje.innerText = '';
-        return;
-    }
-
-    const mapaCursillo = new Map();
-    datosCursillo.forEach(item => {
-        const id = Number(item.nro_inscripcion);
-        if (id > 0) mapaCursillo.set(id, item.cursillo);
-    });
-
-    const parseNota = (val) => {
-        const n = typeof val === 'number' ? val : parseFloat(String(val ?? '').replace(',', '.'));
-        return Number.isFinite(n) ? n : 0;
+export function calcularInterseccionAprobados(alumnos = []) {
+    const conteo = {
+        soloLengua: 0,
+        soloMatematica: 0,
+        soloDibujo: 0,
+        lenguaYMatematica: 0,
+        lenguaYDibujo: 0,
+        matematicaYDibujo: 0,
+        lasTres: 0,
+        ninguna: 0,
+        total: 0
     };
 
-    let aprobadosTresAreas = 0;
+    if (!Array.isArray(alumnos) || alumnos.length === 0) return conteo;
 
-    alumnos.forEach(alumno => {
-        const nroInsc = Number(
-            alumno['Nº de inscripcion'] ||
-            alumno['N° de inscripcion'] ||
-            alumno['Nº de inscripción'] ||
-            alumno['N° de inscripción'] ||
-            alumno.nro_inscripcion ||
-            alumno.id_inscripcion ||
-            alumno['N° de orden'] ||
-            alumno['Nº de orden'] ||
-            0
-        );
+    const aproboArea = (ex, area) => {
+        if (!ex || ex[`estado_${area}`] !== 'Presente') return false;
+        const raw = ex[`nota_final_${area}`];
+        const val = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '').replace(',', '.'));
+        return Number.isFinite(val) && val >= 4;
+    };
 
-        const ee = mapaCursillo.get(nroInsc)?.ensayo_examen || {};
-        const mat = parseNota(ee.matematica);
-        const len = parseNota(ee.lengua);
-        const dib = parseNota(ee.dibujo);
+    alumnos.forEach(a => {
+        const ex = a?.datos_examen || {};
+        const l = aproboArea(ex, 'lengua');
+        const m = aproboArea(ex, 'matematica');
+        const d = aproboArea(ex, 'dibujo');
 
-        if (mat >= 4 && len >= 4 && dib >= 4) {
-            aprobadosTresAreas++;
-        }
+        if (l && m && d) conteo.lasTres++;
+        else if (l && m) conteo.lenguaYMatematica++;
+        else if (l && d) conteo.lenguaYDibujo++;
+        else if (m && d) conteo.matematicaYDibujo++;
+        else if (l) conteo.soloLengua++;
+        else if (m) conteo.soloMatematica++;
+        else if (d) conteo.soloDibujo++;
+        else conteo.ninguna++;
     });
 
-    elValor.innerText = aprobadosTresAreas;
-    if (elPorcentaje) {
-        const pct = ((aprobadosTresAreas / alumnos.length) * 100).toFixed(1);
-        elPorcentaje.innerText = `${pct}% de ${alumnos.length} inscriptos`;
-    }
+    conteo.total = alumnos.length;
+    return conteo;
+}
+
+/**
+ * Actualiza el diagrama SVG de triple intersección y el panel lateral en la subpestaña Resumen.
+ */
+export function renderizarVennAprobados(alumnosFiltrados = [], etapaActiva = 'oficial') {
+    const nombresEtapas = {
+        oficial: '3º Examen Ingreso',
+        ensayo: '2º Ensayo de Examen (E.E.)',
+        seguimiento: '1º Eval. Seguimiento (E.S.)'
+    };
+
+    const setText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(val);
+    };
+
+    const datos = calcularInterseccionAprobados(alumnosFiltrados);
+    const totalDos = datos.lenguaYMatematica + datos.lenguaYDibujo + datos.matematicaYDibujo;
+    const totalUna = datos.soloLengua + datos.soloMatematica + datos.soloDibujo;
+
+    setText('venn-badge-etapa', nombresEtapas[etapaActiva] || '3º Examen Ingreso');
+    setText('venn-badge-total', `${datos.total} aspirantes`);
+
+    // Regiones del SVG
+    setText('venn-solo-len', datos.soloLengua);
+    setText('venn-solo-mat', datos.soloMatematica);
+    setText('venn-solo-dib', datos.soloDibujo);
+    setText('venn-len-mat', datos.lenguaYMatematica);
+    setText('venn-len-dib', datos.lenguaYDibujo);
+    setText('venn-mat-dib', datos.matematicaYDibujo);
+    setText('venn-las-tres', datos.lasTres);
+
+    // Panel lateral de desglose
+    setText('venn-resumen-tres', datos.lasTres);
+    setText(
+        'venn-pct-tres',
+        datos.total > 0
+            ? `${((datos.lasTres / datos.total) * 100).toFixed(1)}% del recorte actual`
+            : 'Sin aspirantes en el recorte'
+    );
+    setText('venn-resumen-dos', totalDos);
+    setText('venn-det-len-mat', datos.lenguaYMatematica);
+    setText('venn-det-len-dib', datos.lenguaYDibujo);
+    setText('venn-det-mat-dib', datos.matematicaYDibujo);
+    setText('venn-resumen-una', totalUna);
+    setText('venn-det-solo-len', datos.soloLengua);
+    setText('venn-det-solo-mat', datos.soloMatematica);
+    setText('venn-det-solo-dib', datos.soloDibujo);
+    setText('venn-resumen-ninguna', datos.ninguna);
 }
 
 // ==========================================
