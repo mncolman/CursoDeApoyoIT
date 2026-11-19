@@ -189,17 +189,22 @@ export function calcularRendimientoIncisos(materia, alumnos) {
 // 2. RADAR CON CAPA BASE (MÁXIMO POSIBLE) Y TOOLTIP DESCRIPTIVO
 // =================================================================
 
-/** Devuelve radios responsivos para puntos de gráficos radar (más grandes en móvil para facilitar el toque). */
-function obtenerRadiosPuntoRadar(esCapaBase = false) {
+/** Devuelve radios responsivos para puntos de gráficos radar (vértices compactos visualmente con área sensible amplia). */
+function obtenerRadiosPuntoRadar(esCapaBase = false, compacto = false) {
     const esMovil = typeof window !== 'undefined' && window.innerWidth < 768;
-    if (esCapaBase) {
+    if (compacto) {
+        if (esCapaBase) {
+            return esMovil
+                ? { radius: 4.5, hoverRadius: 7, hitRadius: 22 }
+                : { radius: 3.5, hoverRadius: 6, hitRadius: 14 };
+        }
         return esMovil
-            ? { radius: 6, hoverRadius: 8, hitRadius: 14 }
-            : { radius: 4, hoverRadius: 6, hitRadius: 8 };
+            ? { radius: 4, hoverRadius: 7.5, hitRadius: 24 }
+            : { radius: 3, hoverRadius: 6.5, hitRadius: 16 };
     }
-    return esMovil
-        ? { radius: 7, hoverRadius: 9, hitRadius: 16 }
-        : { radius: 6, hoverRadius: 8, hitRadius: 10 };
+    return esCapaBase
+        ? (esMovil ? { radius: 6, hoverRadius: 8, hitRadius: 14 } : { radius: 4, hoverRadius: 6, hitRadius: 8 })
+        : (esMovil ? { radius: 7, hoverRadius: 9, hitRadius: 16 } : { radius: 6, hoverRadius: 8, hitRadius: 10 });
 }
 
 export function renderizarRadarDinamico(materia, idCanvas, colorBorde, colorFondo, alumnos) {
@@ -213,8 +218,8 @@ export function renderizarRadarDinamico(materia, idCanvas, colorBorde, colorFond
     if (etiquetas.length === 0) return;
 
     const ctx = canvas.getContext('2d');
-    const radiosBase = obtenerRadiosPuntoRadar(true);
-    const radiosFrente = obtenerRadiosPuntoRadar(false);
+    const radiosBase = obtenerRadiosPuntoRadar(true, true);
+    const radiosFrente = obtenerRadiosPuntoRadar(false, true);
 
     // Radar con dos capas superpuestas
     new Chart(ctx, {
@@ -322,15 +327,15 @@ export function calcularKpisGlobales(alumnos) {
     // 2. Alumnos que rindieron
     const rindieron = alumnos.filter(a => {
         const ex = a.datos_examen || {};
-        return ex.estado_matematica === "Presente" ||
-            ex.estado_lengua === "Presente" ||
-            ex.estado_dibujo === "Presente";
+        return esPresenteEnMateriaResumen(ex, 'matematica') ||
+            esPresenteEnMateriaResumen(ex, 'lengua') ||
+            esPresenteEnMateriaResumen(ex, 'dibujo');
     });
     asignarTexto('kpi-rindieron', rindieron.length);
 
     // 3. Métricas por materia
     const calcularMateria = (materia) => {
-        const presentes = alumnos.filter(a => a.datos_examen?.[`estado_${materia}`] === "Presente");
+        const presentes = alumnos.filter(a => esPresenteEnMateriaResumen(a.datos_examen, materia));
         if (presentes.length > 0) {
             const notas = presentes.map(a => {
                 const raw = a.datos_examen?.[`nota_final_${materia}`];
@@ -383,61 +388,131 @@ export function calcularKpisGlobales(alumnos) {
 }
 
 /**
- * Calcula el KPI fijo de alumnos que aprobaron las 3 áreas (nota >= 4)
- * en el Ensayo de Examen sobre el padrón completo.
+ * Calcula las 8 regiones disjuntas del Diagrama de Venn (nota >= 4 en Lengua, Matemática y Dibujo)
+ * sobre el conjunto de alumnos ya proyectados y filtrados por los filtros globales.
  */
-export function calcularKpiAprobadosEnsayo(alumnos = [], datosCursillo = []) {
-    const elValor = document.getElementById('kpi-aprobados-ensayo-3');
-    const elPorcentaje = document.getElementById('kpi-aprobados-ensayo-3-pct');
-    if (!elValor) return;
-
-    if (!Array.isArray(alumnos) || alumnos.length === 0 || !Array.isArray(datosCursillo)) {
-        elValor.innerText = '-';
-        if (elPorcentaje) elPorcentaje.innerText = '';
-        return;
-    }
-
-    const mapaCursillo = new Map();
-    datosCursillo.forEach(item => {
-        const id = Number(item.nro_inscripcion);
-        if (id > 0) mapaCursillo.set(id, item.cursillo);
-    });
-
-    const parseNota = (val) => {
-        const n = typeof val === 'number' ? val : parseFloat(String(val ?? '').replace(',', '.'));
-        return Number.isFinite(n) ? n : 0;
+export function calcularInterseccionAprobados(alumnos = []) {
+    const conteo = {
+        soloLengua: 0,
+        soloMatematica: 0,
+        soloDibujo: 0,
+        lenguaYMatematica: 0,
+        lenguaYDibujo: 0,
+        matematicaYDibujo: 0,
+        lasTres: 0,
+        ninguna: 0,
+        total: 0
     };
 
-    let aprobadosTresAreas = 0;
+    if (!Array.isArray(alumnos) || alumnos.length === 0) return conteo;
 
-    alumnos.forEach(alumno => {
-        const nroInsc = Number(
-            alumno['Nº de inscripcion'] ||
-            alumno['N° de inscripcion'] ||
-            alumno['Nº de inscripción'] ||
-            alumno['N° de inscripción'] ||
-            alumno.nro_inscripcion ||
-            alumno.id_inscripcion ||
-            alumno['N° de orden'] ||
-            alumno['Nº de orden'] ||
-            0
-        );
+    const aproboArea = (ex, area) => {
+        if (!esPresenteEnMateriaResumen(ex, area)) return false;
+        const raw = ex[`nota_final_${area}`];
+        const val = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '').replace(',', '.'));
+        return Number.isFinite(val) && val >= 4;
+    };
 
-        const ee = mapaCursillo.get(nroInsc)?.ensayo_examen || {};
-        const mat = parseNota(ee.matematica);
-        const len = parseNota(ee.lengua);
-        const dib = parseNota(ee.dibujo);
+    alumnos.forEach(a => {
+        const ex = a?.datos_examen || {};
+        const l = aproboArea(ex, 'lengua');
+        const m = aproboArea(ex, 'matematica');
+        const d = aproboArea(ex, 'dibujo');
 
-        if (mat >= 4 && len >= 4 && dib >= 4) {
-            aprobadosTresAreas++;
-        }
+        if (l && m && d) conteo.lasTres++;
+        else if (l && m) conteo.lenguaYMatematica++;
+        else if (l && d) conteo.lenguaYDibujo++;
+        else if (m && d) conteo.matematicaYDibujo++;
+        else if (l) conteo.soloLengua++;
+        else if (m) conteo.soloMatematica++;
+        else if (d) conteo.soloDibujo++;
+        else conteo.ninguna++;
     });
 
-    elValor.innerText = aprobadosTresAreas;
-    if (elPorcentaje) {
-        const pct = ((aprobadosTresAreas / alumnos.length) * 100).toFixed(1);
-        elPorcentaje.innerText = `${pct}% de ${alumnos.length} inscriptos`;
+    conteo.total = alumnos.length;
+    return conteo;
+}
+
+/**
+ * Actualiza el diagrama SVG de triple intersección y el panel lateral en la subpestaña Resumen.
+ */
+export function renderizarVennAprobados(alumnosFiltrados = [], etapaActiva = 'oficial') {
+    const nombresEtapas = {
+        oficial: '3º Examen Ingreso',
+        ensayo: '2º Ensayo de Examen (E.E.)',
+        seguimiento: '1º Eval. Seguimiento (E.S.)'
+    };
+
+    const setText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(val);
+    };
+
+    const datos = calcularInterseccionAprobados(alumnosFiltrados);
+    const totalDos = datos.lenguaYMatematica + datos.lenguaYDibujo + datos.matematicaYDibujo;
+    const totalUna = datos.soloLengua + datos.soloMatematica + datos.soloDibujo;
+
+    setText('venn-badge-etapa', nombresEtapas[etapaActiva] || '3º Examen Ingreso');
+    setText('venn-badge-total', `${datos.total} aspirantes`);
+
+    // Regiones del SVG
+    setText('venn-solo-len', datos.soloLengua);
+    setText('venn-solo-mat', datos.soloMatematica);
+    setText('venn-solo-dib', datos.soloDibujo);
+    setText('venn-len-mat', datos.lenguaYMatematica);
+    setText('venn-len-dib', datos.lenguaYDibujo);
+    setText('venn-mat-dib', datos.matematicaYDibujo);
+    setText('venn-las-tres', datos.lasTres);
+
+    // Panel lateral de desglose
+    setText('venn-resumen-tres', datos.lasTres);
+    setText(
+        'venn-pct-tres',
+        datos.total > 0
+            ? `${((datos.lasTres / datos.total) * 100).toFixed(1)}% del recorte actual`
+            : 'Sin aspirantes en el recorte'
+    );
+    setText('venn-resumen-dos', totalDos);
+    setText('venn-det-len-mat', datos.lenguaYMatematica);
+    setText('venn-det-len-dib', datos.lenguaYDibujo);
+    setText('venn-det-mat-dib', datos.matematicaYDibujo);
+    setText('venn-resumen-una', totalUna);
+    setText('venn-det-solo-len', datos.soloLengua);
+    setText('venn-det-solo-mat', datos.soloMatematica);
+    setText('venn-det-solo-dib', datos.soloDibujo);
+    setText('venn-resumen-ninguna', datos.ninguna);
+}
+
+/** Detecta si el valor del troquel indica explícitamente ausencia (ej. 'Aus', 'Aus.', 'Ausente', 'A', 'Sin troquel'). */
+export function esTroquelAusente(idTroquel) {
+    const t = String(idTroquel ?? '').trim().toLowerCase().replace(/\.$/, '');
+    return t === 'aus' || t === 'ausente' || t === 'a' || t === 'sin troquel';
+}
+
+/**
+ * Determina si un alumno estuvo presente en una materia.
+ * En Examen de Ingreso ('oficial'), si el troquel es 'Aus' / 'Ausente' / 'Sin troquel' se considera ausente;
+ * de lo contrario se rige por estado_<materia> === 'Presente' (permitiendo nota 0 cuando sí rindió).
+ */
+export function esPresenteEnMateriaResumen(examen, materia) {
+    if (!examen) return false;
+    if (esTroquelAusente(examen[`id_${materia}`])) return false;
+    return examen[`estado_${materia}`] === 'Presente';
+}
+
+/**
+ * Determina si un alumno estuvo presente en la instancia (para distinguir promedio 0.000 de Ausente).
+ */
+export function esPresenteEnInstanciaResumen(alumno, esExamenOficial = true) {
+    const examen = alumno?.datos_examen || {};
+    if (esExamenOficial) {
+        return (
+            esPresenteEnMateriaResumen(examen, 'matematica') ||
+            esPresenteEnMateriaResumen(examen, 'lengua') ||
+            esPresenteEnMateriaResumen(examen, 'dibujo')
+        );
     }
+    return (alumno?.promedioGeneral || 0) > 0;
 }
 
 // ==========================================
@@ -461,8 +536,12 @@ export function calcularMiniKpisFiltrados(alumnosFiltrados) {
         return;
     }
 
-    // Promedios generales del recorte
-    const promedios = alumnosFiltrados.map(a => a.promedioGeneral || 0).filter(p => p > 0);
+    const esExamenOficial = (Filtros.obtenerEtapaSeleccionada ? Filtros.obtenerEtapaSeleccionada() : 'oficial') === 'oficial';
+
+    // Promedios generales del recorte (en Examen Oficial incluye presentes con promedio 0)
+    const promedios = alumnosFiltrados
+        .filter(a => esPresenteEnInstanciaResumen(a, esExamenOficial))
+        .map(a => Number.isFinite(a.promedioGeneral) ? a.promedioGeneral : 0);
 
     if (promedios.length > 0) {
         const promGrupo = (promedios.reduce((acc, v) => acc + v, 0) / promedios.length).toFixed(2);
@@ -478,19 +557,18 @@ export function calcularMiniKpisFiltrados(alumnosFiltrados) {
         if (elMin) elMin.innerText = '-';
     }
 
-    // Promedios por materia dentro del recorte (respetando tu lógica original)
+    // Promedios por materia dentro del recorte
     const promPorMateria = (materia) => {
         const pres = alumnosFiltrados.filter(a => {
             const ex = a.datos_examen || {};
-            const estado = ex[`estado_${materia}`];
-            const nota = parseFloat(ex[`nota_final_${materia}`]);
-            return estado === "Presente" && !isNaN(nota);
+            const nota = parseFloat(String(ex[`nota_final_${materia}`] ?? '').replace(',', '.'));
+            return esPresenteEnMateriaResumen(ex, materia, esExamenOficial) && !isNaN(nota);
         });
 
         if (pres.length === 0) return '-';
 
         const sum = pres.reduce((acc, a) => {
-            const nota = parseFloat(a.datos_examen[`nota_final_${materia}`]) || 0;
+            const nota = parseFloat(String(a.datos_examen[`nota_final_${materia}`] ?? '').replace(',', '.')) || 0;
             return acc + nota;
         }, 0);
 
@@ -518,21 +596,22 @@ export function inicializarFiltrosMerito() {
 export function ordenarAlumnosResumenPorCriterio(alumnos, criterio = 'promedio') {
     if (!Array.isArray(alumnos) || alumnos.length === 0) return [];
     const copia = [...alumnos];
+    const esExamenOficial = (Filtros.obtenerEtapaSeleccionada ? Filtros.obtenerEtapaSeleccionada() : 'oficial') === 'oficial';
 
     const mapaAreas = {
-        matematica: { estado: 'estado_matematica', nota: 'nota_final_matematica' },
-        lengua: { estado: 'estado_lengua', nota: 'nota_final_lengua' },
-        dibujo: { estado: 'estado_dibujo', nota: 'nota_final_dibujo' }
+        matematica: 'matematica',
+        lengua: 'lengua',
+        dibujo: 'dibujo'
     };
 
-    const configArea = mapaAreas[criterio];
-    if (!configArea) return copia;
+    const areaKey = mapaAreas[criterio];
+    if (!areaKey) return copia;
 
     const leerNota = (alumno) => {
         const ex = alumno.datos_examen || {};
-        if (ex[configArea.estado] !== 'Presente') return -1;
-        const val = parseFloat(ex[configArea.nota]);
-        return Number.isFinite(val) ? val : -1;
+        if (!esPresenteEnMateriaResumen(ex, areaKey, esExamenOficial)) return -1;
+        const val = parseFloat(String(ex[`nota_final_${areaKey}`] ?? '').replace(',', '.'));
+        return Number.isFinite(val) ? val : 0;
     };
 
     return copia.sort((a, b) => {
@@ -562,20 +641,31 @@ export function renderizarTablaMerito(alumnos) {
         return;
     }
 
+    const esExamenOficial = (Filtros.obtenerEtapaSeleccionada ? Filtros.obtenerEtapaSeleccionada() : 'oficial') === 'oficial';
     const criterioOrden = document.getElementById('select-orden-tabla-resumen')?.value || 'promedio';
     const alumnosOrdenados = ordenarAlumnosResumenPorCriterio(alumnos, criterioOrden);
 
     if (badgeFiltrados) badgeFiltrados.innerText = alumnosOrdenados.length;
     if (badgeResumen) badgeResumen.innerText = alumnosOrdenados.length;
 
+    const formatearNotaResumen = (examen, materia) => {
+        if (!esPresenteEnMateriaResumen(examen, materia, esExamenOficial)) {
+            return esExamenOficial
+                ? '<span class="fw-bold text-danger" title="Ausente (sin troquel)">A</span>'
+                : '-';
+        }
+        const val = parseFloat(String(examen[`nota_final_${materia}`] ?? '').replace(',', '.'));
+        return Number.isFinite(val) ? val.toFixed(2) : '0.00';
+    };
+
     let htmlFilas = '';
 
     alumnosOrdenados.forEach(alumno => {
         const examen = alumno.datos_examen || {};
-        // Notas por materia (o guión si no rindió la materia puntual)
-        const notaMat = examen.estado_matematica === 'Presente' ? examen.nota_final_matematica.toFixed(2) : '-';
-        const notaLen = examen.estado_lengua === 'Presente' ? examen.nota_final_lengua.toFixed(2) : '-';
-        const notaDib = examen.estado_dibujo === 'Presente' ? examen.nota_final_dibujo.toFixed(2) : '-';
+        // Notas por materia (en Examen Oficial: nota 0 con troquel muestra 0.00; sin troquel muestra 'A' en rojo negrita)
+        const notaMat = formatearNotaResumen(examen, 'matematica');
+        const notaLen = formatearNotaResumen(examen, 'lengua');
+        const notaDib = formatearNotaResumen(examen, 'dibujo');
 
         // Badge para el puesto en orden de mérito (estilo uniforme)
         const puestoBadge = `<span class="badge bg-light text-dark border">#${alumno.ordenMerito}</span>`;
@@ -585,10 +675,13 @@ export function renderizarTablaMerito(alumnos) {
         const nombre = alumno['Nombre/s del alumno'] || alumno.nombre || '';
         const nombreCompleto = (apellido && nombre) ? `${apellido}, ${nombre}` : (alumno['Nombre y Apellido'] || alumno['Alumno'] || 'Sin Nombre');
 
-        // Promedio: si es 0 muestra "Ausente"
-        const celdaPromedio = alumno.promedioGeneral > 0
+        // Promedio: en Examen Oficial solo es Ausente si no tiene cruce con troqueles ni nota en ninguna materia
+        const presenteEnInstancia = esPresenteEnInstanciaResumen(alumno, esExamenOficial);
+        const celdaPromedio = presenteEnInstancia
             ? `<span class="fw-bold text-primary">${formatearPromedioTruncado(alumno.promedioGeneral, 3)}</span>`
-            : `<span class="badge bg-secondary-subtle text-secondary">Ausente</span>`;
+            : (esExamenOficial
+                ? `<span class="badge bg-danger-subtle text-danger fw-bold">Ausente</span>`
+                : `<span class="badge bg-secondary-subtle text-secondary">Ausente</span>`);
 
         htmlFilas += `
             <tr>
@@ -2588,15 +2681,25 @@ export function descargarListadoNotasResumen(formato = 'pdf') {
         ? `Comisión ${comisionFiltro}`
         : 'Todas las Comisiones';
 
+    const esExamenOficial = etapaActiva === 'oficial';
+
     if (formato === 'excel') {
-        exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro);
+        exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficial);
     } else {
-        exportarResumenPDF(alumnos, nombreEtapa, infoComision);
+        exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial);
     }
 }
 
-function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro) {
+function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficial = true) {
     const cabeceras = ['Orden de Mérito', 'Apellido y Nombre', 'Comisión', 'Matemática', 'Lengua', 'Dibujo', 'Promedio General'];
+    const formatearNota = (ex, materia) => {
+        if (!esPresenteEnMateriaResumen(ex, materia, esExamenOficial)) {
+            return esExamenOficial ? 'A' : '-';
+        }
+        const val = parseFloat(String(ex[`nota_final_${materia}`] ?? '').replace(',', '.'));
+        return Number.isFinite(val) ? val.toFixed(2) : '0.00';
+    };
+
     const filas = alumnos.map(a => {
         const ex = a.datos_examen || {};
         const apellido = a['Apellido/s del alumno'] || a.apellido || '';
@@ -2604,16 +2707,12 @@ function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro) {
         const nombreCompleto = (apellido && nombre) ? `${apellido}, ${nombre}` : (a['Nombre y Apellido'] || a['Alumno'] || 'Sin Nombre');
         const com = a['Comisión'] || a['Comision'] || a.comision || '-';
 
-        const notaMat = ex.estado_matematica === 'Presente' && typeof ex.nota_final_matematica === 'number'
-            ? ex.nota_final_matematica.toFixed(2)
-            : (parseFloat(ex.nota_final_matematica) > 0 ? parseFloat(ex.nota_final_matematica).toFixed(2) : '-');
-        const notaLen = ex.estado_lengua === 'Presente' && typeof ex.nota_final_lengua === 'number'
-            ? ex.nota_final_lengua.toFixed(2)
-            : (parseFloat(ex.nota_final_lengua) > 0 ? parseFloat(ex.nota_final_lengua).toFixed(2) : '-');
-        const notaDib = ex.estado_dibujo === 'Presente' && typeof ex.nota_final_dibujo === 'number'
-            ? ex.nota_final_dibujo.toFixed(2)
-            : (parseFloat(ex.nota_final_dibujo) > 0 ? parseFloat(ex.nota_final_dibujo).toFixed(2) : '-');
-        const prom = a.promedioGeneral > 0 ? formatearPromedioTruncado(a.promedioGeneral, 3) : 'Ausente';
+        const notaMat = formatearNota(ex, 'matematica');
+        const notaLen = formatearNota(ex, 'lengua');
+        const notaDib = formatearNota(ex, 'dibujo');
+        const prom = esPresenteEnInstanciaResumen(a, esExamenOficial)
+            ? formatearPromedioTruncado(a.promedioGeneral, 3)
+            : 'Ausente';
 
         return [
             a.ordenMerito,
@@ -2644,7 +2743,7 @@ function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro) {
     URL.revokeObjectURL(url);
 }
 
-function exportarResumenPDF(alumnos, nombreEtapa, infoComision) {
+function exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial = true) {
     if (!window.jspdf) {
         if (typeof Swal !== 'undefined') Swal.fire('Error', 'No se encontró la librería jsPDF.', 'error');
         return;
@@ -2665,6 +2764,14 @@ function exportarResumenPDF(alumnos, nombreEtapa, infoComision) {
         const centroX = anchoHoja / 2;
 
         const cabeceras = [['#', 'Apellido y Nombre', 'Comisión', 'Matemática', 'Lengua', 'Dibujo', 'Promedio']];
+        const formatearNota = (ex, materia) => {
+            if (!esPresenteEnMateriaResumen(ex, materia, esExamenOficial)) {
+                return esExamenOficial ? 'A' : '-';
+            }
+            const val = parseFloat(String(ex[`nota_final_${materia}`] ?? '').replace(',', '.'));
+            return Number.isFinite(val) ? val.toFixed(2) : '0.00';
+        };
+
         const filas = alumnos.map(a => {
             const ex = a.datos_examen || {};
             const apellido = a['Apellido/s del alumno'] || a.apellido || '';
@@ -2672,16 +2779,12 @@ function exportarResumenPDF(alumnos, nombreEtapa, infoComision) {
             const nombreCompleto = (apellido && nombre) ? `${apellido}, ${nombre}` : (a['Nombre y Apellido'] || a['Alumno'] || 'Sin Nombre');
             const com = a['Comisión'] || a['Comision'] || a.comision || '-';
 
-            const notaMat = ex.estado_matematica === 'Presente' && typeof ex.nota_final_matematica === 'number'
-                ? ex.nota_final_matematica.toFixed(2)
-                : (parseFloat(ex.nota_final_matematica) > 0 ? parseFloat(ex.nota_final_matematica).toFixed(2) : '-');
-            const notaLen = ex.estado_lengua === 'Presente' && typeof ex.nota_final_lengua === 'number'
-                ? ex.nota_final_lengua.toFixed(2)
-                : (parseFloat(ex.nota_final_lengua) > 0 ? parseFloat(ex.nota_final_lengua).toFixed(2) : '-');
-            const notaDib = ex.estado_dibujo === 'Presente' && typeof ex.nota_final_dibujo === 'number'
-                ? ex.nota_final_dibujo.toFixed(2)
-                : (parseFloat(ex.nota_final_dibujo) > 0 ? parseFloat(ex.nota_final_dibujo).toFixed(2) : '-');
-            const prom = a.promedioGeneral > 0 ? formatearPromedioTruncado(a.promedioGeneral, 3) : 'Ausente';
+            const notaMat = formatearNota(ex, 'matematica');
+            const notaLen = formatearNota(ex, 'lengua');
+            const notaDib = formatearNota(ex, 'dibujo');
+            const prom = esPresenteEnInstanciaResumen(a, esExamenOficial)
+                ? formatearPromedioTruncado(a.promedioGeneral, 3)
+                : 'Ausente';
 
             return [
                 a.ordenMerito,
