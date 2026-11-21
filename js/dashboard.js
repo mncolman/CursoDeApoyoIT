@@ -90,11 +90,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Listener para el selector de orden de la tabla docente
-    document.getElementById('select-ordenar-docentes-tabla')?.addEventListener('change', () => {
+    // Listeners para los selectores de área y orden de la tabla docente
+    const refrescarTablaDocentes = () => {
         const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
         UImetrics.renderizarTablaDocentes(alumnosFiltrados);
-    });
+    };
+    document.getElementById('select-area-docentes-tabla')?.addEventListener('change', refrescarTablaDocentes);
+    document.getElementById('select-ordenar-docentes-tabla')?.addEventListener('change', refrescarTablaDocentes);
 
     document.getElementById('select-filtro-comision')?.addEventListener('change', (e) => {
         const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
@@ -114,6 +116,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         UImetrics.renderizarTablaAbandonoComisiones(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
     });
 
+    // Listeners para el gráfico de Rendimiento por Comisión según Enunciado (pestaña Exámenes)
+    const refrescarGraficoEnunciadoComision = () => {
+        const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
+        UImetrics.actualizarGraficoEnunciadoComisiones(alumnosFiltrados, Filtros.obtenerEtapaSeleccionada());
+    };
+    document.getElementById('select-materia-enunciado-comision')?.addEventListener('change', refrescarGraficoEnunciadoComision);
+    document.getElementById('select-inciso-enunciado-comision')?.addEventListener('change', refrescarGraficoEnunciadoComision);
+    document.getElementById('select-orden-enunciado-comision')?.addEventListener('change', refrescarGraficoEnunciadoComision);
+
     // Escuchamos el cambio en el selector de orden de comisiones
     document.getElementById('select-ordenar-comisiones')?.addEventListener('change', () => {
         const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
@@ -132,6 +143,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('btn-descargar-resumen-pdf')?.addEventListener('click', () => {
         UImetrics.descargarListadoNotasResumen('pdf');
+    });
+    document.getElementById('btn-descargar-resumen-alfabetico-pdf')?.addEventListener('click', () => {
+        UImetrics.descargarListadoAlfabeticoResumenPDF();
     });
     document.getElementById('btn-descargar-resumen-excel')?.addEventListener('click', () => {
         UImetrics.descargarListadoNotasResumen('excel');
@@ -212,6 +226,7 @@ function actualizarDashboardFiltrado() {
     UImetrics.renderizarGraficoDistribucion(alumnosFiltrados);
     UImetrics.actualizarRankingContenidos(alumnosFiltrados, EstadoDashboard.examenes);
     UImetrics.renderizarTablaAsistenciaEtapas(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
+    UImetrics.actualizarGraficoEnunciadoComisiones(alumnosFiltrados, etapaActiva);
 
     // 5. Sub-pestaña Comisiones
     const comisionSeleccionada = document.getElementById('select-filtro-comision')?.value || 'todas';
