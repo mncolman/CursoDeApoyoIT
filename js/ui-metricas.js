@@ -3187,6 +3187,7 @@ export function descargarListadoAlfabeticoResumenPDF() {
                         data.cell.styles.fontStyle = 'bold';
                     } else {
                         data.cell.styles.textColor = [140, 40, 40];
+                        data.cell.styles.fontStyle = 'bold';
                     }
                 }
                 if (data.column.index === 6 && texto.startsWith('-')) {
