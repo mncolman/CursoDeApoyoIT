@@ -713,7 +713,9 @@ export function renderizarTablaMerito(alumnos) {
                 : '-';
         }
         const val = parseFloat(String(examen[`nota_final_${materia}`] ?? '').replace(',', '.'));
-        return Number.isFinite(val) ? val.toFixed(2) : '0.00';
+        const nota = Number.isFinite(val) ? val : 0;
+        const texto = nota.toFixed(2);
+        return nota < 4 ? `<span class="text-danger">${texto}</span>` : texto;
     };
 
     let htmlFilas = '';
