@@ -6,7 +6,7 @@ import { formatearDniConPuntos } from './utils.js';
 // Función para truncar estrictamente a N decimales (sin redondear hacia arriba por el siguiente decimal)
 function formatearPromedioTruncado(valor, decimales = 3) {
     const num = parseFloat(valor);
-    if (isNaN(num) || num <= 0) return '0.000';
+    if (isNaN(num) || num <= 0) return (0).toFixed(decimales);
     const factor = Math.pow(10, decimales);
     // Math.floor para truncar hacia abajo sin alterar el 3er decimal
     const truncado = Math.floor(num * factor + 0.0000001) / factor;
@@ -2952,7 +2952,7 @@ function exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial 
 
 /**
  * Ordena alfabéticamente por Apellido y Nombre y construye las filas del listado oficial:
- * [Documento, Apellido, Nombre, Matemática, Lengua, Dibujo, Comentarios, Promedio].
+ * [Documento, Apellido y Nombre, Matemática, Lengua, Dibujo, Comentarios, Promedio Provisorio].
  */
 export function construirFilasListadoAlfabeticoResumen(alumnos = [], esExamenOficial = true) {
     if (!Array.isArray(alumnos) || alumnos.length === 0) return [];
@@ -2985,16 +2985,18 @@ export function construirFilasListadoAlfabeticoResumen(alumnos = [], esExamenOfi
 
     const evaluarMateria = (ex, materia) => {
         if (!esPresenteEnMateriaResumen(ex, materia)) {
-            return { texto: esExamenOficial ? 'A' : '-', aprobo: false };
+            return { texto: esExamenOficial ? 'A' : '-', presente: false, aprobo: false };
         }
         const val = parseFloat(String(ex[`nota_final_${materia}`] ?? '').replace(',', '.'));
         const num = Number.isFinite(val) ? val : 0;
-        return { texto: num.toFixed(2), aprobo: num >= 4 };
+        return { texto: num.toFixed(2), presente: true, aprobo: num >= 4 };
     };
 
     return ordenados.map(a => {
         const ex = a.datos_examen || {};
         const { apellido, nombre } = extraerNombreSeparado(a);
+        const apellidoMayus = apellido.toLocaleUpperCase('es-AR');
+        const apellidoYNombre = nombre ? `${apellidoMayus}, ${nombre}` : apellidoMayus;
 
         const dniRaw = a['Nº de documento del alumno (sin puntos)'] ??
             a['N° de documento del alumno (sin puntos)'] ??
@@ -3008,18 +3010,25 @@ export function construirFilasListadoAlfabeticoResumen(alumnos = [], esExamenOfi
         const len = evaluarMateria(ex, 'lengua');
         const dib = evaluarMateria(ex, 'dibujo');
 
-        const aproboTres = mat.aprobo && len.aprobo && dib.aprobo;
-        const comentarios = aproboTres
-            ? 'Aprobó los 3 exámenes'
-            : 'Desaprobó al menos un examen';
-        const promedio = aproboTres
-            ? formatearPromedioTruncado(a.promedioGeneral, 3)
-            : '- (No califica)';
+        const tieneAusente = !mat.presente || !len.presente || !dib.presente;
+        const aproboTres = !tieneAusente && mat.aprobo && len.aprobo && dib.aprobo;
+
+        let comentarios;
+        let promedio;
+        if (tieneAusente) {
+            comentarios = 'Ausente en al menos un examen';
+            promedio = '-';
+        } else if (aproboTres) {
+            comentarios = 'Aprobó los 3 exámenes';
+            promedio = `${formatearPromedioTruncado(a.promedioGeneral, 2)} (Prov.)`;
+        } else {
+            comentarios = 'Desaprobó al menos un examen';
+            promedio = '- (Prov.)';
+        }
 
         return [
             documento,
-            apellido,
-            nombre,
+            apellidoYNombre,
             mat.texto,
             len.texto,
             dib.texto,
@@ -3031,7 +3040,7 @@ export function construirFilasListadoAlfabeticoResumen(alumnos = [], esExamenOfi
 
 /**
  * Genera y descarga el PDF del Listado Alfabético Oficial con encabezado institucional
- * y pie de página con aclaración normativa y numeración en todas las hojas.
+ * y pie de página en 3 secciones en todas las hojas.
  */
 export function descargarListadoAlfabeticoResumenPDF() {
     const alumnos = Filtros.obtenerAlumnosFiltradosPorMerito(
@@ -3069,7 +3078,7 @@ export function descargarListadoAlfabeticoResumenPDF() {
 
     if (typeof Swal !== 'undefined') {
         Swal.fire({
-            title: 'Generando Listado Alfabético PDF...',
+            title: 'Generando Resultados Provisorios PDF...',
             text: 'Por favor aguarde un momento.',
             didOpen: () => { Swal.showLoading(); }
         });
@@ -3077,54 +3086,61 @@ export function descargarListadoAlfabeticoResumenPDF() {
 
     try {
         const { jsPDF } = window.jspdf;
-        // A4 Horizontal para alojar con comodidad las 8 columnas
+        // A4 Horizontal para alojar con comodidad las 7 columnas
         const pdf = new jsPDF('l', 'mm', 'a4');
         const anchoHoja = pdf.internal.pageSize.getWidth();
         const altoHoja = pdf.internal.pageSize.getHeight();
         const centroX = anchoHoja / 2;
 
-        const cabeceras = [['Documento', 'Apellido', 'Nombre', 'Matemática', 'Lengua', 'Dibujo', 'Comentarios', 'Promedio']];
+        const cabeceras = [['Documento', 'Apellido y Nombre', 'Matemática', 'Lengua', 'Dibujo', 'Comentarios', 'Promedio Provisorio']];
         const filas = construirFilasListadoAlfabeticoResumen(alumnos, esExamenOficial);
+        const incluirMarcaAgua = document.getElementById('chk-marca-agua-provisorios')?.checked ?? true;
 
-        const fechaHoy = new Date().toLocaleDateString('es-AR', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
+        const fechaCreacion = new Date().toLocaleDateString('es-AR', {
+            day: '2-digit', month: '2-digit', year: 'numeric'
         });
 
+        const dibujarMarcaAguaHoja = () => {
+            if (!incluirMarcaAgua || typeof logoIT === 'undefined') return;
+            if (typeof pdf.GState !== 'function') return;
+            const tamLogo = 108;
+            const xLogo = centroX - tamLogo / 2;
+            const yLogo = ((29 + (altoHoja - 18)) / 2) - tamLogo / 2;
+            pdf.saveGraphicsState();
+            pdf.setGState(new pdf.GState({ opacity: 0.11 }));
+            pdf.addImage(logoIT, 'PNG', xLogo, yLogo, tamLogo, tamLogo);
+            pdf.restoreGraphicsState();
+        };
+
         const dibujarEncabezadoHoja = () => {
-            if (typeof logoIT !== 'undefined') pdf.addImage(logoIT, 'PNG', 12, 7, 20, 20);
-            if (typeof logoUNT !== 'undefined') pdf.addImage(logoUNT, 'PNG', anchoHoja - 29, 7, 17, 20);
+            if (typeof logoIT !== 'undefined') pdf.addImage(logoIT, 'PNG', 12, 6, 18, 18);
+            if (typeof logoUNT !== 'undefined') pdf.addImage(logoUNT, 'PNG', anchoHoja - 27, 6, 15, 18);
 
             pdf.setFont('helvetica', 'normal');
             pdf.setFontSize(19);
             pdf.setTextColor(0, 0, 0);
-            pdf.text('INSTITUTO TÉCNICO', centroX, 13, { align: 'center' });
+            pdf.text('INSTITUTO TÉCNICO', centroX, 12, { align: 'center' });
 
             pdf.setFont('times', 'italic');
             pdf.setFontSize(12);
             pdf.setTextColor(0, 0, 0);
-            pdf.text('Universidad Nacional de Tucumán', centroX, 19, { align: 'center' });
+            pdf.text('Universidad Nacional de Tucumán', centroX, 17.5, { align: 'center' });
 
             pdf.setFont('helvetica', 'bold');
             pdf.setFontSize(11);
             pdf.setTextColor(0, 48, 93);
-            pdf.text(`LISTADO ALFABÉTICO DE CALIFICACIONES - ${nombreEtapa.toUpperCase()}`, centroX, 25.5, { align: 'center' });
-
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(8.2);
-            pdf.setTextColor(90, 90, 90);
-            pdf.text(`Filtro: ${infoComision} | Aspirantes listados: ${filas.length} | Generado el: ${fechaHoy}`, centroX, 30.5, { align: 'center' });
+            pdf.text('RESULTADOS PROVISORIOS - Exámenes de ingreso al ciclo lectivo 2027', centroX, 23.5, { align: 'center' });
 
             pdf.setDrawColor(180, 180, 180);
             pdf.setLineWidth(0.45);
-            pdf.line(12, 33.5, anchoHoja - 12, 33.5);
+            pdf.line(12, 26.5, anchoHoja - 12, 26.5);
         };
 
         pdf.autoTable({
             head: cabeceras,
             body: filas,
-            startY: 37,
-            margin: { top: 37, bottom: 20, left: 12, right: 12 },
+            startY: 29,
+            margin: { top: 29, bottom: 18, left: 12, right: 12 },
             theme: 'grid',
             showHead: 'everyPage',
             headStyles: {
@@ -3132,82 +3148,102 @@ export function descargarListadoAlfabeticoResumenPDF() {
                 textColor: [255, 255, 255],
                 halign: 'center',
                 valign: 'middle',
-                fontSize: 8.5,
+                fontSize: 10.2,
+                cellPadding: { top: 1.5, bottom: 1.5, left: 1.8, right: 1.8 },
                 lineWidth: 0.2
             },
             styles: {
-                fontSize: 8.2,
-                cellPadding: 2,
+                fontSize: 10,
+                cellPadding: { top: 1.1, bottom: 1.1, left: 1.8, right: 1.8 },
                 valign: 'middle',
                 lineColor: [210, 210, 210],
                 lineWidth: 0.1
             },
             alternateRowStyles: {
-                fillColor: [248, 249, 250]
+                fillColor: [218, 228, 241]
             },
             columnStyles: {
-                0: { cellWidth: 26, halign: 'center' },
-                1: { cellWidth: 44, halign: 'left', fontStyle: 'bold' },
-                2: { cellWidth: 44, halign: 'left' },
+                0: { cellWidth: 27, halign: 'center' },
+                1: { cellWidth: 78, halign: 'left' },
+                2: { cellWidth: 25, halign: 'center' },
                 3: { cellWidth: 21, halign: 'center' },
                 4: { cellWidth: 21, halign: 'center' },
-                5: { cellWidth: 21, halign: 'center' },
-                6: { cellWidth: 62, halign: 'left' },
-                7: { cellWidth: 34, halign: 'center', fontStyle: 'bold' }
+                5: { cellWidth: 61, halign: 'left' },
+                6: { cellWidth: 40, halign: 'center', fontStyle: 'bold' }
             },
             didParseCell: function (data) {
                 if (data.section !== 'body') return;
                 const texto = String(data.cell.raw ?? '');
-                if ((data.column.index === 3 || data.column.index === 4 || data.column.index === 5) && texto === 'A') {
+                if ((data.column.index === 2 || data.column.index === 3 || data.column.index === 4) && texto === 'A') {
                     data.cell.styles.textColor = [180, 20, 20];
                     data.cell.styles.fontStyle = 'bold';
                 }
-                if (data.column.index === 6) {
+                if (data.column.index === 5) {
                     if (texto === 'Aprobó los 3 exámenes') {
                         data.cell.styles.textColor = [20, 108, 67];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (texto === 'Ausente en al menos un examen') {
+                        data.cell.styles.textColor = [180, 20, 20];
                         data.cell.styles.fontStyle = 'bold';
                     } else {
                         data.cell.styles.textColor = [140, 40, 40];
                     }
                 }
-                if (data.column.index === 7 && texto.startsWith('-')) {
-                    data.cell.styles.textColor = [120, 120, 120];
+                if (data.column.index === 6 && texto.startsWith('-')) {
+                    data.cell.styles.textColor = [115, 115, 115];
                     data.cell.styles.fontStyle = 'normal';
                 }
             },
             didDrawPage: function () {
                 dibujarEncabezadoHoja();
+                dibujarMarcaAguaHoja();
             }
         });
 
-        // Pie de página con aclaración normativa y numeración "Página X de Y" en CADA hoja
+        // Pie de página en 3 secciones y numeración "Página i - total (fecha)" en CADA hoja
         const totalPaginas = pdf.getNumberOfPages();
-        const textoAclaracion = 'Aclaración: Solo los exámenes con nota igual o mayor a 4 (cuatro) se consideran aprobados. Se requieren los 3 exámenes aprobados para integrar el futuro listado de orden de mérito.';
+        const textoProvisorio = 'Resultados provisorios: podrían modificarse de acuerdo a la revisión de exámenes, por posibles errores de corrección.';
+        const textoAprobacion = 'Nota de aprobación: 4 (cuatro) - Debe aprobar los tres exámenes para acceder al orden de mérito.';
 
         for (let i = 1; i <= totalPaginas; i++) {
             pdf.setPage(i);
 
             pdf.setDrawColor(195, 195, 195);
             pdf.setLineWidth(0.3);
-            pdf.line(12, altoHoja - 15, anchoHoja - 12, altoHoja - 15);
+            pdf.line(12, altoHoja - 16, anchoHoja - 12, altoHoja - 16);
 
+            // Separadores verticales discretos entre las 3 secciones del pie
+            pdf.setDrawColor(220, 220, 220);
+            pdf.setLineWidth(0.2);
+            pdf.line(120, altoHoja - 14.5, 120, altoHoja - 4.5);
+            pdf.line(224, altoHoja - 14.5, 224, altoHoja - 4.5);
+
+            // Sección 1: Aviso de resultados provisorios
             pdf.setFont('helvetica', 'italic');
-            pdf.setFontSize(7.5);
-            pdf.setTextColor(95, 95, 95);
-            const lineasAclaracion = pdf.splitTextToSize(textoAclaracion, anchoHoja - 56);
-            pdf.text(lineasAclaracion, 12, altoHoja - 10.5);
-
-            pdf.setFont('helvetica', 'bold');
             pdf.setFontSize(8);
+            pdf.setTextColor(95, 95, 95);
+            const lineasSec1 = pdf.splitTextToSize(textoProvisorio, 105);
+            pdf.text(lineasSec1, 12, altoHoja - 11.5);
+
+            // Sección 2: Criterio de aprobación y orden de mérito
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            pdf.setTextColor(85, 85, 85);
+            const lineasSec2 = pdf.splitTextToSize(textoAprobacion, 98);
+            pdf.text(lineasSec2, 123, altoHoja - 11.5);
+
+            // Sección 3: Paginación y fecha de creación
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(8.5);
             pdf.setTextColor(90, 90, 90);
-            pdf.text(`Página ${i} de ${totalPaginas}`, anchoHoja - 12, altoHoja - 9.5, { align: 'right' });
+            pdf.text(`Página ${i} - ${totalPaginas} (${fechaCreacion})`, anchoHoja - 12, altoHoja - 9, { align: 'right' });
         }
 
         if (typeof Swal !== 'undefined') Swal.close();
         const sufijo = infoComision.replace(/\s+/g, '_');
-        pdf.save(`Listado_Alfabetico_${nombreEtapa.replace(/\s+/g, '_')}_${sufijo}.pdf`);
+        pdf.save(`Resultados_Provisorios_${nombreEtapa.replace(/\s+/g, '_')}_${sufijo}.pdf`);
     } catch (err) {
-        console.error('Error generando Listado Alfabético PDF:', err);
+        console.error('Error generando Resultados Provisorios PDF:', err);
         if (typeof Swal !== 'undefined') Swal.fire('Error', 'Ocurrió un error al generar el PDF: ' + err.message, 'error');
     }
 }
