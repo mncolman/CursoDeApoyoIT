@@ -1,11 +1,12 @@
 import { EstadoDashboard } from './api.js';
 import * as Filtros from './filters.js';
 import { logoIT, logoUNT } from './assets.js';
+import { formatearDniConPuntos } from './utils.js';
 
 // Función para truncar estrictamente a N decimales (sin redondear hacia arriba por el siguiente decimal)
 function formatearPromedioTruncado(valor, decimales = 3) {
     const num = parseFloat(valor);
-    if (isNaN(num) || num <= 0) return '0.000';
+    if (isNaN(num) || num <= 0) return (0).toFixed(decimales);
     const factor = Math.pow(10, decimales);
     // Math.floor para truncar hacia abajo sin alterar el 3er decimal
     const truncado = Math.floor(num * factor + 0.0000001) / factor;
@@ -1530,9 +1531,14 @@ export function renderizarTablaDocentes(alumnosFiltrados) {
     const tbody = document.getElementById('tabla-docentes-cuerpo');
     if (!tbody) return;
 
-    const datos = procesarMetricasDocentesCompletas(alumnosFiltrados);
+    const areaSeleccionada = document.getElementById('select-area-docentes-tabla')?.value || 'todas';
+    const datosCompletos = procesarMetricasDocentesCompletas(alumnosFiltrados);
+    const datos = areaSeleccionada === 'todas'
+        ? datosCompletos
+        : datosCompletos.filter(d => d.areaKey === areaSeleccionada);
+
     if (datos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No hay datos docentes disponibles.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No hay datos docentes disponibles para el filtro actual.</td></tr>`;
         return;
     }
 
@@ -2238,12 +2244,50 @@ function renderizarGraficoEvolucion(datos, filtroArea = 'todas') {
     });
 }
 
+let alumnosEvolucionCache = [];
+
+/** Calcula la evolución neta (Examen Oficial menos primera etapa disponible del cursillo). */
+function calcularDeltaEvolucionAlumno(a) {
+    const { es, ee, of } = a?.etapas || {};
+    const baseCursillo = (es && es.prom !== null) ? es.prom : (ee ? ee.prom : null);
+    if (baseCursillo !== null && of && of.prom !== null) {
+        return of.prom - baseCursillo;
+    }
+    return null;
+}
+
+/** Ordena los alumnos de la Matriz Comparativa por Orden de Mérito o por Evolución Neta. */
+export function ordenarAlumnosEvolucion(alumnosCruzados = [], criterio = 'merito') {
+    if (!Array.isArray(alumnosCruzados) || alumnosCruzados.length === 0) return [];
+    const copia = [...alumnosCruzados];
+
+    if (criterio === 'evolucion_desc' || criterio === 'evolucion_asc') {
+        return copia.sort((a, b) => {
+            const deltaA = calcularDeltaEvolucionAlumno(a);
+            const deltaB = calcularDeltaEvolucionAlumno(b);
+
+            if (deltaA === null && deltaB === null) {
+                return (a.ordenMerito || 999999) - (b.ordenMerito || 999999);
+            }
+            if (deltaA === null) return 1;
+            if (deltaB === null) return -1;
+
+            const diff = criterio === 'evolucion_desc' ? (deltaB - deltaA) : (deltaA - deltaB);
+            if (Math.abs(diff) > 1e-9) return diff;
+            return (a.ordenMerito || 999999) - (b.ordenMerito || 999999);
+        });
+    }
+
+    return copia.sort((a, b) => (a.ordenMerito || 999999) - (b.ordenMerito || 999999));
+}
+
 // Renderiza la tabla comparativa agrupada por etapas
 function renderizarTablaEvolucion(alumnosCruzados) {
+    alumnosEvolucionCache = Array.isArray(alumnosCruzados) ? alumnosCruzados : [];
     const tbody = document.getElementById('tbody-evolucion-cursillo');
     if (!tbody) return;
 
-    if (!alumnosCruzados || alumnosCruzados.length === 0) {
+    if (!alumnosEvolucionCache || alumnosEvolucionCache.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="16" class="text-center text-muted py-4">
@@ -2253,18 +2297,20 @@ function renderizarTablaEvolucion(alumnosCruzados) {
         return;
     }
 
-    tbody.innerHTML = alumnosCruzados.map(a => {
+    const criterioOrden = document.getElementById('select-orden-tabla-evolucion')?.value || 'merito';
+    const listaOrdenada = ordenarAlumnosEvolucion(alumnosEvolucionCache, criterioOrden);
+
+    tbody.innerHTML = listaOrdenada.map(a => {
         const apellido = a['Apellido/s del alumno'] || '';
         const nombre = a['Nombre/s del alumno'] || '';
         const comision = a['Comisión'] || a['Comision'] || a.comision || '-';
         const { es, ee, of } = a.etapas;
 
         // Cálculo de evolución individual (Compara Examen Oficial contra la primera etapa disponible del cursillo)
-        const baseCursillo = es.prom !== null ? es.prom : ee.prom;
+        const delta = calcularDeltaEvolucionAlumno(a);
         let badgeEvolucion = '<span class="text-muted small">-</span>';
 
-        if (baseCursillo !== null && of.prom !== null) {
-            const delta = of.prom - baseCursillo;
+        if (delta !== null) {
             if (delta > 0.1) {
                 badgeEvolucion = `<span class="badge bg-success-subtle text-success border border-success-subtle">▲ +${delta.toFixed(2)}</span>`;
             } else if (delta < -0.1) {
@@ -2624,6 +2670,13 @@ export function renderizarTablaAbandonoComisiones(alumnosTotales = [], datosCurs
 }
 
 export function inicializarEventosExamenVsCursillo() {
+    const selectOrdenEvolucion = document.getElementById('select-orden-tabla-evolucion');
+    if (selectOrdenEvolucion) {
+        selectOrdenEvolucion.addEventListener('change', () => {
+            renderizarTablaEvolucion(alumnosEvolucionCache);
+        });
+    }
+
     const contenedorBotones = document.getElementById('grupo-filtros-grafico-evo');
     if (!contenedorBotones) return;
 
@@ -2891,4 +2944,580 @@ function exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial 
         console.error('Error generando PDF:', err);
         if (typeof Swal !== 'undefined') Swal.fire('Error', 'Ocurrió un error al generar el PDF: ' + err.message, 'error');
     }
+}
+
+// =================================================================
+// LISTADO ALFABÉTICO OFICIAL DE CALIFICACIONES EN PDF (SUBTAB RESUMEN)
+// =================================================================
+
+/**
+ * Ordena alfabéticamente por Apellido y Nombre y construye las filas del listado oficial:
+ * [Documento, Apellido y Nombre, Matemática, Lengua, Dibujo, Comentarios, Promedio Provisorio].
+ */
+export function construirFilasListadoAlfabeticoResumen(alumnos = [], esExamenOficial = true) {
+    if (!Array.isArray(alumnos) || alumnos.length === 0) return [];
+
+    const extraerNombreSeparado = (a) => {
+        let apellido = String(a['Apellido/s del alumno'] ?? a.apellido ?? '').trim();
+        let nombre = String(a['Nombre/s del alumno'] ?? a.nombre ?? '').trim();
+
+        if (!apellido && !nombre) {
+            const combinado = String(a['Nombre y Apellido'] ?? a['Alumno'] ?? '').trim();
+            if (combinado.includes(',')) {
+                const partes = combinado.split(',');
+                apellido = partes[0].trim();
+                nombre = partes.slice(1).join(',').trim();
+            } else {
+                apellido = combinado || 'Sin Apellido';
+                nombre = '';
+            }
+        }
+        return { apellido, nombre };
+    };
+
+    const ordenados = [...alumnos].sort((a, b) => {
+        const na = extraerNombreSeparado(a);
+        const nb = extraerNombreSeparado(b);
+        const cmpAp = na.apellido.localeCompare(nb.apellido, 'es', { sensitivity: 'base' });
+        if (cmpAp !== 0) return cmpAp;
+        return na.nombre.localeCompare(nb.nombre, 'es', { sensitivity: 'base' });
+    });
+
+    const evaluarMateria = (ex, materia) => {
+        if (!esPresenteEnMateriaResumen(ex, materia)) {
+            return { texto: esExamenOficial ? 'A' : '-', presente: false, aprobo: false };
+        }
+        const val = parseFloat(String(ex[`nota_final_${materia}`] ?? '').replace(',', '.'));
+        const num = Number.isFinite(val) ? val : 0;
+        return { texto: num.toFixed(2), presente: true, aprobo: num >= 4 };
+    };
+
+    return ordenados.map(a => {
+        const ex = a.datos_examen || {};
+        const { apellido, nombre } = extraerNombreSeparado(a);
+        const apellidoMayus = apellido.toLocaleUpperCase('es-AR');
+        const apellidoYNombre = nombre ? `${apellidoMayus}, ${nombre}` : apellidoMayus;
+
+        const dniRaw = a['Nº de documento del alumno (sin puntos)'] ??
+            a['N° de documento del alumno (sin puntos)'] ??
+            a['DNI'] ??
+            a['Documento'] ??
+            a.dni ??
+            '';
+        const documento = formatearDniConPuntos(dniRaw);
+
+        const mat = evaluarMateria(ex, 'matematica');
+        const len = evaluarMateria(ex, 'lengua');
+        const dib = evaluarMateria(ex, 'dibujo');
+
+        const tieneAusente = !mat.presente || !len.presente || !dib.presente;
+        const aproboTres = !tieneAusente && mat.aprobo && len.aprobo && dib.aprobo;
+
+        let comentarios;
+        let promedio;
+        if (tieneAusente) {
+            comentarios = 'Ausente en al menos un examen';
+            promedio = '-';
+        } else if (aproboTres) {
+            comentarios = 'Aprobó los 3 exámenes';
+            promedio = `${formatearPromedioTruncado(a.promedioGeneral, 2)} (Prov.)`;
+        } else {
+            comentarios = 'Desaprobó al menos un examen';
+            promedio = '- (Prov.)';
+        }
+
+        return [
+            documento,
+            apellidoYNombre,
+            mat.texto,
+            len.texto,
+            dib.texto,
+            comentarios,
+            promedio
+        ];
+    });
+}
+
+/**
+ * Genera y descarga el PDF del Listado Alfabético Oficial con encabezado institucional
+ * y pie de página en 3 secciones en todas las hojas.
+ */
+export function descargarListadoAlfabeticoResumenPDF() {
+    const alumnos = Filtros.obtenerAlumnosFiltradosPorMerito(
+        EstadoDashboard.alumnos,
+        EstadoDashboard.cursillo
+    );
+
+    if (!alumnos || alumnos.length === 0) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Atención', 'No hay aspirantes para exportar con los filtros actuales.', 'warning');
+        } else {
+            alert('No hay aspirantes para exportar con los filtros actuales.');
+        }
+        return;
+    }
+
+    if (!window.jspdf) {
+        if (typeof Swal !== 'undefined') Swal.fire('Error', 'No se encontró la librería jsPDF.', 'error');
+        return;
+    }
+
+    const etapaActiva = Filtros.obtenerEtapaSeleccionada ? Filtros.obtenerEtapaSeleccionada() : 'oficial';
+    const esExamenOficial = etapaActiva === 'oficial';
+    const nombresEtapas = {
+        oficial: 'Examen de Ingreso',
+        ensayo: '2º Ensayo de Examen',
+        seguimiento: '1º Eval. Seguimiento'
+    };
+    const nombreEtapa = nombresEtapas[etapaActiva] || 'Examen de Ingreso';
+
+    const comisionFiltro = (document.getElementById('filtro-global-comision')?.value || 'todas').trim();
+    const infoComision = (comisionFiltro !== 'todas' && comisionFiltro !== '')
+        ? `Comisión ${comisionFiltro}`
+        : 'Todas las Comisiones';
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Generando Resultados Provisorios PDF...',
+            text: 'Por favor aguarde un momento.',
+            didOpen: () => { Swal.showLoading(); }
+        });
+    }
+
+    try {
+        const { jsPDF } = window.jspdf;
+        // A4 Horizontal para alojar con comodidad las 7 columnas
+        const pdf = new jsPDF('l', 'mm', 'a4');
+        const anchoHoja = pdf.internal.pageSize.getWidth();
+        const altoHoja = pdf.internal.pageSize.getHeight();
+        const centroX = anchoHoja / 2;
+
+        const cabeceras = [['Documento', 'Apellido y Nombre', 'Matemática', 'Lengua', 'Dibujo', 'Comentarios', 'Promedio Provisorio']];
+        const filas = construirFilasListadoAlfabeticoResumen(alumnos, esExamenOficial);
+        const incluirMarcaAgua = document.getElementById('chk-marca-agua-provisorios')?.checked ?? true;
+
+        const fechaCreacion = new Date().toLocaleDateString('es-AR', {
+            day: '2-digit', month: '2-digit', year: 'numeric'
+        });
+
+        const dibujarMarcaAguaHoja = () => {
+            if (!incluirMarcaAgua || typeof logoIT === 'undefined') return;
+            if (typeof pdf.GState !== 'function') return;
+            const tamLogo = 108;
+            const xLogo = centroX - tamLogo / 2;
+            const yLogo = ((29 + (altoHoja - 18)) / 2) - tamLogo / 2;
+            pdf.saveGraphicsState();
+            pdf.setGState(new pdf.GState({ opacity: 0.11 }));
+            pdf.addImage(logoIT, 'PNG', xLogo, yLogo, tamLogo, tamLogo);
+            pdf.restoreGraphicsState();
+        };
+
+        const dibujarEncabezadoHoja = () => {
+            if (typeof logoIT !== 'undefined') pdf.addImage(logoIT, 'PNG', 12, 6, 18, 18);
+            if (typeof logoUNT !== 'undefined') pdf.addImage(logoUNT, 'PNG', anchoHoja - 27, 6, 15, 18);
+
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(19);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('INSTITUTO TÉCNICO', centroX, 12, { align: 'center' });
+
+            pdf.setFont('times', 'italic');
+            pdf.setFontSize(12);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('Universidad Nacional de Tucumán', centroX, 17.5, { align: 'center' });
+
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(11);
+            pdf.setTextColor(0, 48, 93);
+            pdf.text('RESULTADOS PROVISORIOS - Exámenes de ingreso al ciclo lectivo 2027', centroX, 23.5, { align: 'center' });
+
+            pdf.setDrawColor(180, 180, 180);
+            pdf.setLineWidth(0.45);
+            pdf.line(12, 26.5, anchoHoja - 12, 26.5);
+        };
+
+        pdf.autoTable({
+            head: cabeceras,
+            body: filas,
+            startY: 29,
+            margin: { top: 29, bottom: 18, left: 12, right: 12 },
+            theme: 'grid',
+            showHead: 'everyPage',
+            headStyles: {
+                fillColor: [0, 48, 93],
+                textColor: [255, 255, 255],
+                halign: 'center',
+                valign: 'middle',
+                fontSize: 10.2,
+                cellPadding: { top: 1.5, bottom: 1.5, left: 1.8, right: 1.8 },
+                lineWidth: 0.2
+            },
+            styles: {
+                fontSize: 10,
+                cellPadding: { top: 1.1, bottom: 1.1, left: 1.8, right: 1.8 },
+                valign: 'middle',
+                lineColor: [210, 210, 210],
+                lineWidth: 0.1
+            },
+            alternateRowStyles: {
+                fillColor: [218, 228, 241]
+            },
+            columnStyles: {
+                0: { cellWidth: 27, halign: 'center' },
+                1: { cellWidth: 78, halign: 'left' },
+                2: { cellWidth: 25, halign: 'center' },
+                3: { cellWidth: 21, halign: 'center' },
+                4: { cellWidth: 21, halign: 'center' },
+                5: { cellWidth: 61, halign: 'left' },
+                6: { cellWidth: 40, halign: 'center', fontStyle: 'bold' }
+            },
+            didParseCell: function (data) {
+                if (data.section !== 'body') return;
+                const texto = String(data.cell.raw ?? '');
+                if ((data.column.index === 2 || data.column.index === 3 || data.column.index === 4) && texto === 'A') {
+                    data.cell.styles.textColor = [180, 20, 20];
+                    data.cell.styles.fontStyle = 'bold';
+                }
+                if (data.column.index === 5) {
+                    if (texto === 'Aprobó los 3 exámenes') {
+                        data.cell.styles.textColor = [20, 108, 67];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (texto === 'Ausente en al menos un examen') {
+                        data.cell.styles.textColor = [180, 20, 20];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else {
+                        data.cell.styles.textColor = [140, 40, 40];
+                    }
+                }
+                if (data.column.index === 6 && texto.startsWith('-')) {
+                    data.cell.styles.textColor = [115, 115, 115];
+                    data.cell.styles.fontStyle = 'normal';
+                }
+            },
+            didDrawPage: function () {
+                dibujarEncabezadoHoja();
+                dibujarMarcaAguaHoja();
+            }
+        });
+
+        // Pie de página en 3 secciones y numeración "Página i - total (fecha)" en CADA hoja
+        const totalPaginas = pdf.getNumberOfPages();
+        const textoProvisorio = 'Resultados provisorios: podrían modificarse de acuerdo a la revisión de exámenes, por posibles errores de corrección.';
+        const textoAprobacion = 'Nota de aprobación: 4 (cuatro) - Debe aprobar los tres exámenes para acceder al orden de mérito.';
+
+        for (let i = 1; i <= totalPaginas; i++) {
+            pdf.setPage(i);
+
+            pdf.setDrawColor(195, 195, 195);
+            pdf.setLineWidth(0.3);
+            pdf.line(12, altoHoja - 16, anchoHoja - 12, altoHoja - 16);
+
+            // Separadores verticales discretos entre las 3 secciones del pie
+            pdf.setDrawColor(220, 220, 220);
+            pdf.setLineWidth(0.2);
+            pdf.line(120, altoHoja - 14.5, 120, altoHoja - 4.5);
+            pdf.line(224, altoHoja - 14.5, 224, altoHoja - 4.5);
+
+            // Sección 1: Aviso de resultados provisorios
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(8);
+            pdf.setTextColor(95, 95, 95);
+            const lineasSec1 = pdf.splitTextToSize(textoProvisorio, 105);
+            pdf.text(lineasSec1, 12, altoHoja - 11.5);
+
+            // Sección 2: Criterio de aprobación y orden de mérito
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            pdf.setTextColor(85, 85, 85);
+            const lineasSec2 = pdf.splitTextToSize(textoAprobacion, 98);
+            pdf.text(lineasSec2, 123, altoHoja - 11.5);
+
+            // Sección 3: Paginación y fecha de creación
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(8.5);
+            pdf.setTextColor(90, 90, 90);
+            pdf.text(`Página ${i} - ${totalPaginas} (${fechaCreacion})`, anchoHoja - 12, altoHoja - 9, { align: 'right' });
+        }
+
+        if (typeof Swal !== 'undefined') Swal.close();
+        const sufijo = infoComision.replace(/\s+/g, '_');
+        pdf.save(`Resultados_Provisorios_${nombreEtapa.replace(/\s+/g, '_')}_${sufijo}.pdf`);
+    } catch (err) {
+        console.error('Error generando Resultados Provisorios PDF:', err);
+        if (typeof Swal !== 'undefined') Swal.fire('Error', 'Ocurrió un error al generar el PDF: ' + err.message, 'error');
+    }
+}
+
+// =================================================================
+// GRÁFICO GRANDE: RENDIMIENTO POR COMISIÓN SEGÚN ENUNCIADO (EXÁMENES)
+// =================================================================
+
+/**
+ * Calcula el promedio obtenido por cada comisión en un enunciado/inciso puntual
+ * del Examen Oficial de Ingreso, junto con la media global del recorte.
+ */
+export function calcularRendimientoEnunciadoPorComision(alumnos = [], materia = 'matematica', incisoClave = '') {
+    const areaKey = normalizarMateriaClave(materia);
+    const mapaEstructura = obtenerMapaEstructuraMateria(areaKey);
+    const clave = String(incisoClave ?? '').trim();
+    const meta = mapaEstructura[clave] || { maximo: 10, descripcion: clave ? `Inciso ${clave}` : '' };
+    const puntajeMaximo = meta.maximo > 0 ? meta.maximo : 10;
+
+    if (!Array.isArray(alumnos) || alumnos.length === 0 || !clave) {
+        return {
+            inciso: clave,
+            descripcion: meta.descripcion,
+            puntajeMaximo,
+            mediaGlobal: 0,
+            porcentajeGlobal: 0,
+            totalEvaluados: 0,
+            comisiones: []
+        };
+    }
+
+    const mapaComisiones = {};
+    let sumaGlobal = 0;
+    let totalEvaluados = 0;
+
+    alumnos.forEach(alumno => {
+        const ex = alumno?.datos_examen || {};
+        if (!esPresenteEnMateriaResumen(ex, areaKey)) return;
+
+        const incisos = ex[`incisos_${areaKey}`] || ex[`incisos_${materia}`];
+        if (!incisos || typeof incisos !== 'object') return;
+        if (!Object.prototype.hasOwnProperty.call(incisos, clave)) return;
+
+        const val = parseFloat(String(incisos[clave] ?? '').replace(',', '.'));
+        if (!Number.isFinite(val)) return;
+
+        const comRaw = alumno['Comisión'] ?? alumno['Comision'] ?? alumno.comision;
+        const com = (comRaw !== undefined && comRaw !== null && String(comRaw).trim() !== '' && String(comRaw).trim() !== '-')
+            ? String(comRaw).trim()
+            : 'Sin Com.';
+
+        if (!mapaComisiones[com]) {
+            mapaComisiones[com] = { comision: com, suma: 0, cantidad: 0 };
+        }
+        mapaComisiones[com].suma += val;
+        mapaComisiones[com].cantidad += 1;
+
+        sumaGlobal += val;
+        totalEvaluados += 1;
+    });
+
+    const comisiones = Object.values(mapaComisiones).map(item => {
+        const promedio = item.cantidad > 0 ? +(item.suma / item.cantidad).toFixed(2) : 0;
+        const porcentajeLogro = puntajeMaximo > 0 ? +((promedio / puntajeMaximo) * 100).toFixed(1) : 0;
+        return {
+            comision: item.comision,
+            promedio,
+            porcentajeLogro,
+            cantidad: item.cantidad
+        };
+    });
+
+    const mediaGlobal = totalEvaluados > 0 ? +(sumaGlobal / totalEvaluados).toFixed(2) : 0;
+    const porcentajeGlobal = puntajeMaximo > 0 ? +((mediaGlobal / puntajeMaximo) * 100).toFixed(1) : 0;
+
+    return {
+        inciso: clave,
+        descripcion: meta.descripcion,
+        puntajeMaximo,
+        mediaGlobal,
+        porcentajeGlobal,
+        totalEvaluados,
+        comisiones
+    };
+}
+
+let materiaEnunciadoComisionPrevia = null;
+
+/**
+ * Sincroniza el selector de enunciados según la materia elegida y renderiza
+ * el gráfico de barras comparando el promedio de cada comisión en ese enunciado.
+ */
+export function actualizarGraficoEnunciadoComisiones(alumnosFiltrados = [], etapaActiva = 'oficial') {
+    const canvas = document.getElementById('graficoEnunciadoComisiones');
+    const contenedor = document.getElementById('contenedor-grafico-enunciado-comision');
+    const aviso = document.getElementById('aviso-enunciado-comision-solo-oficial');
+    const selectMateria = document.getElementById('select-materia-enunciado-comision');
+    const selectInciso = document.getElementById('select-inciso-enunciado-comision');
+    const selectOrden = document.getElementById('select-orden-enunciado-comision');
+    const badgeMaximo = document.getElementById('badge-enunciado-maximo');
+    const badgeMedia = document.getElementById('badge-enunciado-media');
+
+    if (!canvas) return;
+
+    const chartExistente = Chart.getChart(canvas);
+    if (chartExistente) chartExistente.destroy();
+
+    if (etapaActiva !== 'oficial') {
+        if (contenedor) contenedor.classList.add('d-none');
+        if (aviso) {
+            aviso.classList.remove('d-none');
+            aviso.classList.add('d-flex');
+        }
+        if (badgeMaximo) badgeMaximo.textContent = 'Máx: -';
+        if (badgeMedia) badgeMedia.textContent = 'Media global: -';
+        return;
+    }
+
+    if (contenedor) contenedor.classList.remove('d-none');
+    if (aviso) {
+        aviso.classList.add('d-none');
+        aviso.classList.remove('d-flex');
+    }
+
+    const materia = selectMateria?.value || 'matematica';
+    const mapaEstructura = obtenerMapaEstructuraMateria(materia);
+    const clavesOrdenadas = Object.keys(mapaEstructura).sort((a, b) => {
+        const numA = parseFloat(a), numB = parseFloat(b);
+        return (!isNaN(numA) && !isNaN(numB)) ? numA - numB : a.localeCompare(b);
+    });
+
+    if (selectInciso) {
+        const seleccionActual = selectInciso.value;
+        const cambioMateria = materiaEnunciadoComisionPrevia !== materia;
+        materiaEnunciadoComisionPrevia = materia;
+
+        if (clavesOrdenadas.length === 0) {
+            selectInciso.innerHTML = '<option value="">Sin enunciados disponibles</option>';
+        } else {
+            selectInciso.innerHTML = clavesOrdenadas.map(clave => {
+                const info = mapaEstructura[clave];
+                const descCorta = info.descripcion.length > 68
+                    ? `${info.descripcion.substring(0, 68)}...`
+                    : info.descripcion;
+                const maxTxt = info.maximo > 0 ? ` (Máx: ${info.maximo} pts)` : '';
+                return `<option value="${clave}">Inciso ${clave} — ${descCorta}${maxTxt}</option>`;
+            }).join('');
+
+            if (!cambioMateria && clavesOrdenadas.includes(seleccionActual)) {
+                selectInciso.value = seleccionActual;
+            } else {
+                selectInciso.value = clavesOrdenadas[0];
+            }
+        }
+    }
+
+    const incisoElegido = selectInciso?.value || clavesOrdenadas[0] || '';
+    const resultado = calcularRendimientoEnunciadoPorComision(alumnosFiltrados, materia, incisoElegido);
+
+    if (badgeMaximo) {
+        badgeMaximo.textContent = incisoElegido ? `Máx: ${resultado.puntajeMaximo} pts` : 'Máx: -';
+    }
+    if (badgeMedia) {
+        badgeMedia.textContent = resultado.totalEvaluados > 0
+            ? `Media global: ${resultado.mediaGlobal.toFixed(2)} pts (${resultado.porcentajeGlobal.toFixed(1)}%)`
+            : 'Media global: Sin datos';
+    }
+
+    const criterioOrden = selectOrden?.value || 'comision';
+    const comisionesOrdenadas = [...resultado.comisiones].sort((a, b) => {
+        if (criterioOrden === 'promedio_desc') {
+            return (b.promedio - a.promedio) || (Number(a.comision) - Number(b.comision));
+        }
+        if (criterioOrden === 'promedio_asc') {
+            return (a.promedio - b.promedio) || (Number(a.comision) - Number(b.comision));
+        }
+        const nA = Number(a.comision), nB = Number(b.comision);
+        if (!isNaN(nA) && !isNaN(nB)) return nA - nB;
+        return String(a.comision).localeCompare(String(b.comision));
+    });
+
+    const estilosMateria = {
+        matematica: { fondo: 'rgba(172, 26, 33, 0.82)', borde: '#ac1a21' },
+        lengua: { fondo: 'rgba(27, 57, 106, 0.82)', borde: '#1b396a' },
+        dibujo: { fondo: 'rgba(73, 80, 87, 0.82)', borde: '#495057' }
+    };
+    const estilo = estilosMateria[normalizarMateriaClave(materia)] || estilosMateria.matematica;
+
+    const etiquetas = comisionesOrdenadas.map(c =>
+        c.comision === 'Sin Com.' ? 'Sin Com.' : `Comisión ${c.comision}`
+    );
+    const promedios = comisionesOrdenadas.map(c => c.promedio);
+    const lineaMedia = comisionesOrdenadas.map(() => resultado.mediaGlobal);
+
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: etiquetas,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: `Promedio Inciso ${incisoElegido || '-'}`,
+                    data: promedios,
+                    backgroundColor: estilo.fondo,
+                    borderColor: estilo.borde,
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    maxBarThickness: 56,
+                    order: 2
+                },
+                {
+                    type: 'line',
+                    label: `Media Global (${resultado.mediaGlobal.toFixed(2)} pts)`,
+                    data: lineaMedia,
+                    borderColor: '#f59e0b',
+                    backgroundColor: '#f59e0b',
+                    borderWidth: 2.5,
+                    borderDash: [6, 4],
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    fill: false,
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: resultado.puntajeMaximo,
+                    max: resultado.puntajeMaximo,
+                    grid: { color: 'rgba(0, 0, 0, 0.06)' },
+                    title: {
+                        display: true,
+                        text: `Puntaje Promedio (Escala 0 - ${resultado.puntajeMaximo} pts)`,
+                        font: { size: 11, weight: 'bold' }
+                    }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, padding: 14, font: { size: 11 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: (items) => {
+                            const idx = items[0].dataIndex;
+                            const item = comisionesOrdenadas[idx];
+                            return item
+                                ? `${etiquetas[idx]} — Inciso ${incisoElegido}: ${resultado.descripcion}`
+                                : '';
+                        },
+                        label: (context) => {
+                            if (context.dataset.type === 'line') {
+                                return ` Media Global: ${resultado.mediaGlobal.toFixed(2)} / ${resultado.puntajeMaximo} pts (${resultado.porcentajeGlobal.toFixed(1)}%)`;
+                            }
+                            const item = comisionesOrdenadas[context.dataIndex];
+                            if (!item) return '';
+                            return ` Promedio: ${item.promedio.toFixed(2)} / ${resultado.puntajeMaximo} pts (${item.porcentajeLogro.toFixed(1)}%) · ${item.cantidad} aspirante(s)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
