@@ -502,6 +502,11 @@
                                     </span>
                                 </div>
                                 <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <select id="select-modo-tabla-resumen" class="form-select form-select-sm w-auto shadow-xs"
+                                        aria-label="Seleccionar modo de la tabla de calificaciones">
+                                        <option value="general" selected>Modo: General (Promedios)</option>
+                                        <option value="criterios_merito">Modo: Criterios de Orden de Mérito</option>
+                                    </select>
                                     <select id="select-orden-tabla-resumen" class="form-select form-select-sm w-auto shadow-xs"
                                         aria-label="Ordenar tabla de calificaciones de mayor a menor">
                                         <option value="promedio" selected>Orden: Promedio (Mayor a menor)</option>
@@ -568,7 +573,7 @@
                             <table class="table table-striped table-hover align-middle mb-0 bg-white">
                                 <thead class="table-azul-institucional sticky-top" style="z-index: 5;">
                                     <tr>
-                                        <th class="text-center th-columna-merito-dinamica">Orden de Mérito</th>
+                                        <th id="th-posicion-tabla-resumen" class="text-center">Nº</th>
                                         <th>Aspirante</th>
                                         <th class="text-center">Promedio</th>
                                         <th class="text-center">Mat.</th>

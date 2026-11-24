@@ -593,8 +593,37 @@ export function inicializarFiltrosMerito() {
 }
 
 
-/** Ordena la lista de alumnos de mayor a menor según promedio o nota de un área específica. */
-export function ordenarAlumnosResumenPorCriterio(alumnos, criterio = 'promedio') {
+/**
+ * Evalúa si un aspirante cumple los criterios para acceder al orden de mérito:
+ * presente en las 3 materias (Matemática, Lengua y Dibujo) y nota >= 4 en todas.
+ */
+export function evaluarCriterioMeritoResumen(alumno, esExamenOficial = true) {
+    const ex = alumno?.datos_examen || {};
+    const materias = ['matematica', 'lengua', 'dibujo'];
+    let tieneAusente = false;
+    let tieneDesaprobado = false;
+
+    for (const materia of materias) {
+        if (!esPresenteEnMateriaResumen(ex, materia, esExamenOficial)) {
+            tieneAusente = true;
+            continue;
+        }
+        const val = parseFloat(String(ex[`nota_final_${materia}`] ?? '').replace(',', '.'));
+        const nota = Number.isFinite(val) ? val : 0;
+        if (nota < 4) {
+            tieneDesaprobado = true;
+        }
+    }
+
+    return {
+        calificaMerito: !tieneAusente && !tieneDesaprobado,
+        tieneAusente,
+        tieneDesaprobado
+    };
+}
+
+/** Ordena la lista de alumnos de mayor a menor según promedio o nota de un área específica, y opcionalmente según criterios de orden de mérito. */
+export function ordenarAlumnosResumenPorCriterio(alumnos, criterio = 'promedio', modo = 'general') {
     if (!Array.isArray(alumnos) || alumnos.length === 0) return [];
     const copia = [...alumnos];
     const esExamenOficial = (Filtros.obtenerEtapaSeleccionada ? Filtros.obtenerEtapaSeleccionada() : 'oficial') === 'oficial';
@@ -606,7 +635,6 @@ export function ordenarAlumnosResumenPorCriterio(alumnos, criterio = 'promedio')
     };
 
     const areaKey = mapaAreas[criterio];
-    if (!areaKey) return copia;
 
     const leerNota = (alumno) => {
         const ex = alumno.datos_examen || {};
@@ -615,13 +643,34 @@ export function ordenarAlumnosResumenPorCriterio(alumnos, criterio = 'promedio')
         return Number.isFinite(val) ? val : 0;
     };
 
-    return copia.sort((a, b) => {
-        const diffNota = leerNota(b) - leerNota(a);
-        if (diffNota !== 0) return diffNota;
+    const compararPorCriterio = (a, b) => {
+        if (areaKey) {
+            const diffNota = leerNota(b) - leerNota(a);
+            if (diffNota !== 0) return diffNota;
+        }
         const diffProm = (b.promedioGeneral || 0) - (a.promedioGeneral || 0);
         if (diffProm !== 0) return diffProm;
         return (a.ordenMerito || 999999) - (b.ordenMerito || 999999);
-    });
+    };
+
+    if (modo === 'criterios_merito') {
+        const nivelMerito = (alumno) => {
+            const ev = evaluarCriterioMeritoResumen(alumno, esExamenOficial);
+            if (ev.calificaMerito) return 0;      // Arriba: aprobó los 3 exámenes
+            if (!ev.tieneAusente) return 1;       // Abajo: desaprobó al menos un examen (presente en los 3)
+            return 2;                             // Al final: ausente en al menos un examen
+        };
+
+        return copia.sort((a, b) => {
+            const diffNivel = nivelMerito(a) - nivelMerito(b);
+            if (diffNivel !== 0) return diffNivel;
+            return compararPorCriterio(a, b);
+        });
+    }
+
+    if (!areaKey) return copia;
+
+    return copia.sort(compararPorCriterio);
 }
 
 export function renderizarTablaMerito(alumnos) {
@@ -629,6 +678,15 @@ export function renderizarTablaMerito(alumnos) {
     const badgeFiltrados = document.getElementById('cant-alumnos-filtrados');
     const badgeResumen = document.getElementById('cant-alumnos-filtrados-resumen');
     if (!tbody) return;
+
+    const esExamenOficial = (Filtros.obtenerEtapaSeleccionada ? Filtros.obtenerEtapaSeleccionada() : 'oficial') === 'oficial';
+    const modoTabla = document.getElementById('select-modo-tabla-resumen')?.value || 'general';
+    const esModoCriterios = modoTabla === 'criterios_merito';
+
+    const thPosicion = document.getElementById('th-posicion-tabla-resumen');
+    if (thPosicion) {
+        thPosicion.textContent = 'Nº';
+    }
 
     if (!alumnos || alumnos.length === 0) {
         tbody.innerHTML = `
@@ -642,9 +700,8 @@ export function renderizarTablaMerito(alumnos) {
         return;
     }
 
-    const esExamenOficial = (Filtros.obtenerEtapaSeleccionada ? Filtros.obtenerEtapaSeleccionada() : 'oficial') === 'oficial';
     const criterioOrden = document.getElementById('select-orden-tabla-resumen')?.value || 'promedio';
-    const alumnosOrdenados = ordenarAlumnosResumenPorCriterio(alumnos, criterioOrden);
+    const alumnosOrdenados = ordenarAlumnosResumenPorCriterio(alumnos, criterioOrden, modoTabla);
 
     if (badgeFiltrados) badgeFiltrados.innerText = alumnosOrdenados.length;
     if (badgeResumen) badgeResumen.innerText = alumnosOrdenados.length;
@@ -661,28 +718,38 @@ export function renderizarTablaMerito(alumnos) {
 
     let htmlFilas = '';
 
-    alumnosOrdenados.forEach(alumno => {
+    alumnosOrdenados.forEach((alumno, idx) => {
         const examen = alumno.datos_examen || {};
         // Notas por materia (en Examen Oficial: nota 0 con troquel muestra 0.00; sin troquel muestra 'A' en rojo negrita)
         const notaMat = formatearNotaResumen(examen, 'matematica');
         const notaLen = formatearNotaResumen(examen, 'lengua');
         const notaDib = formatearNotaResumen(examen, 'dibujo');
 
-        // Badge para el puesto en orden de mérito (estilo uniforme)
-        const puestoBadge = `<span class="badge bg-light text-dark border">#${alumno.ordenMerito}</span>`;
+        // En modo criterios: numeración ascendente correlativa (sin orden de mérito)
+        const puestoBadge = esModoCriterios
+            ? `<span class="badge bg-light text-dark border">${idx + 1}</span>`
+            : `<span class="badge bg-light text-dark border">#${alumno.ordenMerito}</span>`;
 
         // Datos del alumno
         const apellido = alumno['Apellido/s del alumno'] || alumno.apellido || '';
         const nombre = alumno['Nombre/s del alumno'] || alumno.nombre || '';
         const nombreCompleto = (apellido && nombre) ? `${apellido}, ${nombre}` : (alumno['Nombre y Apellido'] || alumno['Alumno'] || 'Sin Nombre');
 
-        // Promedio: en Examen Oficial solo es Ausente si no tiene cruce con troqueles ni nota en ninguna materia
-        const presenteEnInstancia = esPresenteEnInstanciaResumen(alumno, esExamenOficial);
-        const celdaPromedio = presenteEnInstancia
-            ? `<span class="fw-bold text-primary">${formatearPromedioTruncado(alumno.promedioGeneral, 3)}</span>`
-            : (esExamenOficial
-                ? `<span class="badge bg-danger-subtle text-danger fw-bold">Ausente</span>`
-                : `<span class="badge bg-secondary-subtle text-secondary">Ausente</span>`);
+        // Promedio: en modo criterios, cualquier ausente o desaprobado no muestra promedio final
+        let celdaPromedio;
+        if (esModoCriterios) {
+            const { calificaMerito, tieneAusente } = evaluarCriterioMeritoResumen(alumno, esExamenOficial);
+            celdaPromedio = calificaMerito
+                ? `<span class="fw-bold text-primary">${formatearPromedioTruncado(alumno.promedioGeneral, 3)}</span>`
+                : `<span class="text-muted fw-semibold" title="${tieneAusente ? 'Ausente en al menos un examen' : 'Desaprobó al menos un examen'}">-</span>`;
+        } else {
+            const presenteEnInstancia = esPresenteEnInstanciaResumen(alumno, esExamenOficial);
+            celdaPromedio = presenteEnInstancia
+                ? `<span class="fw-bold text-primary">${formatearPromedioTruncado(alumno.promedioGeneral, 3)}</span>`
+                : (esExamenOficial
+                    ? `<span class="badge bg-danger-subtle text-danger fw-bold">Ausente</span>`
+                    : `<span class="badge bg-secondary-subtle text-secondary">Ausente</span>`);
+        }
 
         htmlFilas += `
             <tr>
@@ -2704,13 +2771,15 @@ export function inicializarEventosExamenVsCursillo() {
 // DESCARGA DE CALIFICACIONES DESDE LA SUBTABLA RESUMEN (PDF / EXCEL)
 // =================================================================
 export function descargarListadoNotasResumen(formato = 'pdf') {
-    // Leemos los alumnos filtrados respetando los filtros globales y el orden activo de la tabla
+    // Leemos los alumnos filtrados respetando los filtros globales, el modo y el orden activo de la tabla
     const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(
         EstadoDashboard.alumnos,
         EstadoDashboard.cursillo
     );
     const criterioOrden = document.getElementById('select-orden-tabla-resumen')?.value || 'promedio';
-    const alumnos = ordenarAlumnosResumenPorCriterio(alumnosFiltrados, criterioOrden);
+    const modoTabla = document.getElementById('select-modo-tabla-resumen')?.value || 'general';
+    const esModoCriterios = modoTabla === 'criterios_merito';
+    const alumnos = ordenarAlumnosResumenPorCriterio(alumnosFiltrados, criterioOrden, modoTabla);
 
     if (!alumnos || alumnos.length === 0) {
         if (typeof Swal !== 'undefined') {
@@ -2737,14 +2806,14 @@ export function descargarListadoNotasResumen(formato = 'pdf') {
     const esExamenOficial = etapaActiva === 'oficial';
 
     if (formato === 'excel') {
-        exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficial);
+        exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficial, esModoCriterios);
     } else {
-        exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial);
+        exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial, esModoCriterios);
     }
 }
 
-function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficial = true) {
-    const cabeceras = ['Orden de Mérito', 'Apellido y Nombre', 'Comisión', 'Matemática', 'Lengua', 'Dibujo', 'Promedio General'];
+function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficial = true, esModoCriterios = false) {
+    const cabeceras = ['Nº', 'Apellido y Nombre', 'Comisión', 'Matemática', 'Lengua', 'Dibujo', 'Promedio General'];
     const formatearNota = (ex, materia) => {
         if (!esPresenteEnMateriaResumen(ex, materia, esExamenOficial)) {
             return esExamenOficial ? 'A' : '-';
@@ -2753,7 +2822,7 @@ function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficia
         return Number.isFinite(val) ? val.toFixed(2) : '0.00';
     };
 
-    const filas = alumnos.map(a => {
+    const filas = alumnos.map((a, idx) => {
         const ex = a.datos_examen || {};
         const apellido = a['Apellido/s del alumno'] || a.apellido || '';
         const nombre = a['Nombre/s del alumno'] || a.nombre || '';
@@ -2763,12 +2832,18 @@ function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficia
         const notaMat = formatearNota(ex, 'matematica');
         const notaLen = formatearNota(ex, 'lengua');
         const notaDib = formatearNota(ex, 'dibujo');
-        const prom = esPresenteEnInstanciaResumen(a, esExamenOficial)
-            ? formatearPromedioTruncado(a.promedioGeneral, 3)
-            : 'Ausente';
+        let prom;
+        if (esModoCriterios) {
+            const { calificaMerito } = evaluarCriterioMeritoResumen(a, esExamenOficial);
+            prom = calificaMerito ? formatearPromedioTruncado(a.promedioGeneral, 3) : '-';
+        } else {
+            prom = esPresenteEnInstanciaResumen(a, esExamenOficial)
+                ? formatearPromedioTruncado(a.promedioGeneral, 3)
+                : 'Ausente';
+        }
 
         return [
-            a.ordenMerito,
+            esModoCriterios ? (idx + 1) : a.ordenMerito,
             nombreCompleto,
             com,
             notaMat,
@@ -2796,7 +2871,7 @@ function exportarResumenCSV(alumnos, nombreEtapa, comisionFiltro, esExamenOficia
     URL.revokeObjectURL(url);
 }
 
-function exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial = true) {
+function exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial = true, esModoCriterios = false) {
     if (!window.jspdf) {
         if (typeof Swal !== 'undefined') Swal.fire('Error', 'No se encontró la librería jsPDF.', 'error');
         return;
@@ -2816,7 +2891,7 @@ function exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial 
         const anchoHoja = pdf.internal.pageSize.getWidth();
         const centroX = anchoHoja / 2;
 
-        const cabeceras = [['#', 'Apellido y Nombre', 'Comisión', 'Matemática', 'Lengua', 'Dibujo', 'Promedio']];
+        const cabeceras = [[esModoCriterios ? 'Nº' : '#', 'Apellido y Nombre', 'Comisión', 'Matemática', 'Lengua', 'Dibujo', 'Promedio']];
         const formatearNota = (ex, materia) => {
             if (!esPresenteEnMateriaResumen(ex, materia, esExamenOficial)) {
                 return esExamenOficial ? 'A' : '-';
@@ -2825,7 +2900,7 @@ function exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial 
             return Number.isFinite(val) ? val.toFixed(2) : '0.00';
         };
 
-        const filas = alumnos.map(a => {
+        const filas = alumnos.map((a, idx) => {
             const ex = a.datos_examen || {};
             const apellido = a['Apellido/s del alumno'] || a.apellido || '';
             const nombre = a['Nombre/s del alumno'] || a.nombre || '';
@@ -2835,12 +2910,18 @@ function exportarResumenPDF(alumnos, nombreEtapa, infoComision, esExamenOficial 
             const notaMat = formatearNota(ex, 'matematica');
             const notaLen = formatearNota(ex, 'lengua');
             const notaDib = formatearNota(ex, 'dibujo');
-            const prom = esPresenteEnInstanciaResumen(a, esExamenOficial)
-                ? formatearPromedioTruncado(a.promedioGeneral, 3)
-                : 'Ausente';
+            let prom;
+            if (esModoCriterios) {
+                const { calificaMerito } = evaluarCriterioMeritoResumen(a, esExamenOficial);
+                prom = calificaMerito ? formatearPromedioTruncado(a.promedioGeneral, 3) : '-';
+            } else {
+                prom = esPresenteEnInstanciaResumen(a, esExamenOficial)
+                    ? formatearPromedioTruncado(a.promedioGeneral, 3)
+                    : 'Ausente';
+            }
 
             return [
-                a.ordenMerito,
+                esModoCriterios ? (idx + 1) : a.ordenMerito,
                 nombreCompleto,
                 com,
                 notaMat,

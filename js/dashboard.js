@@ -131,11 +131,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         UImetrics.renderizarTablaComisiones(alumnosFiltrados);
     });
 
-    // Escuchamos el cambio en el selector de orden de la tabla de calificaciones (subtab Resumen)
-    document.getElementById('select-orden-tabla-resumen')?.addEventListener('change', () => {
+    // Escuchamos el cambio en el selector de modo y orden de la tabla de calificaciones (subtab Resumen)
+    const refrescarTablaResumen = () => {
         const alumnosFiltrados = Filtros.obtenerAlumnosFiltradosPorMerito(EstadoDashboard.alumnos, EstadoDashboard.cursillo);
         UImetrics.renderizarTablaMerito(alumnosFiltrados);
-    });
+    };
+    document.getElementById('select-modo-tabla-resumen')?.addEventListener('change', refrescarTablaResumen);
+    document.getElementById('select-orden-tabla-resumen')?.addEventListener('change', refrescarTablaResumen);
 
     // Listeners para descargar el listado de calificaciones desde el subtab Resumen (respetando filtros activos)
     document.getElementById('btn-descargar-resumen-principal')?.addEventListener('click', () => {
